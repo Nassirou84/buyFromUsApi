@@ -9,3 +9,15 @@
 
 controllers:
     resource: routing.controllers
+
+api_refresh_token:
+    path: /api/token/refresh
+    methods: [POST]
+
+api_login_check:
+    path: /api/login
+    methods: [POST]
+
+api_logout:
+    path: /api/logout
+    methods: [POST]
