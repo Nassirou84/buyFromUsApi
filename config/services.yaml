@@ -35,3 +35,8 @@ services:
         autowire: true
         autoconfigure: true
         public: true
+
+
+    App\Service\BrightDataAmazonScraper:
+        arguments:
+            $brightDataApiKey: '%env(BRIGHT_DATA_API_KEY)%'
