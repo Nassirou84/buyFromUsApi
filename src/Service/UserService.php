@@ -24,6 +24,7 @@ class UserService
     $user->setPassword($hashedPassword);
     $token = $this->tokenService->generateToken();
     $user->setRegistrationToken($token);
+    $user->setRegistrationTokenCreatedAt(new \DateTime());
     $this->entityManager->persist($user);
     $this->entityManager->flush();
     return $user;

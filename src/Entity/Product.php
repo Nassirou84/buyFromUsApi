@@ -10,7 +10,12 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ApiResource(
-    operations: []
+    operations: [
+        new \ApiPlatform\Metadata\Get(),
+        new \ApiPlatform\Metadata\Post(),
+        new \ApiPlatform\Metadata\Put(),
+        new \ApiPlatform\Metadata\Delete()
+    ]
 )]
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
 class Product
@@ -34,6 +39,31 @@ class Product
 
     #[ORM\Column(type: Types::TEXT)]
     private ?string $scrapingUrl = null;
+
+    #[ORM\Column(length: 255)]
+    private ?string $seller = null;
+
+    #[ORM\Column(length: 255)]
+    private ?string $brand = null;
+
+    #[ORM\Column]
+    private ?float $usdPrice = null;
+
+    #[ORM\Column]
+    private ?bool $isAvailable = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $desciprion = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $customerSays = null;
+
+    #[ORM\ManyToOne(inversedBy: 'products')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Category $category = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?array $features = null;
 
     public function __construct()
     {
@@ -108,6 +138,102 @@ class Product
     public function setScrapingUrl(string $scrapingUrl): static
     {
         $this->scrapingUrl = $scrapingUrl;
+
+        return $this;
+    }
+
+    public function getSeller(): ?string
+    {
+        return $this->seller;
+    }
+
+    public function setSeller(string $seller): static
+    {
+        $this->seller = $seller;
+
+        return $this;
+    }
+
+    public function getBrand(): ?string
+    {
+        return $this->brand;
+    }
+
+    public function setBrand(string $brand): static
+    {
+        $this->brand = $brand;
+
+        return $this;
+    }
+
+    public function getUsdPrice(): ?float
+    {
+        return $this->usdPrice;
+    }
+
+    public function setUsdPrice(float $usdPrice): static
+    {
+        $this->usdPrice = $usdPrice;
+
+        return $this;
+    }
+
+    public function isAvailable(): ?bool
+    {
+        return $this->isAvailable;
+    }
+
+    public function setIsAvailable(bool $isAvailable): static
+    {
+        $this->isAvailable = $isAvailable;
+
+        return $this;
+    }
+
+    public function getDesciprion(): ?string
+    {
+        return $this->desciprion;
+    }
+
+    public function setDesciprion(?string $desciprion): static
+    {
+        $this->desciprion = $desciprion;
+
+        return $this;
+    }
+
+    public function getCustomerSays(): ?string
+    {
+        return $this->customerSays;
+    }
+
+    public function setCustomerSays(?string $customerSays): static
+    {
+        $this->customerSays = $customerSays;
+
+        return $this;
+    }
+
+    public function getCategory(): ?Category
+    {
+        return $this->category;
+    }
+
+    public function setCategory(?Category $category): static
+    {
+        $this->category = $category;
+
+        return $this;
+    }
+
+    public function getFeatures(): ?array
+    {
+        return $this->features;
+    }
+
+    public function setFeatures(?array $features): static
+    {
+        $this->features = $features;
 
         return $this;
     }
