@@ -13,10 +13,17 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ApiResource(
     operations: [
-        new GetCollection(),
+        new \ApiPlatform\Metadata\Get(),
+        new GetCollection(
+            security: "is_granted('ROLE_ADMIN')"
+        ),
         new Post(
-            denormalizationContext: ['groups' => ['category:write']]
+            denormalizationContext: ['groups' => ['category:write']],
+            security: "is_granted('ROLE_ADMIN')"
         )
+    ],
+    filters: [
+        "categories.search_filter"
     ],
     denormalizationContext: ['groups' => ['category:write']]
 )]

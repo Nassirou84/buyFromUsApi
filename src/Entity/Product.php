@@ -1,8 +1,9 @@
 <?php
 
 namespace App\Entity;
-
+use Symfony\Component\Validator\Constraints as Assert;
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\GetCollection;
 use App\Repository\ProductRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -12,9 +13,16 @@ use Doctrine\ORM\Mapping as ORM;
 #[ApiResource(
     operations: [
         new \ApiPlatform\Metadata\Get(),
+        new GetCollection(),
         new \ApiPlatform\Metadata\Post(),
         new \ApiPlatform\Metadata\Put(),
-        new \ApiPlatform\Metadata\Delete()
+        new \ApiPlatform\Metadata\Delete(),
+        new GetCollection(
+            security: "is_granted('ROLE_ADMIN')",
+            routeName: 'app_product_scrape',
+            name: 'app_product_scrape',
+            paginationEnabled: false,
+        )
     ]
 )]
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
@@ -37,8 +45,8 @@ class Product
     #[ORM\OneToMany(targetEntity: Photo::class, mappedBy: 'product', orphanRemoval: true)]
     private Collection $photos;
 
-    #[ORM\Column(type: Types::TEXT)]
-    private ?string $scrapingUrl = null;
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $scrappingUrl = null;
 
     #[ORM\Column(length: 255)]
     private ?string $seller = null;
@@ -53,7 +61,7 @@ class Product
     private ?bool $isAvailable = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
-    private ?string $desciprion = null;
+    private ?string $description = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $customerSays = null;
@@ -65,10 +73,20 @@ class Product
     #[ORM\Column(nullable: true)]
     private ?array $features = null;
 
+    #[ORM\Column(nullable: true)]
+    private ?array $variants = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTime $lastScrappingAt = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?array $details = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
         $this->photos = new ArrayCollection();
+        $this->lastScrappingAt = null;
     }
 
     public function getId(): ?int
@@ -130,14 +148,14 @@ class Product
         return $this;
     }
 
-    public function getScrapingUrl(): ?string
+    public function getScrappingUrl(): ?string
     {
-        return $this->scrapingUrl;
+        return $this->scrappingUrl;
     }
 
-    public function setScrapingUrl(string $scrapingUrl): static
+    public function setScrappingUrl(?string $scrappingUrl): static
     {
-        $this->scrapingUrl = $scrapingUrl;
+        $this->scrappingUrl = $scrappingUrl;
 
         return $this;
     }
@@ -190,14 +208,14 @@ class Product
         return $this;
     }
 
-    public function getDesciprion(): ?string
+    public function getDescription(): ?string
     {
-        return $this->desciprion;
+        return $this->description;
     }
 
-    public function setDesciprion(?string $desciprion): static
+    public function setDescription(?string $description): static
     {
-        $this->desciprion = $desciprion;
+        $this->description = $description;
 
         return $this;
     }
@@ -234,6 +252,42 @@ class Product
     public function setFeatures(?array $features): static
     {
         $this->features = $features;
+
+        return $this;
+    }
+
+    public function getVariants(): ?array
+    {
+        return $this->variants;
+    }
+
+    public function setVariants(?array $variants): static
+    {
+        $this->variants = $variants;
+
+        return $this;
+    }
+
+    public function getLastScrappingAt(): ?\DateTime
+    {
+        return $this->lastScrappingAt;
+    }
+
+    public function setLastScrappingAt(?\DateTime $lastScrappingAt): static
+    {
+        $this->lastScrappingAt = $lastScrappingAt;
+
+        return $this;
+    }
+
+    public function getDetails(): ?array
+    {
+        return $this->details;
+    }
+
+    public function setDetails(?array $details): static
+    {
+        $this->details = $details;
 
         return $this;
     }

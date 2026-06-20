@@ -11,11 +11,11 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class HomeController extends AbstractController
 {
-    #[Route('/home', name: 'app_home')]
+    #[Route('/api/home', name: 'app_home')]
     public function index(
         BrightDataAmazonScraper $brightDataAmazonScraper,
     ): JsonResponse {
-        $productData = $brightDataAmazonScraper->scrapeProduct('https://www.amazon.com/Apple-iPhone-Silicone-MagSafe-Control/dp/B0FQFPBQYB/ref=sr_1_1_sspa?crid=8WVU3HVP7Q0S&dib=eyJ2IjoiMSJ9.LstBpsRsz0tXmAmY0X2UD9ZVlL5x9eSE24ng8zCg2I8U3sQHxeEcnCpcVeLra7amPjhq6eRn5VHT0daU1zkPjm6l6BKejv1QbbS0L4IWwozV8t8_QFZEMxtRtUsvXRdVHXkWdx6l2P5H2ebKHhoJK1aoST81A9drvIlPy23yCAHFIbuCjIbQnoIp2CkKLLfJLLBtwmsojxdlFGgagEwKNi1dNcUdUg-2HA5mOVlYDtQ.AYdFTSZkoEnlDy6SzZWq8QvCRiBoQYsTbOnwJGYhAGg&dib_tag=se&keywords=iphone%2B17%2Bpro%2Bmax&qid=1781563248&sprefix=ipho%2Caps%2C185&sr=8-1-spons&sp_csd=d2lkZ2V0TmFtZT1zcF9hdGY&th=1');
+        $productData = $brightDataAmazonScraper->scrapeProduct('https://www.amazon.com/Arabic-Keyboard-Sticker-Transparent-Computer/dp/B004LY7X92?th=1&psc=1&language=en_US&currency=USD');
 
         return $this->json([
             'product_data' => $productData,

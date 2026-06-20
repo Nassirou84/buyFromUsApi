@@ -9,6 +9,7 @@ use ApiPlatform\Metadata\ApiResource;
 #[ApiResource(
     operations: [
         new \ApiPlatform\Metadata\Get(),
+        new \ApiPlatform\Metadata\GetCollection(),
         new \ApiPlatform\Metadata\Post(),
         new \ApiPlatform\Metadata\Put(),
         new \ApiPlatform\Metadata\Delete()

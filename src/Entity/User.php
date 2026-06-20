@@ -20,9 +20,12 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new Post(
             processor: RegisterStateProcessor::class,
             denormalizationContext: ['groups' => ['user:create']]
-        )
+        ),
+        new \ApiPlatform\Metadata\GetCollection(),
+        new \ApiPlatform\Metadata\Get(),
     ],
-    denormalizationContext: ['groups' => ['user:create']]
+    denormalizationContext: ['groups' => ['user:create']],
+    normalizationContext: ['groups' => ['user:read', 'user:login:read']]
 )]
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_EMAIL', fields: ['email'])]
@@ -31,16 +34,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['user:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 180)]
-    #[Groups(['user:create'])]
+    #[Groups(['user:create', 'user:login:read'])]
     private ?string $email = null;
 
     /**
      * @var list<string> The user roles
      */
     #[ORM\Column]
+    #[Groups(['user:create', 'user:login:read'])]
     private array $roles = [];
 
     /**
@@ -57,31 +62,38 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?\DateTime $registrationTokenCreatedAt = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['user:create'])]
+    #[Groups(['user:create', 'user:read'])]
     private ?string $firstName = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['user:create'])]
+    #[Groups(['user:create', 'user:read'])]
     private ?string $lastName = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['user:read'])]
     private ?\DateTimeImmutable $createdAt = null;
 
+    #[Groups(['user:read'])]
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $phone = null;
 
+    #[Groups(['user:read'])]
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $what3words = null;
 
+    #[Groups(['user:read'])]
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $street = null;
 
+    #[Groups(['user:read'])]
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $city = null;
 
+    #[Groups(['user:read'])]
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $state = null;
 
+    #[Groups(['user:read'])]
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $country = null;
 
@@ -90,6 +102,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      */
     #[ORM\OneToMany(targetEntity: Order::class, mappedBy: 'customer')]
     private Collection $orders;
+
+    #[Groups(['user:login:read'])]
+    #[ORM\Column(nullable: true)]
+    private ?\DateTime $lastLoginAt = null;
 
     public function __construct()
     {
@@ -329,6 +345,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
                 $order->setCustomer(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getLastLoginAt(): ?\DateTime
+    {
+        return $this->lastLoginAt;
+    }
+
+    public function setLastLoginAt(?\DateTime $lastLoginAt): static
+    {
+        $this->lastLoginAt = $lastLoginAt;
 
         return $this;
     }
