@@ -17,7 +17,7 @@ final class ProductController extends AbstractController
         BrightDataAmazonScraper $brightDataAmazonScraper,
         TranslatorService $translatorService,
     ): JsonResponse {
-        set_time_limit(120);
+        set_time_limit(180);
         $url = $request->getContent();
         $url = json_decode($url, true)['url'] ?? null;
         $response = new JsonResponse();
@@ -64,7 +64,7 @@ final class ProductController extends AbstractController
             'customerSays' => $productData['customer_says'] ?? null,
             'features' => $productData['features'] ?? null,
             'variants' => $variants ?? null,
-            'productDetails' => $productData['product_details'] ?? null,
+            'details' => $productData['product_details'] ?? null,
             'scrappingUrl' => $productData['url'] ?? null,
             'isAvailable' => $productData['is_available'] ?? null,
         ]);

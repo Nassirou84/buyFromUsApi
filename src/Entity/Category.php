@@ -3,8 +3,11 @@
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
+use ApiPlatform\Metadata\Put;
 use App\Repository\CategoryRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -14,18 +17,26 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ApiResource(
     operations: [
         new \ApiPlatform\Metadata\Get(),
-        new GetCollection(
-            security: "is_granted('ROLE_ADMIN')"
-        ),
+        new GetCollection(),
         new Post(
             denormalizationContext: ['groups' => ['category:write']],
+            security: "is_granted('ROLE_ADMIN')"
+        ),
+        new Put(
+            security: "is_granted('ROLE_ADMIN')"
+        ),
+        new Delete(
+            security: "is_granted('ROLE_ADMIN')"
+        ),
+        new Patch(
             security: "is_granted('ROLE_ADMIN')"
         )
     ],
     filters: [
         "categories.search_filter"
     ],
-    denormalizationContext: ['groups' => ['category:write']]
+    denormalizationContext: ['groups' => ['category:write']],
+    normalizationContext: ['groups' => ['category:read', 'product:read:details']],
 )]
 #[ORM\Entity(repositoryClass: CategoryRepository::class)]
 class Category
@@ -33,18 +44,19 @@ class Category
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['category:read', 'product:read:details'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['category:write'])]
+    #[Groups(['category:read', 'category:write', 'product:read:details'])]
     private ?string $title = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['category:write'])]
+    #[Groups(['category:read', 'category:write'])]
     private ?string $icon = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['category:write'])]
+    #[Groups(['category:read', 'category:write'])]
     private ?string $description = null;
 
     #[ORM\Column]

@@ -59,4 +59,22 @@ services:
       arguments: [{title: 'partial'}]
       tags:
           - { name: api_platform.filter }
+
+    products.search_filter:
+      parent: 'api_platform.doctrine.orm.search_filter'
+      arguments: [{title: 'partial', slug: 'exact'}]
+      tags:
+          - { name: api_platform.filter }
+
+    my_order.search_filter:
+      parent: 'api_platform.doctrine.orm.search_filter'
+      arguments: [{uid: 'partial', status: 'exact'}]
+      tags:
+          - { name: api_platform.filter }
+
+    my_order.order_filter:
+        parent: 'api_platform.doctrine.orm.order_filter'
+        arguments: [{createdAt: 'asc'}]
+        tags:
+          - { name: api_platform.filter }
     ###< Filters 

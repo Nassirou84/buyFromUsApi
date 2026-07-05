@@ -1,9 +1,12 @@
 <?php
 
 namespace App\Entity;
-use Symfony\Component\Validator\Constraints as Assert;
 use ApiPlatform\Metadata\ApiResource;
+use Symfony\Component\Serializer\Attribute\Groups;
+use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Patch;
+use App\State\ProductStateProcessor;
 use App\Repository\ProductRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -13,17 +16,30 @@ use Doctrine\ORM\Mapping as ORM;
 #[ApiResource(
     operations: [
         new \ApiPlatform\Metadata\Get(),
-        new GetCollection(),
-        new \ApiPlatform\Metadata\Post(),
+        new GetCollection(
+            normalizationContext: ['groups' => ['product:read', 'product:read:details']]
+        ),
+        new \ApiPlatform\Metadata\Post(
+            processor: ProductStateProcessor::class,
+            security: "is_granted('ROLE_ADMIN')"
+        ),
         new \ApiPlatform\Metadata\Put(),
-        new \ApiPlatform\Metadata\Delete(),
         new GetCollection(
             security: "is_granted('ROLE_ADMIN')",
             routeName: 'app_product_scrape',
             name: 'app_product_scrape',
             paginationEnabled: false,
+            normalizationContext: ['groups' => ['product:read', 'product:read:details']]
+        ),
+        new Patch(
+            security: "is_granted('ROLE_ADMIN')"
+        ),
+        new Delete(
+            security: "is_granted('ROLE_ADMIN')"
         )
-    ]
+    ],
+    normalizationContext: ['groups' => ['product:read', 'product:read:details', 'order:read']],
+    filters: ['products.search_filter']
 )]
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
 class Product
@@ -31,56 +47,79 @@ class Product
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['product:read', 'order:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['product:read', 'order:read'])]
     private ?string $title = null;
 
     #[ORM\Column]
+    #[Groups(['product:read'])]
     private ?\DateTime $createdAt = null;
 
     /**
      * @var Collection<int, Photo>
      */
     #[ORM\OneToMany(targetEntity: Photo::class, mappedBy: 'product', orphanRemoval: true)]
+    #[Groups(['product:read'])]
     private Collection $photos;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[Groups(['product:read'])]
     private ?string $scrappingUrl = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['product:read'])]
     private ?string $seller = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['product:read', 'order:read'])]
     private ?string $brand = null;
 
     #[ORM\Column]
+    #[Groups(['product:read'])]
     private ?float $usdPrice = null;
 
     #[ORM\Column]
+    #[Groups(['product:read'])]
     private ?bool $isAvailable = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[Groups(['product:read:details'])]
     private ?string $description = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[Groups(['product:read:details'])]
     private ?string $customerSays = null;
 
     #[ORM\ManyToOne(inversedBy: 'products')]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['product:read:details'])]
     private ?Category $category = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['product:read:details'])]
     private ?array $features = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['product:read:details'])]
     private ?array $variants = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['product:read'])]
     private ?\DateTime $lastScrappingAt = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['product:read:details'])]
     private ?array $details = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['product:read'])]
+    private ?string $slug = null;
+
+    #[Groups(['product:read', 'product:read:details'])]
+    private ?float $actualPrice = null;
 
     public function __construct()
     {
@@ -288,6 +327,31 @@ class Product
     public function setDetails(?array $details): static
     {
         $this->details = $details;
+
+        return $this;
+    }
+
+    public function getSlug(): ?string
+    {
+        return $this->slug;
+    }
+
+    public function setSlug(?string $slug): static
+    {
+        $this->slug = $slug;
+
+        return $this;
+    }
+
+    #[Groups(['product:read', 'product:read:details'])]
+    public function getActualPrice(): ?float
+    {
+        return ceil($this->usdPrice * 1.3 * 600);
+    }
+
+    public function setActualPrice(): static
+    {
+        $this->actualPrice = ceil($this->usdPrice * 1.3 * 600); // Example: applying a 30% markup and converting to XOF
 
         return $this;
     }

@@ -3,7 +3,12 @@
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
+use ApiPlatform\Metadata\Put;
+use App\Controller\CurrentlyLoginController;
+use App\Controller\EditCurrentUserController;
 use App\Repository\UserRepository;
 use App\State\RegisterStateProcessor;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -21,10 +26,25 @@ use Symfony\Component\Serializer\Attribute\Groups;
             processor: RegisterStateProcessor::class,
             denormalizationContext: ['groups' => ['user:create']]
         ),
-        new \ApiPlatform\Metadata\GetCollection(),
-        new \ApiPlatform\Metadata\Get(),
+        new GetCollection(),
+        new Get(),
+        new Put(
+            security: 'is_granted("ROLE_USER")',
+            denormalizationContext: ['groups' => ['user:edit']]
+        ),
+        new GetCollection(
+            controller: CurrentlyLoginController::class,
+            security: 'is_granted("ROLE_USER")',
+            uriTemplate: '/authenticated',
+        ),
+        new Post(
+            security: 'is_granted("ROLE_USER")',
+            controller: EditCurrentUserController::class,
+            uriTemplate: '/edit-me',
+            denormalizationContext: ['groups' => ['user:edit']]
+        )
     ],
-    denormalizationContext: ['groups' => ['user:create']],
+    denormalizationContext: ['groups' => ['user:create', 'user:edit']],
     normalizationContext: ['groups' => ['user:read', 'user:login:read']]
 )]
 #[ORM\Entity(repositoryClass: UserRepository::class)]
@@ -73,29 +93,33 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Groups(['user:read'])]
     private ?\DateTimeImmutable $createdAt = null;
 
-    #[Groups(['user:read'])]
+    #[Groups(['user:read', 'user:edit'])]
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $phone = null;
 
-    #[Groups(['user:read'])]
+    #[Groups(['user:read', 'user:edit'])]
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $what3words = null;
 
-    #[Groups(['user:read'])]
+    #[Groups(['user:read', 'user:edit'])]
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $street = null;
 
-    #[Groups(['user:read'])]
+    #[Groups(['user:read', 'user:edit'])]
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $city = null;
 
-    #[Groups(['user:read'])]
+    #[Groups(['user:read', 'user:edit'])]
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $state = null;
 
-    #[Groups(['user:read'])]
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['user:read', 'user:edit'])]
     private ?string $country = null;
+
+    #[Groups(['user:login:read'])]
+    #[ORM\Column(nullable: true)]
+    private ?\DateTime $lastLoginAt = null;
 
     /**
      * @var Collection<int, Order>
@@ -103,12 +127,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(targetEntity: Order::class, mappedBy: 'customer')]
     private Collection $orders;
 
-    #[Groups(['user:login:read'])]
-    #[ORM\Column(nullable: true)]
-    private ?\DateTime $lastLoginAt = null;
-
     public function __construct()
     {
+        $this->country = 'CIV';
         $this->orders = new ArrayCollection();
     }
 
@@ -319,6 +340,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    public function getLastLoginAt(): ?\DateTime
+    {
+        return $this->lastLoginAt;
+    }
+
+    public function setLastLoginAt(?\DateTime $lastLoginAt): static
+    {
+        $this->lastLoginAt = $lastLoginAt;
+
+        return $this;
+    }
+
     /**
      * @return Collection<int, Order>
      */
@@ -345,18 +378,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
                 $order->setCustomer(null);
             }
         }
-
-        return $this;
-    }
-
-    public function getLastLoginAt(): ?\DateTime
-    {
-        return $this->lastLoginAt;
-    }
-
-    public function setLastLoginAt(?\DateTime $lastLoginAt): static
-    {
-        $this->lastLoginAt = $lastLoginAt;
 
         return $this;
     }
