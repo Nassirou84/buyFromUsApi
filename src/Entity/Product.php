@@ -2,22 +2,24 @@
 
 namespace App\Entity;
 use ApiPlatform\Metadata\ApiResource;
-use Symfony\Component\Serializer\Attribute\Groups;
 use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Patch;
-use App\State\ProductStateProcessor;
 use App\Repository\ProductRepository;
+use App\State\ProductStateProcessor;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ApiResource(
     operations: [
         new \ApiPlatform\Metadata\Get(),
         new GetCollection(
-            normalizationContext: ['groups' => ['product:read', 'product:read:details']]
+            normalizationContext: ['groups' => ['product:read', 'product:read:details']],
+            paginationItemsPerPage: 12,
+            filters: ['products.search_filter', 'products.order_filter', 'products.range_filter']
         ),
         new \ApiPlatform\Metadata\Post(
             processor: ProductStateProcessor::class,
@@ -39,11 +41,13 @@ use Doctrine\ORM\Mapping as ORM;
         )
     ],
     normalizationContext: ['groups' => ['product:read', 'product:read:details', 'order:read']],
-    filters: ['products.search_filter']
+    filters: ['products.search_filter', 'products.order_filter']
 )]
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
 class Product
 {
+    const SALES_TAX_RATES = 0.18;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -118,7 +122,7 @@ class Product
     #[Groups(['product:read'])]
     private ?string $slug = null;
 
-    #[Groups(['product:read', 'product:read:details'])]
+    #[Groups(['product:read', 'product:read:details', 'order:read'])]
     private ?float $actualPrice = null;
 
     public function __construct()
@@ -343,15 +347,38 @@ class Product
         return $this;
     }
 
-    #[Groups(['product:read', 'product:read:details'])]
+    #[Groups(['product:read', 'product:read:details', 'order:read'])]
     public function getActualPrice(): ?float
     {
-        return ceil($this->usdPrice * 1.3 * 600);
+        $benefitMargin = 0;
+
+        switch ($this->usdPrice) {
+            case $this->usdPrice < 50:
+                $benefitMargin = 0.17; // 20% markup for products under $50
+                break;
+            case $this->usdPrice >= 50 && $this->usdPrice < 250:
+                $benefitMargin = 0.15; // 18% markup for products between $50 and $250
+                break;
+            case $this->usdPrice >= 250 && $this->usdPrice < 750:
+                $benefitMargin = 0.13; // 15% markup for products over $250
+                break;
+            case $this->usdPrice >= 750:
+                $benefitMargin = 0.10; // 10% markup for products over $750
+                break;
+            default:
+                $benefitMargin = 0.2; // Default markup if none of the above conditions are met
+                break;
+        }
+
+        $taxes = $this->usdPrice * self::SALES_TAX_RATES;
+        $margin = $this->usdPrice * $benefitMargin;
+
+        return round(($this->usdPrice + $margin + $taxes) * 550); // Example: applying the calculated markup and converting to XOF
     }
 
     public function setActualPrice(): static
     {
-        $this->actualPrice = ceil($this->usdPrice * 1.3 * 600); // Example: applying a 30% markup and converting to XOF
+        $this->actualPrice = ceil($this->usdPrice * 1.2 * 9000); // Example: applying a 20% markup and converting to XOF
 
         return $this;
     }
