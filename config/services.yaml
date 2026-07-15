@@ -48,6 +48,12 @@ services:
         autoconfigure: true
         public: true
 
+    App\Security\:
+        resource: '../src/Security/'
+        autowire: true
+        autoconfigure: true
+        public: true
+
     App\Filter\:
         resource: '../src/Filter/'
         autowire: true
@@ -58,6 +64,19 @@ services:
     App\Service\BrightDataAmazonScraper:
         arguments:
             $brightDataApiKey: '%env(BRIGHT_DATA_API_KEY)%'
+
+    App\Security\GoogleAuthenticator:
+        arguments:
+            $googleClientId: '%env(GOOGLE_CLIENT_ID)%'
+
+    gesdinet.jwtrefreshtoken:
+        class: Gesdinet\JWTRefreshTokenBundle\Service\RefreshToken
+        arguments:
+            - '@gesdinet.jwtrefreshtoken.refresh_token_manager'
+            - '@lexik_jwt_authentication.jwt_manager'
+            - '@gesdinet.jwtrefreshtoken.generator'
+            - '@gesdinet.jwtrefreshtoken.request.extractor'
+            - '@event_dispatcher'
 
     ###> Filters 
     categories.search_filter:

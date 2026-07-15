@@ -35,7 +35,12 @@ security:
         api:
             pattern: ^/api
             stateless: true
+            provider: app_user_provider
+            custom_authenticators:
+                - App\Security\GoogleAuthenticator
+            entry_point: App\Security\GoogleAuthenticator
             jwt: ~
+            
         main:
             lazy: true
             provider: app_user_provider
@@ -61,6 +66,7 @@ security:
 
     access_control:
         - { path: ^/api/(login|token/refresh), roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/google, roles: PUBLIC_ACCESS }
         - { path: ^/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/login, roles: PUBLIC_ACCESS } # Allow unauthenticated access to the login endpoint
         - { path: ^/api, roles: PUBLIC_ACCESS } 

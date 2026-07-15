@@ -21,3 +21,8 @@ api_login_check:
 api_logout:
     path: /api/logout
     methods: [POST]
+
+api_google_login:
+    path: /api/auth/google
+    controller: App\Controller\AuthController::googleLogin
+    methods: ['POST']
