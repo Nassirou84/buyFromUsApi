@@ -6,6 +6,7 @@ use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Patch;
 use App\Repository\ProductRepository;
+use App\Service\PriceCalculator;
 use App\State\ProductStateProcessor;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -125,8 +126,8 @@ class Product
     #[Groups(['product:read', 'product:read:details', 'order:read'])]
     private ?float $actualPrice = null;
 
-    public function __construct()
-    {
+    public function __construct(
+    ) {
         $this->createdAt = new \DateTime();
         $this->photos = new ArrayCollection();
         $this->lastScrappingAt = null;
@@ -350,35 +351,12 @@ class Product
     #[Groups(['product:read', 'product:read:details', 'order:read'])]
     public function getActualPrice(): ?float
     {
-        $benefitMargin = 0;
-
-        switch ($this->usdPrice) {
-            case $this->usdPrice < 50:
-                $benefitMargin = 0.17; // 20% markup for products under $50
-                break;
-            case $this->usdPrice >= 50 && $this->usdPrice < 250:
-                $benefitMargin = 0.15; // 18% markup for products between $50 and $250
-                break;
-            case $this->usdPrice >= 250 && $this->usdPrice < 750:
-                $benefitMargin = 0.13; // 15% markup for products over $250
-                break;
-            case $this->usdPrice >= 750:
-                $benefitMargin = 0.10; // 10% markup for products over $750
-                break;
-            default:
-                $benefitMargin = 0.2; // Default markup if none of the above conditions are met
-                break;
-        }
-
-        $taxes = $this->usdPrice * self::SALES_TAX_RATES;
-        $margin = $this->usdPrice * $benefitMargin;
-
-        return round(($this->usdPrice + $margin + $taxes) * 550); // Example: applying the calculated markup and converting to XOF
+        return PriceCalculator::calculate($this->usdPrice);
     }
 
     public function setActualPrice(): static
     {
-        $this->actualPrice = ceil($this->usdPrice * 1.2 * 9000); // Example: applying a 20% markup and converting to XOF
+        $this->actualPrice = PriceCalculator::calculate($this->usdPrice);
 
         return $this;
     }

@@ -65,6 +65,16 @@ services:
         arguments:
             $brightDataApiKey: '%env(BRIGHT_DATA_API_KEY)%'
 
+    App\Service\ExchangeRateApiService:
+        arguments:
+            $exchangeRateApiKey: '%env(EXCHANGE_RATE_API_KEY)%'
+
+
+    App\Entity\Product:
+        arguments:
+            $currency: '%env(TARGET_CURRENCY)%'
+            $taxRate: '%env(TAXE_RATE)%'
+
     App\Security\GoogleAuthenticator:
         arguments:
             $googleClientId: '%env(GOOGLE_CLIENT_ID)%'
