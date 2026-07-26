@@ -10,8 +10,8 @@ class PriceCalculator
 
   public static function calculate(float $basePrice): float
   {
-    $currency = getenv('TARGET_CURRENCY') ?: 'xof';
-    $taxRate = getenv('TAXE_RATE') !== false ? (float) getenv('TAXE_RATE') : self::TAX_RATE;
+    $currency = getenv('currency') ?: 'xof';
+    $taxRate = getenv('taxe_rate') !== false ? (float) getenv('taxe_rate') : self::TAX_RATE;
     $rate = file_get_contents(self::CURRENCY_RATE_FILE);
     $rate = $rate ? json_decode($rate, true)[$currency] : null;
 
@@ -21,7 +21,7 @@ class PriceCalculator
         case 'xof':
           $rate = 600;
           break;
-        case 'fg':
+        case 'gnf':
           $rate = 9500;
           break;
         default:
@@ -49,8 +49,8 @@ class PriceCalculator
         break;
     }
 
-    $taxes = $basePrice * $taxRate;
     $margin = $basePrice * $benefitMargin;
+    $taxes = ($basePrice + $margin) * $taxRate;
 
     return round(($basePrice + $margin + $taxes) * $rate);
   }

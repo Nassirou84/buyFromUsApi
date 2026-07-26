@@ -136,11 +136,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(targetEntity: Wishlist::class, mappedBy: 'user', orphanRemoval: true)]
     private Collection $wishlists;
 
+    /**
+     * @var Collection<int, ShoppingRequest>
+     */
+    #[ORM\OneToMany(targetEntity: ShoppingRequest::class, mappedBy: 'customer')]
+    private Collection $shoppingRequests;
+
     public function __construct()
     {
         $this->country = 'CIV';
         $this->orders = new ArrayCollection();
         $this->wishlists = new ArrayCollection();
+        $this->shoppingRequests = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -428,6 +435,36 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             // set the owning side to null (unless already changed)
             if ($wishlist->getUser() === $this) {
                 $wishlist->setUser(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, ShoppingRequest>
+     */
+    public function getShoppingRequests(): Collection
+    {
+        return $this->shoppingRequests;
+    }
+
+    public function addShoppingRequest(ShoppingRequest $shoppingRequest): static
+    {
+        if (!$this->shoppingRequests->contains($shoppingRequest)) {
+            $this->shoppingRequests->add($shoppingRequest);
+            $shoppingRequest->setCustomer($this);
+        }
+
+        return $this;
+    }
+
+    public function removeShoppingRequest(ShoppingRequest $shoppingRequest): static
+    {
+        if ($this->shoppingRequests->removeElement($shoppingRequest)) {
+            // set the owning side to null (unless already changed)
+            if ($shoppingRequest->getCustomer() === $this) {
+                $shoppingRequest->setCustomer(null);
             }
         }
 

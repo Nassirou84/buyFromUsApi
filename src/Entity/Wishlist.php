@@ -2,21 +2,46 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
 use App\Repository\WishlistRepository;
-use BcMath\Number;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use ApiPlatform\Metadata\Link;
+use Symfony\Component\Serializer\Attribute\Groups;
 
+#[ApiResource(
+    operations: [
+        new \ApiPlatform\Metadata\Get(),
+        new \ApiPlatform\Metadata\GetCollection(
+            uriTemplate: '/customer/{customerId}/wishlists',
+            uriVariables: [
+                'customerId' => new Link(
+                    fromClass: User::class,
+                    fromProperty: 'wishlists',
+                )
+            ]
+        ),
+        new \ApiPlatform\Metadata\Post(
+            security: "is_granted('ROLE_USER')",
+            processor: \App\State\WhishListProcessor::class
+        ),
+        new \ApiPlatform\Metadata\Delete()
+    ],
+    normalizationContext: ['groups' => ['wishlist:read']],
+    denormalizationContext: ['groups' => ['wishlist:write']]
+)]
 #[ORM\Entity(repositoryClass: WishlistRepository::class)]
 class Wishlist
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['wishlist:read'])]
     private ?int $id = null;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['wishlist:read', 'wishlist:write'])]
     private ?Product $product = null;
 
     #[ORM\ManyToOne(inversedBy: 'wishlists')]
@@ -24,17 +49,22 @@ class Wishlist
     private ?User $user = null;
 
     #[ORM\Column]
+    #[Groups(['wishlist:read'])]
     private ?\DateTime $createdAt = null;
 
     #[ORM\Column]
+    #[Groups(['wishlist:read'])]
     private ?\DateTime $updatedAt = null;
 
-    #[ORM\Column(type: Types::NUMBER)]
-    private ?Number $priceAtAdd = null;
+    #[ORM\Column()]
+    #[Groups(['wishlist:read'])]
+    private ?float $priceAtAdd = null;
 
     #[ORM\Column(type: Types::SIMPLE_ARRAY, nullable: true)]
+    #[Groups(['wishlist:read'])]
     private ?array $variant = null;
 
+    #[Groups(['wishlist:read'])]
     #[ORM\Column(nullable: true)]
     private ?\DateTime $priceDropNotifiedAt = null;
 
@@ -97,12 +127,12 @@ class Wishlist
         return $this;
     }
 
-    public function getPriceAtAdd(): ?Number
+    public function getPriceAtAdd(): ?float
     {
         return $this->priceAtAdd;
     }
 
-    public function setPriceAtAdd(Number $priceAtAdd): static
+    public function setPriceAtAdd(float $priceAtAdd): static
     {
         $this->priceAtAdd = $priceAtAdd;
 

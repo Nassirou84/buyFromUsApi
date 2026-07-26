@@ -41,7 +41,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
             security: "is_granted('ROLE_ADMIN')"
         )
     ],
-    normalizationContext: ['groups' => ['product:read', 'product:read:details', 'order:read']],
+    normalizationContext: ['groups' => ['product:read', 'product:read:details', 'order:read', 'wishlist:read']],
     filters: ['products.search_filter', 'products.order_filter']
 )]
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
@@ -52,22 +52,22 @@ class Product
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['product:read', 'order:read'])]
+    #[Groups(['product:read', 'order:read', 'wishlist:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['product:read', 'order:read'])]
+    #[Groups(['product:read', 'order:read', 'wishlist:read'])]
     private ?string $title = null;
 
     #[ORM\Column]
-    #[Groups(['product:read'])]
+    #[Groups(['product:read', 'wishlist:read'])]
     private ?\DateTime $createdAt = null;
 
     /**
      * @var Collection<int, Photo>
      */
     #[ORM\OneToMany(targetEntity: Photo::class, mappedBy: 'product', orphanRemoval: true)]
-    #[Groups(['product:read'])]
+    #[Groups(['product:read', 'wishlist:read', 'order:read'])]
     private Collection $photos;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
@@ -75,11 +75,11 @@ class Product
     private ?string $scrappingUrl = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['product:read'])]
+    #[Groups(['product:read', 'order:read', 'wishlist:read'])]
     private ?string $seller = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['product:read', 'order:read'])]
+    #[Groups(['product:read', 'order:read', 'wishlist:read'])]
     private ?string $brand = null;
 
     #[ORM\Column]
@@ -87,7 +87,7 @@ class Product
     private ?float $usdPrice = null;
 
     #[ORM\Column]
-    #[Groups(['product:read'])]
+    #[Groups(['product:read', 'wishlist:read'])]
     private ?bool $isAvailable = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
@@ -120,10 +120,10 @@ class Product
     private ?array $details = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['product:read'])]
+    #[Groups(['product:read', 'order:read', 'wishlist:read'])]
     private ?string $slug = null;
 
-    #[Groups(['product:read', 'product:read:details', 'order:read'])]
+    #[Groups(['product:read', 'product:read:details', 'order:read', 'wishlist:read'])]
     private ?float $actualPrice = null;
 
     public function __construct(
