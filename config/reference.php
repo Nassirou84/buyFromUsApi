@@ -576,7 +576,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         }>,
  *     },
  *     mailer?: bool|array{ // Mailer configuration
- *         enabled?: bool|Param, // Default: false
+ *         enabled?: bool|Param, // Default: true
  *         message_bus?: scalar|Param|null, // The message bus to use. Defaults to the default bus if the Messenger component is installed. // Default: null
  *         dsn?: scalar|Param|null, // Default: null
  *         transports?: array<string, scalar|Param|null>,
@@ -1722,6 +1722,21 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     default_cookie_lifetime?: int|Param, // Default lifetime of the cookie containing the JWT, in seconds. Defaults to the value of "framework.session.cookie_lifetime". // Default: null
  *     enable_profiler?: bool|Param, // Deprecated: The child node "enable_profiler" at path "mercure.enable_profiler" is deprecated. // Enable Symfony Web Profiler integration.
  * }
+ * @psalm-type DoctrineEncryptionConfig = array{
+ *     encrypt_key?: scalar|Param|null, // Default: null
+ *     key_provider_service?: scalar|Param|null, // Default: null
+ *     key_id?: scalar|Param|null, // Default: "default"
+ *     decryption_keys?: array<string, scalar|Param|null>,
+ *     blind_index_key?: scalar|Param|null, // Default: null
+ *     default_associated_data?: scalar|Param|null, // Default: null
+ *     listener_class?: scalar|Param|null, // Default: "Kyzegs\\DoctrineEncryptionBundle\\EventListener\\DoctrineEncryptListener"
+ *     encryptor_class?: scalar|Param|null, // Default: "Kyzegs\\DoctrineEncryptionBundle\\Encryptors\\AesGcmEncryptor"
+ *     encryptor_service?: scalar|Param|null, // Default: null
+ *     is_disabled?: bool|Param, // Default: false
+ *     connections?: list<scalar|Param|null>,
+ *     annotation_classes?: list<scalar|Param|null>,
+ *     enable_twig?: bool|Param, // Enable or disable Twig functionality // Default: true
+ * }
  * @psalm-type ConfigType = array{
  *     imports?: ImportsConfig,
  *     parameters?: ParametersConfig,
@@ -1736,6 +1751,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     lexik_jwt_authentication?: LexikJwtAuthenticationConfig,
  *     gesdinet_jwt_refresh_token?: GesdinetJwtRefreshTokenConfig,
  *     mercure?: MercureConfig,
+ *     doctrine_encryption?: DoctrineEncryptionConfig,
  *     "when@dev"?: array{
  *         imports?: ImportsConfig,
  *         parameters?: ParametersConfig,
@@ -1751,6 +1767,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         lexik_jwt_authentication?: LexikJwtAuthenticationConfig,
  *         gesdinet_jwt_refresh_token?: GesdinetJwtRefreshTokenConfig,
  *         mercure?: MercureConfig,
+ *         doctrine_encryption?: DoctrineEncryptionConfig,
  *     },
  *     "when@prod"?: array{
  *         imports?: ImportsConfig,
@@ -1766,6 +1783,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         lexik_jwt_authentication?: LexikJwtAuthenticationConfig,
  *         gesdinet_jwt_refresh_token?: GesdinetJwtRefreshTokenConfig,
  *         mercure?: MercureConfig,
+ *         doctrine_encryption?: DoctrineEncryptionConfig,
  *     },
  *     "when@test"?: array{
  *         imports?: ImportsConfig,
@@ -1781,6 +1799,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         lexik_jwt_authentication?: LexikJwtAuthenticationConfig,
  *         gesdinet_jwt_refresh_token?: GesdinetJwtRefreshTokenConfig,
  *         mercure?: MercureConfig,
+ *         doctrine_encryption?: DoctrineEncryptionConfig,
  *     },
  *     ...<string, ExtensionType|array{ // extra keys must follow the when@%env% pattern or match an extension alias
  *         imports?: ImportsConfig,

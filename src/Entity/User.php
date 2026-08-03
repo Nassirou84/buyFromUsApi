@@ -142,12 +142,19 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(targetEntity: ShoppingRequest::class, mappedBy: 'customer')]
     private Collection $shoppingRequests;
 
+    /**
+     * @var Collection<int, PaymentMethod>
+     */
+    #[ORM\OneToMany(targetEntity: PaymentMethod::class, mappedBy: 'user', orphanRemoval: true)]
+    private Collection $paymentMethods;
+
     public function __construct()
     {
         $this->country = 'CIV';
         $this->orders = new ArrayCollection();
         $this->wishlists = new ArrayCollection();
         $this->shoppingRequests = new ArrayCollection();
+        $this->paymentMethods = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -465,6 +472,36 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             // set the owning side to null (unless already changed)
             if ($shoppingRequest->getCustomer() === $this) {
                 $shoppingRequest->setCustomer(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, PaymentMethod>
+     */
+    public function getPaymentMethods(): Collection
+    {
+        return $this->paymentMethods;
+    }
+
+    public function addPaymentMethod(PaymentMethod $paymentMethod): static
+    {
+        if (!$this->paymentMethods->contains($paymentMethod)) {
+            $this->paymentMethods->add($paymentMethod);
+            $paymentMethod->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removePaymentMethod(PaymentMethod $paymentMethod): static
+    {
+        if ($this->paymentMethods->removeElement($paymentMethod)) {
+            // set the owning side to null (unless already changed)
+            if ($paymentMethod->getUser() === $this) {
+                $paymentMethod->setUser(null);
             }
         }
 

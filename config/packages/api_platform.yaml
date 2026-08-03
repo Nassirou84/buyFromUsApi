@@ -1,5 +1,5 @@
 api_platform:
-    title: Hello API Platform
+    title: BuyFromUs API
     version: 1.0.0
     swagger:
         api_keys:
@@ -10,13 +10,16 @@ api_platform:
         jsonld: ['application/ld+json']
         json: ['application/json']
         html: ['text/html']
+        merge-patch: ['application/merge-patch+json']
         multipart: ['multipart/form-data']
     docs_formats:
         jsonld: ['application/ld+json']
         jsonopenapi: ['application/vnd.openapi+json']
+        merge-patch: ['application/merge-patch+json']
         html: ['text/html']
     defaults:
         stateless: true
+        #security: "is_granted('ROLE_USER')"
         cache_headers:
             vary: ['Content-Type', 'Authorization', 'Origin']
         extra_properties:

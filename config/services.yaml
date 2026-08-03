@@ -56,6 +56,12 @@ services:
         autoconfigure: true
         public: true
 
+    App\DataProvider\:
+        resource: '../src/DataProvider/'
+        autowire: true
+        autoconfigure: true
+        public: true
+
     App\Security\:
         resource: '../src/Security/'
         autowire: true
@@ -67,6 +73,11 @@ services:
         autowire: true
         autoconfigure: true
         public: true
+
+    App\Command\ProcessEmailQueueCommand:
+        arguments:
+            $environment: '%env(APP_ENV)%'
+            $batchSize: '%env(int:EMAIL_QUEUE_BATCH_SIZE)%'
 
 
     App\Service\BrightDataAmazonScraper:
@@ -86,6 +97,14 @@ services:
     App\Security\GoogleAuthenticator:
         arguments:
             $googleClientId: '%env(GOOGLE_CLIENT_ID)%'
+
+    App\Service\BrevoEmailService:
+        arguments:
+            $mailer: '@Symfony\Component\Mailer\MailerInterface'
+            $fromEmail: '%env(MAILER_FROM)%'
+            $fromName: '%env(MAILER_FROM_NAME)%'
+            $apiKey: '%env(BREVO_API_KEY)%'
+        tags: ['monolog.logger']
 
     gesdinet.jwtrefreshtoken:
         class: Gesdinet\JWTRefreshTokenBundle\Service\RefreshToken
@@ -127,3 +146,11 @@ services:
         tags:
           - { name: api_platform.filter }
     ###< Filters 
+
+    App\Service\EmailQueueService:
+        arguments:
+            $frontendURL: '%env(FRONTEND_URL)%'
+            $websiteName: '%env(WEBSITE_NAME)%'
+            $passwordResetTemplateId: '%env(PASSWORD_CHANGED_TEMPLATE_ID)%'
+            $emailConfirmationTemplateId: '%env(EMAIL_CONFIRMATION_TEMPLATE_ID)%'
+            $passwordChangedTemplateId: '%env(PASSWORD_CHANGED_TEMPLATE_ID)%'

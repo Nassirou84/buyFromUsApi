@@ -1,0 +1,3 @@
+doctrine_encryption:
+  encrypt_key: '%env(DOCTRINE_ENCRYPTION_ENCRYPT_KEY)%'
+  key_id: 'main'
