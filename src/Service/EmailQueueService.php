@@ -227,6 +227,7 @@ class EmailQueueService
       'website_name' => $this->websiteName
     ];
 
+
     $emailQueue = new EmailQueue();
     $emailQueue->setRecipientEmail($to);
     $emailQueue->setRecipientName($name);

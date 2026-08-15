@@ -13,6 +13,7 @@ class WhishlistService
     private WishlistRepository $wishlistRepository,
     private EntityManagerInterface $entityManagerInterface,
     private TokenStorageInterface $tokenService,
+    private BasketService $basketService
   ) {
   }
 
@@ -40,5 +41,25 @@ class WhishlistService
     $this->entityManagerInterface->persist($wishlist);
     $this->entityManagerInterface->flush();
     return $wishlist;
+  }
+
+  public function moveWishlistToBasket(Wishlist $wishlist)
+  {
+    if (!$this->tokenService->getToken()) {
+      throw new \Exception('Utilisateur non authentifié.');
+    }
+    $user = $this->tokenService->getToken()->getUser();
+    if ($wishlist->getUser() !== $user) {
+      throw new \Exception('Vous n\'êtes pas autorisé à effectuer cette action.');
+    }
+    $userCurrentBasket = $user->getBasket();
+    if (!$userCurrentBasket) {
+      $userCurrentBasket = $this->basketService->createBasketForUser($user);
+    }
+
+    $basketItem = $this->basketService->addToBasket($user, $wishlist->getProduct(), 1);
+    $this->entityManagerInterface->persist($basketItem);
+    $this->entityManagerInterface->remove($wishlist);
+    $this->entityManagerInterface->flush();
   }
 }

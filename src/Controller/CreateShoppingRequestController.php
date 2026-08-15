@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entity\ShoppingRequest;
 use App\Service\FileUploader;
 use App\Service\UniqUidGenerator;
 use Doctrine\ORM\EntityManagerInterface;
@@ -63,8 +64,10 @@ final class CreateShoppingRequestController extends AbstractController
         }
 
         $shoppingRequest->setImages($images);
-        $shoppingRequest->setStatus(\App\Entity\ShoppingRequest::STATUS_SUBMITTED);
-        $shoppingRequest->setUid($uniqUidGenerator->generateUniqueShoppingRequestUid());
+        $shoppingRequest->setStatus(ShoppingRequest::STATUS_SUBMITTED);
+        $shoppingRequest->setUid($uniqUidGenerator->generateUniqueUid(
+            ShoppingRequest::class,
+        ));
         $entityManagerInterface->persist($shoppingRequest);
         $entityManagerInterface->flush();
 

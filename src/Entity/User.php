@@ -7,6 +7,7 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
+use ApiPlatform\OpenApi\Model\Operation;
 use App\Controller\CurrentlyLoginController;
 use App\Controller\EditCurrentUserController;
 use App\Repository\UserRepository;
@@ -19,7 +20,10 @@ use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Serializer\Attribute\Groups;
 
-
+#[GetCollection(
+    normalizationContext: ['groups' => ['user:read']],
+    security: "is_granted('ROLE_ADMIN')"
+)]
 #[ApiResource(
     operations: [
         new Post(
@@ -37,11 +41,26 @@ use Symfony\Component\Serializer\Attribute\Groups;
             security: 'is_granted("ROLE_USER")',
             uriTemplate: '/authenticated',
         ),
+        new GetCollection(
+            routeName: 'app_change_password_validate',
+            openapi: new Operation(
+                summary: 'Validate password reset token',
+                description: 'Validates the password reset token and returns a response indicating whether the token is valid or not.'
+            )
+        ),
         new Post(
             security: 'is_granted("ROLE_USER")',
             controller: EditCurrentUserController::class,
             uriTemplate: '/edit-me',
             denormalizationContext: ['groups' => ['user:edit']]
+        ),
+        new Post(
+            routeName: 'app_change_password_request',
+            deserialize: false,
+        ),
+        new Post(
+            routeName: 'app_change_password',
+            deserialize: false,
         )
     ],
     denormalizationContext: ['groups' => ['user:create', 'user:edit']],
@@ -148,6 +167,25 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(targetEntity: PaymentMethod::class, mappedBy: 'user', orphanRemoval: true)]
     private Collection $paymentMethods;
 
+    #[ORM\OneToOne(mappedBy: 'user', cascade: ['persist', 'remove'])]
+    private ?Basket $basket = null;
+
+    /**
+     * @var Collection<int, UserLoginHistory>
+     */
+    #[ORM\OneToMany(targetEntity: UserLoginHistory::class, mappedBy: 'user', orphanRemoval: true)]
+    private Collection $userLoginHistories;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $passwordResetToken = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTime $passwordResetTokenExpiredAt = null;
+
+    #[ORM\Column(nullable: true)]
+    #[Groups(['user:login:read', 'user:edit'])]
+    private ?array $addresses = [];
+
     public function __construct()
     {
         $this->country = 'CIV';
@@ -155,6 +193,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->wishlists = new ArrayCollection();
         $this->shoppingRequests = new ArrayCollection();
         $this->paymentMethods = new ArrayCollection();
+        $this->userLoginHistories = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -504,6 +543,94 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
                 $paymentMethod->setUser(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getBasket(): ?Basket
+    {
+        return $this->basket;
+    }
+
+    public function setBasket(Basket $basket): static
+    {
+        // set the owning side of the relation if necessary
+        if ($basket->getUser() !== $this) {
+            $basket->setUser($this);
+        }
+
+        $this->basket = $basket;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, UserLoginHistory>
+     */
+    public function getUserLoginHistories(): Collection
+    {
+        return $this->userLoginHistories;
+    }
+
+    public function addUserLoginHistory(UserLoginHistory $userLoginHistory): static
+    {
+        if (!$this->userLoginHistories->contains($userLoginHistory)) {
+            $this->userLoginHistories->add($userLoginHistory);
+            $userLoginHistory->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeUserLoginHistory(UserLoginHistory $userLoginHistory): static
+    {
+        if ($this->userLoginHistories->removeElement($userLoginHistory)) {
+            // set the owning side to null (unless already changed)
+            if ($userLoginHistory->getUser() === $this) {
+                $userLoginHistory->setUser(null);
+            }
+        }
+
+        return $this;
+    }
+
+    public function getPasswordResetToken(): ?string
+    {
+        return $this->passwordResetToken;
+    }
+
+    public function setPasswordResetToken(?string $passwordResetToken): static
+    {
+        $this->passwordResetToken = $passwordResetToken;
+
+        return $this;
+    }
+
+    public function getPasswordResetTokenExpiredAt(): ?\DateTime
+    {
+        return $this->passwordResetTokenExpiredAt;
+    }
+
+    public function setPasswordResetTokenExpiredAt(?\DateTime $passwordResetTokenExpiredAt): static
+    {
+        $this->passwordResetTokenExpiredAt = $passwordResetTokenExpiredAt;
+
+        return $this;
+    }
+
+    public function getFullName(): string
+    {
+        return trim($this->firstName . ' ' . $this->lastName);
+    }
+
+    public function getAddresses(): ?array
+    {
+        return $this->addresses;
+    }
+
+    public function setAddresses(?array $addresses): static
+    {
+        $this->addresses = $addresses;
 
         return $this;
     }

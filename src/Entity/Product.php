@@ -41,7 +41,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
             security: "is_granted('ROLE_ADMIN')"
         )
     ],
-    normalizationContext: ['groups' => ['product:read', 'product:read:details', 'order:read', 'wishlist:read']],
+    normalizationContext: ['groups' => ['product:read', 'product:read:details', 'order:read', 'wishlist:read', 'basket:read']],
     filters: ['products.search_filter', 'products.order_filter']
 )]
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
@@ -52,22 +52,22 @@ class Product
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['product:read', 'order:read', 'wishlist:read'])]
+    #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['product:read', 'order:read', 'wishlist:read'])]
+    #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read'])]
     private ?string $title = null;
 
     #[ORM\Column]
-    #[Groups(['product:read', 'wishlist:read'])]
+    #[Groups(['product:read', 'wishlist:read', 'basket:read'])]
     private ?\DateTime $createdAt = null;
 
     /**
      * @var Collection<int, Photo>
      */
     #[ORM\OneToMany(targetEntity: Photo::class, mappedBy: 'product', orphanRemoval: true)]
-    #[Groups(['product:read', 'wishlist:read', 'order:read'])]
+    #[Groups(['product:read', 'wishlist:read', 'order:read', 'basket:read'])]
     private Collection $photos;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
@@ -75,11 +75,11 @@ class Product
     private ?string $scrappingUrl = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['product:read', 'order:read', 'wishlist:read'])]
+    #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read'])]
     private ?string $seller = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['product:read', 'order:read', 'wishlist:read'])]
+    #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read'])]
     private ?string $brand = null;
 
     #[ORM\Column]
@@ -87,7 +87,7 @@ class Product
     private ?float $usdPrice = null;
 
     #[ORM\Column]
-    #[Groups(['product:read', 'wishlist:read'])]
+    #[Groups(['product:read', 'wishlist:read', 'basket:read'])]
     private ?bool $isAvailable = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
@@ -120,11 +120,14 @@ class Product
     private ?array $details = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['product:read', 'order:read', 'wishlist:read'])]
+    #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read'])]
     private ?string $slug = null;
 
-    #[Groups(['product:read', 'product:read:details', 'order:read', 'wishlist:read'])]
+    #[Groups(['product:read', 'product:read:details', 'order:read', 'wishlist:read', 'basket:read'])]
     private ?float $actualPrice = null;
+
+    #[ORM\ManyToOne(inversedBy: 'products')]
+    private ?Subcategory $subcategory = null;
 
     public function __construct(
     ) {
@@ -348,7 +351,7 @@ class Product
         return $this;
     }
 
-    #[Groups(['product:read', 'product:read:details', 'order:read'])]
+    #[Groups(['product:read', 'product:read:details', 'order:read', 'basket:read', 'wishlist:read'])]
     public function getActualPrice(): ?float
     {
         return PriceCalculator::calculate($this->usdPrice);
@@ -357,6 +360,18 @@ class Product
     public function setActualPrice(): static
     {
         $this->actualPrice = PriceCalculator::calculate($this->usdPrice);
+
+        return $this;
+    }
+
+    public function getSubcategory(): ?Subcategory
+    {
+        return $this->subcategory;
+    }
+
+    public function setSubcategory(?Subcategory $subcategory): static
+    {
+        $this->subcategory = $subcategory;
 
         return $this;
     }

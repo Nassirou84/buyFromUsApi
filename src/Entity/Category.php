@@ -68,10 +68,17 @@ class Category
     #[ORM\OneToMany(targetEntity: Product::class, mappedBy: 'category')]
     private Collection $products;
 
+    /**
+     * @var Collection<int, Subcategory>
+     */
+    #[ORM\OneToMany(targetEntity: Subcategory::class, mappedBy: 'category')]
+    private Collection $subcategories;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
         $this->products = new ArrayCollection();
+        $this->subcategories = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -151,6 +158,36 @@ class Category
             // set the owning side to null (unless already changed)
             if ($product->getCategory() === $this) {
                 $product->setCategory(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Subcategory>
+     */
+    public function getSubcategories(): Collection
+    {
+        return $this->subcategories;
+    }
+
+    public function addSubcategory(Subcategory $subcategory): static
+    {
+        if (!$this->subcategories->contains($subcategory)) {
+            $this->subcategories->add($subcategory);
+            $subcategory->setCategory($this);
+        }
+
+        return $this;
+    }
+
+    public function removeSubcategory(Subcategory $subcategory): static
+    {
+        if ($this->subcategories->removeElement($subcategory)) {
+            // set the owning side to null (unless already changed)
+            if ($subcategory->getCategory() === $this) {
+                $subcategory->setCategory(null);
             }
         }
 

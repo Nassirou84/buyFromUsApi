@@ -10,7 +10,6 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 
 class AuthenticationSuccessListener
 {
-
     public function __construct(
         private EntityManagerInterface $entityManager,
         private TokenStorageInterface $tokenStorage,

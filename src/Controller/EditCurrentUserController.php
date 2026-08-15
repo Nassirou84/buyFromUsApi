@@ -2,11 +2,12 @@
 
 namespace App\Controller;
 
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\HttpFoundation\Request;
-use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 final class EditCurrentUserController extends AbstractController
 {
@@ -14,6 +15,7 @@ final class EditCurrentUserController extends AbstractController
     Request $request,
     TokenStorageInterface $tokenStorage,
     EntityManagerInterface $entityManager,
+    NormalizerInterface $objectNormalizer
   ): JsonResponse {
     $data = json_decode($request->getContent(), true);
     if (!$data) {
@@ -30,17 +32,11 @@ final class EditCurrentUserController extends AbstractController
     if (isset($data['phone'])) {
       $user->setPhone($data['phone']);
     }
-    if (isset($data['street'])) {
-      $user->setStreet($data['street']);
-    }
-    if (isset($data['city'])) {
-      $user->setCity($data['city']);
-    }
-    if (isset($data['state'])) {
-      $user->setState($data['state']);
+    if (isset($data['addresses'])) {
+      $user->setAddresses($data['addresses']);
     }
     $entityManager->persist($user);
     $entityManager->flush();
-    return $this->json(['user' => $user], 200);
+    return $this->json(['user' => $objectNormalizer->normalize($user, null, ['groups' => ['user:login:read', 'user:read']])], 200);
   }
 }

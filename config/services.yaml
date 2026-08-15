@@ -145,12 +145,18 @@ services:
         arguments: [{createdAt: 'asc'}]
         tags:
           - { name: api_platform.filter }
+
+    my_basket.search_filter:
+      parent: 'api_platform.doctrine.orm.search_filter'
+      arguments: [{uid: 'exact'}]
+      tags:
+          - { name: api_platform.filter }
     ###< Filters 
 
     App\Service\EmailQueueService:
         arguments:
             $frontendURL: '%env(FRONTEND_URL)%'
             $websiteName: '%env(WEBSITE_NAME)%'
-            $passwordResetTemplateId: '%env(PASSWORD_CHANGED_TEMPLATE_ID)%'
+            $passwordResetTemplateId: '%env(PASSWORD_RESET_TEMPLATE_ID)%'
             $emailConfirmationTemplateId: '%env(EMAIL_CONFIRMATION_TEMPLATE_ID)%'
             $passwordChangedTemplateId: '%env(PASSWORD_CHANGED_TEMPLATE_ID)%'

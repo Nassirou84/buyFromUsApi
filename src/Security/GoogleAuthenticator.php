@@ -5,6 +5,7 @@ namespace App\Security;
 use App\Entity\RefreshToken;
 use App\Entity\User;
 use App\Repository\UserRepository;
+use App\Service\BasketService;
 use Doctrine\ORM\EntityManagerInterface;
 use Gesdinet\JWTRefreshTokenBundle\Generator\RefreshTokenGeneratorInterface;
 use Gesdinet\JWTRefreshTokenBundle\Model\RefreshTokenManagerInterface;
@@ -33,6 +34,7 @@ class GoogleAuthenticator extends AbstractAuthenticator implements Authenticatio
     private RefreshTokenGeneratorInterface $refreshTokenGenerator,
     private RefreshTokenManagerInterface $refreshTokenManager,
     private NormalizerInterface $objectNormalizer,
+    private BasketService $basketService,
     string $googleClientId
   ) {
     $this->googleClient = new Client(['client_id' => $googleClientId]);
@@ -77,7 +79,6 @@ class GoogleAuthenticator extends AbstractAuthenticator implements Authenticatio
           return $user;
         })
       );
-
     } catch (AuthenticationException $e) {
       throw $e;
     } catch (\Exception $e) {
@@ -121,7 +122,7 @@ class GoogleAuthenticator extends AbstractAuthenticator implements Authenticatio
 
     $this->entityManager->persist($user);
     $this->entityManager->flush();
-
+    $this->basketService->createBasketForUser($user);
     return $user;
   }
 
@@ -235,7 +236,6 @@ class GoogleAuthenticator extends AbstractAuthenticator implements Authenticatio
         $this->refreshTokenManager->save($refreshToken);
       } elseif (method_exists($this->refreshTokenManager, 'persist')) {
         $this->refreshTokenManager->persist($refreshToken);
-        $this->refreshTokenManager->flush();
       } else {
         // Use EntityManager directly
         $this->entityManager->persist($refreshToken);

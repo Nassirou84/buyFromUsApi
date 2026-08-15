@@ -39,7 +39,6 @@ use Symfony\Component\Serializer\Attribute\Groups;
                     fromProperty: 'orders',
                 )
             ],
-            paginationEnabled: true,
             paginationItemsPerPage: 10,
             order: ['createdAt' => 'desc']
         ),
