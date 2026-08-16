@@ -23,6 +23,11 @@ final class EditCurrentUserController extends AbstractController
     }
 
     $user = $tokenStorage->getToken()->getUser();
+
+    if (!$user instanceof \App\Entity\User) {
+      return $this->json(['error' => 'User not found'], 404);
+    }
+
     if (isset($data['firstName'])) {
       $user->setFirstName($data['firstName']);
     }
@@ -34,6 +39,12 @@ final class EditCurrentUserController extends AbstractController
     }
     if (isset($data['addresses'])) {
       $user->setAddresses($data['addresses']);
+    }
+    if (isset($data['twoFactor'])) {
+      $user->setTwoFactor($data['twoFactor']);
+    }
+    if (isset($data['twoFactorContactMethod'])) {
+      $user->setTwoFactorContactMethod($data['twoFactorContactMethod']);
     }
     $entityManager->persist($user);
     $entityManager->flush();

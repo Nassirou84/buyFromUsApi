@@ -32,10 +32,6 @@ use Symfony\Component\Serializer\Attribute\Groups;
         ),
         new GetCollection(),
         new Get(),
-        new Put(
-            security: 'is_granted("ROLE_USER")',
-            denormalizationContext: ['groups' => ['user:edit']]
-        ),
         new GetCollection(
             controller: CurrentlyLoginController::class,
             security: 'is_granted("ROLE_USER")',
@@ -186,6 +182,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Groups(['user:login:read', 'user:edit'])]
     private ?array $addresses = [];
 
+    #[ORM\Column(nullable: true)]
+    #[Groups(['user:login:read', 'user:edit'])]
+    private ?bool $twoFactor = null;
+
+    #[ORM\Column(length: 8, nullable: true)]
+    private ?string $twoFactorCode = null;
+
+    #[ORM\Column(length: 10, nullable: true)]
+    #[Groups(['user:login:read', 'user:edit'])]
+    private ?string $twoFactorContactMethod = null;
+
     public function __construct()
     {
         $this->country = 'CIV';
@@ -194,6 +201,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->shoppingRequests = new ArrayCollection();
         $this->paymentMethods = new ArrayCollection();
         $this->userLoginHistories = new ArrayCollection();
+        $this->twoFactor = false;
+        $this->createdAt = new \DateTimeImmutable();
+        $this->twoFactorContactMethod = 'email';
     }
 
     public function getId(): ?int
@@ -631,6 +641,43 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setAddresses(?array $addresses): static
     {
         $this->addresses = $addresses;
+
+        return $this;
+    }
+
+    #[Groups(['user:login:read', 'user:edit'])]
+    public function isTwoFactor(): ?bool
+    {
+        return $this->twoFactor;
+    }
+
+    public function setTwoFactor(?bool $twoFactor): static
+    {
+        $this->twoFactor = $twoFactor;
+
+        return $this;
+    }
+
+    public function getTwoFactorCode(): ?string
+    {
+        return $this->twoFactorCode;
+    }
+
+    public function setTwoFactorCode(?string $twoFactorCode): static
+    {
+        $this->twoFactorCode = $twoFactorCode;
+
+        return $this;
+    }
+
+    public function getTwoFactorContactMethod(): ?string
+    {
+        return $this->twoFactorContactMethod;
+    }
+
+    public function setTwoFactorContactMethod(?string $twoFactorContactMethod): static
+    {
+        $this->twoFactorContactMethod = $twoFactorContactMethod;
 
         return $this;
     }

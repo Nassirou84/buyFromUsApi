@@ -15,6 +15,8 @@ parameters:
     site_url: '%env(resolve:SITE_URL)%'
     currency: '%env(resolve:TARGET_CURRENCY)%'
     taxe_rate: '%env(resolve:TAXE_RATE)%'
+    gcp_key_file_path: '%env(resolve:GCP_KEY_FILE_PATH)%'
+    gcs_bucket_name: '%env(resolve:GCS_BUCKET_NAME)%'
 
 services:
     # default configuration for services in *this* file
@@ -97,6 +99,12 @@ services:
     App\Security\GoogleAuthenticator:
         arguments:
             $googleClientId: '%env(GOOGLE_CLIENT_ID)%'
+
+    App\Service\GcsUploaderService:
+        arguments:
+            $keyFilePath: '%env(resolve:GCP_KEY_FILE_PATH)%'
+            $bucketName: '%env(resolve:GCS_BUCKET_NAME)%'
+
 
     App\Service\BrevoEmailService:
         arguments:

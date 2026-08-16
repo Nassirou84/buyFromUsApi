@@ -2,26 +2,57 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
 use App\Repository\PhotoRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\Validator\Constraints as Assert;
 
+#[ApiResource(
+    normalizationContext: ['groups' => ['photo:read']],
+    types: ['https://schema.org/MediaObject'],
+    operations: [
+        new \ApiPlatform\Metadata\Get(),
+        new \ApiPlatform\Metadata\Post(
+            controller: \App\Controller\CreateMediaObjectController::class,
+            deserialize: false,
+            inputFormats: [
+                'multipart' => ['multipart/form-data'],
+            ]
+        ),
+    ],
+)]
 #[ORM\Entity(repositoryClass: PhotoRepository::class)]
 class Photo
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['photo:read'])]
     private ?int $id = null;
 
     #[ORM\Column]
     private ?\DateTimeImmutable $createdAt = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['photo:read'])]
     private ?string $url = null;
 
     #[ORM\ManyToOne(inversedBy: 'photos')]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: true)]
     private ?Product $product = null;
+
+    #[Assert\File(
+        maxSize: '5M',
+        mimeTypes: [
+            'image/*',
+            'video/*',
+            'audio/*',
+            'application/pdf',
+        ],
+    )]
+    public ?UploadedFile $file = null;
 
     public function __construct()
     {
