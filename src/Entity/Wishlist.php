@@ -1,12 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Link;
 use App\Repository\WishlistRepository;
+use DateTime;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use ApiPlatform\Metadata\Link;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ApiResource(
@@ -18,17 +21,17 @@ use Symfony\Component\Serializer\Attribute\Groups;
                 'customerId' => new Link(
                     fromClass: User::class,
                     fromProperty: 'wishlists',
-                )
-            ]
+                ),
+            ],
         ),
         new \ApiPlatform\Metadata\Post(
             security: "is_granted('ROLE_USER')",
-            processor: \App\State\WhishListProcessor::class
+            processor: \App\State\WishlistProcessor::class,
         ),
-        new \ApiPlatform\Metadata\Delete()
+        new \ApiPlatform\Metadata\Delete(),
     ],
     normalizationContext: ['groups' => ['wishlist:read']],
-    denormalizationContext: ['groups' => ['wishlist:write']]
+    denormalizationContext: ['groups' => ['wishlist:write']],
 )]
 #[ORM\Entity(repositoryClass: WishlistRepository::class)]
 class Wishlist
@@ -37,7 +40,8 @@ class Wishlist
     #[ORM\GeneratedValue]
     #[ORM\Column]
     #[Groups(['wishlist:read'])]
-    private ?int $id = null;
+    // @phpstan-ignore property.onlyRead
+    private $id;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
@@ -50,11 +54,11 @@ class Wishlist
 
     #[ORM\Column]
     #[Groups(['wishlist:read'])]
-    private ?\DateTime $createdAt = null;
+    private ?DateTime $createdAt = null;
 
     #[ORM\Column]
     #[Groups(['wishlist:read'])]
-    private ?\DateTime $updatedAt = null;
+    private ?DateTime $updatedAt = null;
 
     #[ORM\Column()]
     #[Groups(['wishlist:read'])]
@@ -66,12 +70,12 @@ class Wishlist
 
     #[Groups(['wishlist:read'])]
     #[ORM\Column(nullable: true)]
-    private ?\DateTime $priceDropNotifiedAt = null;
+    private ?DateTime $priceDropNotifiedAt = null;
 
     public function __construct()
     {
-        $this->createdAt = new \DateTime();
-        $this->updatedAt = new \DateTime();
+        $this->createdAt = new DateTime();
+        $this->updatedAt = new DateTime();
     }
 
     public function getId(): ?int
@@ -103,24 +107,24 @@ class Wishlist
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTime
+    public function getCreatedAt(): ?DateTime
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(\DateTime $createdAt): static
+    public function setCreatedAt(DateTime $createdAt): static
     {
         $this->createdAt = $createdAt;
 
         return $this;
     }
 
-    public function getUpdatedAt(): ?\DateTime
+    public function getUpdatedAt(): ?DateTime
     {
         return $this->updatedAt;
     }
 
-    public function setUpdatedAt(\DateTime $updatedAt): static
+    public function setUpdatedAt(DateTime $updatedAt): static
     {
         $this->updatedAt = $updatedAt;
 
@@ -151,12 +155,12 @@ class Wishlist
         return $this;
     }
 
-    public function getPriceDropNotifiedAt(): ?\DateTime
+    public function getPriceDropNotifiedAt(): ?DateTime
     {
         return $this->priceDropNotifiedAt;
     }
 
-    public function setPriceDropNotifiedAt(?\DateTime $priceDropNotifiedAt): static
+    public function setPriceDropNotifiedAt(?DateTime $priceDropNotifiedAt): static
     {
         $this->priceDropNotifiedAt = $priceDropNotifiedAt;
 

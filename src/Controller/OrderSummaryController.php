@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
 
 use App\Repository\OrderRepository;
@@ -11,12 +13,17 @@ final class OrderSummaryController extends AbstractController
 {
     public function __invoke(
         TokenStorageInterface $tokenStorageInterface,
-        OrderRepository $orderRepository
+        OrderRepository $orderRepository,
     ): JsonResponse {
         if (!$tokenStorageInterface->getToken()) {
             return new JsonResponse([]);
         }
         $user = $tokenStorageInterface->getToken()->getUser();
+        if (!$user instanceof \App\Entity\User) {
+            return new JsonResponse([
+                'message' => 'Utilisateur non authentifié.',
+            ], 401);
+        }
         $totalOrders = $orderRepository->count(['customer' => $user]);
         $activeOrders = $orderRepository->countActiveOrders($user);
         $totalSpent = $orderRepository->getTotalSpents($user);
@@ -24,7 +31,7 @@ final class OrderSummaryController extends AbstractController
         return new JsonResponse([
             'totalOrders' => $totalOrders,
             'activeOrders' => $activeOrders,
-            'totalSpent' => $totalSpent
+            'totalSpent' => $totalSpent,
         ]);
     }
 }

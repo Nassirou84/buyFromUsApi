@@ -16,3 +16,12 @@
 ###> Google Cloud json key ###
 /config/secrets/*.json
 ###< Google Cloud json key ###
+
+###> friendsofphp/php-cs-fixer ###
+/.php-cs-fixer.php
+/.php-cs-fixer.cache
+###< friendsofphp/php-cs-fixer ###
+
+###> phpstan/phpstan ###
+phpstan.neon
+###< phpstan/phpstan ###

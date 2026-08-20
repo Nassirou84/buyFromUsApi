@@ -17,6 +17,7 @@ parameters:
     taxe_rate: '%env(resolve:TAXE_RATE)%'
     gcp_key_file_path: '%env(resolve:GCP_KEY_FILE_PATH)%'
     gcs_bucket_name: '%env(resolve:GCS_BUCKET_NAME)%'
+    tfa_code_template_id: '%env(resolve:TFA_CODE_TEMPLATE_ID)%'
 
 services:
     # default configuration for services in *this* file
@@ -66,6 +67,12 @@ services:
 
     App\Security\:
         resource: '../src/Security/'
+        autowire: true
+        autoconfigure: true
+        public: true
+
+    App\MessageHandler\:
+        resource: '../src/MessageHandler/'
         autowire: true
         autoconfigure: true
         public: true
@@ -160,6 +167,17 @@ services:
       tags:
           - { name: api_platform.filter }
     ###< Filters 
+
+    App\MessageHandler\SendTwoFactorCodeMessageHandler:
+        arguments:
+            $twoFactorCodeTemplate: '%env(TFA_CODE_TEMPLATE_ID)%'
+
+    App\MessageHandler\SendResetEmailMessageHandler:
+        arguments:
+            $frontendURL: '%env(FRONTEND_URL)%'
+            $resetPasswordPagePath: '%env(PASSWORD_RESET_URL)%'
+            $websiteName: '%env(WEBSITE_NAME)%'
+            $passwordResetTemplateId: '%env(PASSWORD_RESET_TEMPLATE_ID)%'
 
     App\Service\EmailQueueService:
         arguments:

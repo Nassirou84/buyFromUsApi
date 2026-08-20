@@ -1,9 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Command;
 
 use App\Service\BrevoEmailService;
-use App\Service\EmailQueueService;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -17,20 +18,19 @@ class SendEmailCommand extends Command
 {
     protected static $defaultName = 'app:test-mailjet';
     private $emailService;
-    private $mailQueueService;
+    // private $mailQueueService;
 
     public function __construct(
         BrevoEmailService $brevoMailerService,
-        EmailQueueService $mailQueueService
+        // EmailQueueService $mailQueueService,
     ) {
         parent::__construct();
         $this->emailService = $brevoMailerService;
-        $this->mailQueueService = $mailQueueService;
+        // $this->mailQueueService = $mailQueueService;
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-
         // $this->mailQueueService->addToQueue([
         //     'to' => 'sgahassim@gmail.com',
         //     'name' => 'Gahassim Sagne',
@@ -52,7 +52,7 @@ class SendEmailCommand extends Command
         //     ]
         // ]);
 
-        $result = $this->emailService->sendEmail([
+        $this->emailService->sendEmail([
             'templateId' => 10, // Password reset template
             'to' => ['sgahassim@gmail.com' => 'Gahassim Sagne'],
             'from' => ['support@kariaire.com' => 'Kader From Kariaire'],
@@ -72,8 +72,6 @@ class SendEmailCommand extends Command
             ],
         ]);
 
-        dd($result);
-
         // $this->emailService->sendLocalTemplateEmail(
         //     'sgahassim@gmail.com',
         //     'Test Email from Brevo',
@@ -87,6 +85,7 @@ class SendEmailCommand extends Command
         // $this->brevoSmsService->sendSms('+2250779896352', 'This is a test message from Brevo SMS service.');
 
         $output->writeln('Email sent successfully!');
+
         return Command::SUCCESS;
     }
 }

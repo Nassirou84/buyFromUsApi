@@ -12,12 +12,6 @@ security:
                 property: email
 
     firewalls:
-        api_token_refresh:
-            pattern: ^/api/token/refresh
-            stateless: true
-            provider: app_user_provider
-            refresh_jwt: ~
-
         dev:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
@@ -40,6 +34,10 @@ security:
                 - App\Security\GoogleAuthenticator
             entry_point: App\Security\GoogleAuthenticator
             jwt: ~
+            logout:
+                path: /api/logout
+                clear_site_data:
+                    - cookies
             
         main:
             lazy: true
@@ -65,10 +63,12 @@ security:
         #     provider: app_user_provider
 
     access_control:
+        - { path: ^/api/token/refresh, roles: PUBLIC_ACCESS }
+        - { path: ^/api, methods: [OPTIONS], roles: PUBLIC_ACCESS }
         - { path: ^/api/(login|token/refresh), roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/google, roles: PUBLIC_ACCESS }
         - { path: ^/login, roles: PUBLIC_ACCESS }
-        - { path: ^/api/login, roles: PUBLIC_ACCESS } # Allow unauthenticated access to the login endpoint
+        - { path: ^/api/user_login, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: PUBLIC_ACCESS } 
         - { path: ^/api/payment_methods, roles: ROLE_USER }
     

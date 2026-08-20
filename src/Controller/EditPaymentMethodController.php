@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
 
 use App\Entity\PaymentMethod;
@@ -17,9 +19,8 @@ final class EditPaymentMethodController extends AbstractController
         EntityManagerInterface $entityManagerInterface,
         TokenStorageInterface $tokenStorageInterface,
         Request $request,
-        PaymentMethodRepository $paymentMethodRepository
+        PaymentMethodRepository $paymentMethodRepository,
     ): JsonResponse {
-
         if (!$tokenStorageInterface->getToken()) {
             return $this->json(['message' => 'Unauthorized'], 401);
         }

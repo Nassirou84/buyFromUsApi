@@ -1,10 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use App\Repository\EmailQueueRepository;
+use DateTime;
+use DateTimeImmutable;
+use DateTimeInterface;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use InvalidArgumentException;
+
+use function in_array;
+use function sprintf;
+
+use const FILTER_VALIDATE_EMAIL;
 
 #[ORM\Entity(repositoryClass: EmailQueueRepository::class)]
 #[ORM\Table(indexes: [
@@ -12,26 +23,26 @@ use Doctrine\ORM\Mapping as ORM;
     new ORM\Index(name: 'idx_email_queue_priority', columns: ['priority']),
     new ORM\Index(name: 'idx_email_queue_send_after', columns: ['send_after']),
     new ORM\Index(name: 'idx_email_queue_status_priority', columns: ['status', 'priority']),
-    new ORM\Index(name: 'idx_email_queue_status_send_after', columns: ['status', 'send_after'])
+    new ORM\Index(name: 'idx_email_queue_status_send_after', columns: ['status', 'send_after']),
 ])]
 class EmailQueue
 {
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_SENT = 'sent';
+    public const STATUS_FAILED = 'failed';
+    public const STATUS_PROCESSING = 'processing';
+    public const STATUS_SKIPPED = 'skipped';
+    public const STATUS_RETRYING = 'retrying';
 
-    const STATUS_PENDING = 'pending';
-    const STATUS_SENT = 'sent';
-    const STATUS_FAILED = 'failed';
-    const STATUS_PROCESSING = 'processing';
-    const STATUS_SKIPPED = 'skipped';
-    const STATUS_RETRYING = 'retrying';
-
-    const PRIORITY_LOW = 1;
-    const PRIORITY_DEFAULT = 5;
-    const PRIORITY_HIGH = 10;
+    public const PRIORITY_LOW = 1;
+    public const PRIORITY_DEFAULT = 5;
+    public const PRIORITY_HIGH = 10;
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    private ?int $id = null;
+    // @phpstan-ignore property.onlyRead
+    private $id;
 
     #[ORM\Column(length: 255)]
     private ?string $recipientEmail = null;
@@ -55,7 +66,7 @@ class EmailQueue
     private ?int $priority = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
-    private ?\DateTimeInterface $sendAfter = null;
+    private ?DateTimeInterface $sendAfter = null;
 
     #[ORM\Column(nullable: true)]
     private ?int $attemps = null;
@@ -70,22 +81,21 @@ class EmailQueue
     private ?string $messageId = null;
 
     #[ORM\Column]
-    private ?\DateTimeImmutable $createdAt = null;
+    private ?DateTimeImmutable $createdAt = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
-    private ?\DateTimeInterface $updatedAt = null;
+    private ?DateTimeInterface $updatedAt = null;
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
-    private ?\DateTimeInterface $lastAttemptAt = null;
-
+    private ?DateTimeInterface $lastAttemptAt = null;
 
     public function __construct()
     {
-        $this->createdAt = new \DateTimeImmutable();
+        $this->createdAt = new DateTimeImmutable();
         $this->status = self::STATUS_PENDING;
         $this->attemps = 0;
         $this->maxAttemps = 3;
-        $this->sendAfter = new \DateTime();
+        $this->sendAfter = new DateTime();
         $this->priority = self::PRIORITY_DEFAULT;
     }
 
@@ -102,7 +112,7 @@ class EmailQueue
     public function setRecipientEmail(string $recipientEmail): static
     {
         if (!filter_var($recipientEmail, FILTER_VALIDATE_EMAIL)) {
-            throw new \InvalidArgumentException('Invalid email format: ' . $recipientEmail);
+            throw new InvalidArgumentException('Invalid email format: ' . $recipientEmail);
         }
 
         $this->recipientEmail = $recipientEmail;
@@ -165,7 +175,6 @@ class EmailQueue
 
     public function setStatus(string $status): static
     {
-
         $validStatuses = [
             self::STATUS_PENDING,
             self::STATUS_SENT,
@@ -176,9 +185,7 @@ class EmailQueue
         ];
 
         if (!in_array($status, $validStatuses, true)) {
-            throw new \InvalidArgumentException(
-                sprintf('Invalid status "%s". Must be one of: %s', $status, implode(', ', $validStatuses))
-            );
+            throw new InvalidArgumentException(sprintf('Invalid status "%s". Must be one of: %s', $status, implode(', ', $validStatuses)));
         }
 
         $this->status = $status;
@@ -198,12 +205,12 @@ class EmailQueue
         return $this;
     }
 
-    public function getSendAfter(): ?\DateTimeInterface
+    public function getSendAfter(): ?DateTimeInterface
     {
         return $this->sendAfter;
     }
 
-    public function setSendAfter(?\DateTimeInterface $sendAfter): static
+    public function setSendAfter(?DateTimeInterface $sendAfter): static
     {
         $this->sendAfter = $sendAfter;
 
@@ -258,36 +265,36 @@ class EmailQueue
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
+    public function getCreatedAt(): ?DateTimeImmutable
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(\DateTimeImmutable $createdAt): static
+    public function setCreatedAt(DateTimeImmutable $createdAt): static
     {
         $this->createdAt = $createdAt;
 
         return $this;
     }
 
-    public function getUpdatedAt(): ?\DateTimeInterface
+    public function getUpdatedAt(): ?DateTimeInterface
     {
         return $this->updatedAt;
     }
 
-    public function setUpdatedAt(?\DateTimeInterface $updatedAt): static
+    public function setUpdatedAt(?DateTimeInterface $updatedAt): static
     {
         $this->updatedAt = $updatedAt;
 
         return $this;
     }
 
-    public function getLastAttemptAt(): ?\DateTimeInterface
+    public function getLastAttemptAt(): ?DateTimeInterface
     {
         return $this->lastAttemptAt;
     }
 
-    public function setLastAttemptAt(?\DateTimeInterface $lastAttemptAt): static
+    public function setLastAttemptAt(?DateTimeInterface $lastAttemptAt): static
     {
         $this->lastAttemptAt = $lastAttemptAt;
 

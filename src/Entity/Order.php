@@ -1,20 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
-use App\Entity\User;
-use App\Controller\CancelOrderController;
-
 use ApiPlatform\Metadata\ApiResource;
-use ApiPlatform\Metadata\Link;
+use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Link;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
-use ApiPlatform\Metadata\Delete;
-use App\Controller\PlaceOrderController;
+use App\Controller\CancelOrderController;
 use App\Controller\OrderSummaryController;
+use App\Controller\PlaceOrderController;
 use App\Repository\OrderRepository;
+use DateTime;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -25,11 +26,11 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new Get(),
         new GetCollection(),
         new Post(
-            processor: \App\Service\OrderService::class
+            processor: \App\Service\OrderService::class,
         ),
         new GetCollection(
             uriTemplate: '/order/summary',
-            controller: OrderSummaryController::class
+            controller: OrderSummaryController::class,
         ),
         new GetCollection(
             uriTemplate: '/customer/{customerId}/orders',
@@ -37,46 +38,46 @@ use Symfony\Component\Serializer\Attribute\Groups;
                 'customerId' => new Link(
                     fromClass: User::class,
                     fromProperty: 'orders',
-                )
+                ),
             ],
             paginationItemsPerPage: 10,
-            order: ['createdAt' => 'desc']
+            order: ['createdAt' => 'desc'],
         ),
         new Post(
             controller: PlaceOrderController::class,
-            uriTemplate: '/orders/finalize'
+            uriTemplate: '/orders/finalize',
         ),
         new Post(
             controller: CancelOrderController::class,
-            uriTemplate: '/orders/{id}/cancel'
+            uriTemplate: '/orders/{id}/cancel',
         ),
         new Put(
-            denormalizationContext: ['groups' => ['order:edit']]
+            denormalizationContext: ['groups' => ['order:edit']],
         ),
-        new Delete()
+        new Delete(),
     ],
     denormalizationContext: ['groups' => ['order:write', 'order:edit']],
     normalizationContext: ['groups' => ['order:read']],
-    filters: ['my_order.search_filter', 'my_order.order_filter']
+    filters: ['my_order.search_filter', 'my_order.order_filter'],
 )]
 #[ORM\Entity(repositoryClass: OrderRepository::class)]
 #[ORM\Table(name: '`order`')]
 class Order
 {
-
-    const STATUS_ORDER_PLACED = 'placed';
-    const STATUS_PROCESSING = 'processing';
-    const STATUS_IN_TRANSIT = 'in_transit';
-    const STATUS_ARRIVED_IN_FACILITY = 'arrived_in_facility';
-    const STATUS_OUT_FOR_DELIVERY = 'out_for_delivery';
-    const STATUS_DELIVERED = 'delivered';
-    const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_ORDER_PLACED = 'placed';
+    public const STATUS_PROCESSING = 'processing';
+    public const STATUS_IN_TRANSIT = 'in_transit';
+    public const STATUS_ARRIVED_IN_FACILITY = 'arrived_in_facility';
+    public const STATUS_OUT_FOR_DELIVERY = 'out_for_delivery';
+    public const STATUS_DELIVERED = 'delivered';
+    public const STATUS_CANCELLED = 'cancelled';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
     #[Groups(['order:read'])]
-    private ?int $id = null;
+    // @phpstan-ignore property.onlyRead
+    private $id;
 
     #[ORM\Column]
     #[Groups(['order:write', 'order:read'])]
@@ -107,7 +108,7 @@ class Order
 
     #[ORM\Column]
     #[Groups(['order:write', 'order:read'])]
-    private ?\DateTime $createdAt = null;
+    private ?DateTime $createdAt = null;
 
     #[ORM\Column(length: 255)]
     #[Groups(['order:read', 'order:edit'])]
@@ -115,7 +116,7 @@ class Order
 
     #[ORM\Column(nullable: true)]
     #[Groups(['order:read', 'order:edit'])]
-    private ?\DateTime $updatedAt = null;
+    private ?DateTime $updatedAt = null;
 
     #[ORM\Column(length: 255)]
     #[Groups(['order:read'])]
@@ -130,7 +131,7 @@ class Order
 
     #[ORM\Column(nullable: true)]
     #[Groups(['order:read'])]
-    private ?\DateTime $estimatedDeliveryAt = null;
+    private ?DateTime $estimatedDeliveryAt = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     #[Groups(['order:read'])]
@@ -138,8 +139,8 @@ class Order
 
     public function __construct()
     {
-        $this->createdAt = new \DateTime();
-        $this->updatedAt = new \DateTime();
+        $this->createdAt = new DateTime();
+        $this->updatedAt = new DateTime();
         $this->status = self::STATUS_ORDER_PLACED;
         $this->products = new ArrayCollection();
     }
@@ -233,12 +234,12 @@ class Order
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTime
+    public function getCreatedAt(): ?DateTime
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(\DateTime $createdAt): static
+    public function setCreatedAt(DateTime $createdAt): static
     {
         $this->createdAt = $createdAt;
 
@@ -257,12 +258,12 @@ class Order
         return $this;
     }
 
-    public function getUpdatedAt(): ?\DateTime
+    public function getUpdatedAt(): ?DateTime
     {
         return $this->updatedAt;
     }
 
-    public function setUpdatedAt(?\DateTime $updatedAt): static
+    public function setUpdatedAt(?DateTime $updatedAt): static
     {
         $this->updatedAt = $updatedAt;
 
@@ -311,12 +312,12 @@ class Order
         return $this;
     }
 
-    public function getEstimatedDeliveryAt(): ?\DateTime
+    public function getEstimatedDeliveryAt(): ?DateTime
     {
         return $this->estimatedDeliveryAt;
     }
 
-    public function setEstimatedDeliveryAt(?\DateTime $estimatedDeliveryAt): static
+    public function setEstimatedDeliveryAt(?DateTime $estimatedDeliveryAt): static
     {
         $this->estimatedDeliveryAt = $estimatedDeliveryAt;
 

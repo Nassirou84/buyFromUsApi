@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
@@ -7,6 +9,7 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Link;
 use ApiPlatform\Metadata\Post;
 use App\Repository\BasketRepository;
+use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -20,10 +23,10 @@ use Symfony\Component\Serializer\Attribute\Groups;
                 'customerId' => new Link(
                     fromClass: User::class,
                     fromProperty: 'basket',
-                )
+                ),
             ],
             paginationEnabled: false,
-            security: "is_granted('ROLE_USER')"
+            security: "is_granted('ROLE_USER')",
         ),
         new GetCollection(
             uriTemplate: '/basket/{uid}',
@@ -31,12 +34,12 @@ use Symfony\Component\Serializer\Attribute\Groups;
                 'uid' => new Link(
                     fromClass: Basket::class,
                     fromProperty: 'uid',
-                )
-            ]
+                ),
+            ],
         ),
         new Post(
             security: "is_granted('ROLE_USER')",
-            routeName: 'app_add_to_basket'
+            routeName: 'app_add_to_basket',
         ),
         new Post(
             security: "is_granted('ROLE_USER')",
@@ -48,15 +51,15 @@ use Symfony\Component\Serializer\Attribute\Groups;
         ),
         new Post(
             security: "is_granted('ROLE_USER')",
-            routeName: 'app_clear_basket'
+            routeName: 'app_clear_basket',
         ),
         new Post(
             security: "is_granted('ROLE_USER')",
-            routeName: 'app_move_wishlist_to_basket'
-        )
+            routeName: 'app_move_wishlist_to_basket',
+        ),
     ],
     normalizationContext: ['groups' => ['basket:read']],
-    denormalizationContext: ['groups' => ['basket:write']]
+    denormalizationContext: ['groups' => ['basket:write']],
 )]
 #[ORM\Entity(repositoryClass: BasketRepository::class)]
 class Basket
@@ -65,7 +68,8 @@ class Basket
     #[ORM\GeneratedValue]
     #[ORM\Column]
     #[Groups(['basket:read'])]
-    private ?int $id = null;
+    // @phpstan-ignore property.onlyRead
+    private $id;
 
     #[ORM\OneToOne(inversedBy: 'basket', cascade: ['persist', 'remove'])]
     #[ORM\JoinColumn(nullable: false)]
@@ -73,7 +77,7 @@ class Basket
 
     #[ORM\Column]
     #[Groups(['basket:read'])]
-    private ?\DateTimeImmutable $createdAt = null;
+    private ?DateTimeImmutable $createdAt = null;
 
     /**
      * @var Collection<int, BasketItem>
@@ -89,7 +93,7 @@ class Basket
     public function __construct()
     {
         $this->basketItems = new ArrayCollection();
-        $this->createdAt = new \DateTimeImmutable();
+        $this->createdAt = new DateTimeImmutable();
     }
 
     public function getId(): ?int
@@ -109,12 +113,12 @@ class Basket
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
+    public function getCreatedAt(): ?DateTimeImmutable
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(\DateTimeImmutable $createdAt): static
+    public function setCreatedAt(DateTimeImmutable $createdAt): static
     {
         $this->createdAt = $createdAt;
 

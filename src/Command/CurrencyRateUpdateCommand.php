@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Command;
 
 use App\Service\ExchangeRateApiService;
@@ -16,7 +18,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class CurrencyRateUpdateCommand extends Command
 {
     public function __construct(
-        private ExchangeRateApiService $exchangeRateApiService
+        private ExchangeRateApiService $exchangeRateApiService,
     ) {
         parent::__construct();
     }
@@ -31,6 +33,7 @@ class CurrencyRateUpdateCommand extends Command
         $io = new SymfonyStyle($input, $output);
         $this->exchangeRateApiService->updateRates();
         $io->success('Currency rates updated successfully.');
+
         return Command::SUCCESS;
     }
 }

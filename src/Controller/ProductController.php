@@ -1,12 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
+
 use App\Service\BrightDataAmazonScraper;
 use App\Service\TranslatorService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+
+use function array_slice;
+use function is_array;
 
 #[Route('api/product')]
 final class ProductController extends AbstractController
@@ -25,19 +31,18 @@ final class ProductController extends AbstractController
             return new JsonResponse(['error' => 'URL parameter is missing'], 400);
         }
         $productData = $brightDataAmazonScraper->scrapeProduct($url);
-        $productData = $translatorService->translateProductData
-        ($productData);
+        $productData = $translatorService->translateProductData($productData);
 
         $productDetails = $productData['product_details'] ?? null;
 
         if (is_array($productDetails)) {
             foreach ($productDetails as $key => $detail) {
-                if ($detail['type'] === 'brand') {
+                if ('brand' === $detail['type']) {
                     continue;
                 }
                 $productDetails[$key] = [
-                    'type' => $translatorService->translate($detail['type'] ?? '', 'fr') ?? null,
-                    'value' => $translatorService->translate($detail['value'] ?? '', 'fr') ?? null,
+                    'type' => $translatorService->translate($detail['type'] ?? '', 'fr'),
+                    'value' => $translatorService->translate($detail['value'] ?? '', 'fr'),
                 ];
             }
         }
@@ -63,11 +68,12 @@ final class ProductController extends AbstractController
             'brand' => $productData['brand'] ?? null,
             'customerSays' => $productData['customer_says'] ?? null,
             'features' => $productData['features'] ?? null,
-            'variants' => $variants ?? null,
-            'details' => $productData['product_details'] ?? null,
+            'variants' => $variants,
+            'details' => $productDetails ?? null,
             'scrappingUrl' => $productData['url'] ?? null,
             'isAvailable' => $productData['is_available'] ?? null,
         ]);
+
         return $response;
     }
 }

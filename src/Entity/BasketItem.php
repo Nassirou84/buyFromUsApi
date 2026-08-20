@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use App\Repository\BasketItemRepository;
+use DateTime;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 
@@ -13,11 +16,11 @@ class BasketItem
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-
-    private ?int $id = null;
+    // @phpstan-ignore property.onlyRead
+    private $id;
 
     #[ORM\Column]
-    private ?\DateTime $createdAt = null;
+    private ?DateTime $createdAt = null;
 
     #[ORM\Column]
     private ?float $priceAtAdd = null;
@@ -26,7 +29,7 @@ class BasketItem
     private ?string $variant = null;
 
     #[ORM\Column(nullable: true)]
-    private ?\DateTime $priceDropNotifiedAt = null;
+    private ?DateTime $priceDropNotifiedAt = null;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
@@ -41,8 +44,8 @@ class BasketItem
 
     public function __construct()
     {
-        $this->createdAt = new \DateTime();
-        $this->priceDropNotifiedAt = new \DateTime();
+        $this->createdAt = new DateTime();
+        $this->priceDropNotifiedAt = new DateTime();
         $this->quantity = 1;
     }
 
@@ -51,12 +54,12 @@ class BasketItem
         return $this->id;
     }
 
-    public function getCreatedAt(): ?\DateTime
+    public function getCreatedAt(): ?DateTime
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(\DateTime $createdAt): static
+    public function setCreatedAt(DateTime $createdAt): static
     {
         $this->createdAt = $createdAt;
 
@@ -87,12 +90,12 @@ class BasketItem
         return $this;
     }
 
-    public function getPriceDropNotifiedAt(): ?\DateTime
+    public function getPriceDropNotifiedAt(): ?DateTime
     {
         return $this->priceDropNotifiedAt;
     }
 
-    public function setPriceDropNotifiedAt(?\DateTime $priceDropNotifiedAt): static
+    public function setPriceDropNotifiedAt(?DateTime $priceDropNotifiedAt): static
     {
         $this->priceDropNotifiedAt = $priceDropNotifiedAt;
 

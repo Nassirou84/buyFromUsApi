@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
@@ -9,6 +11,7 @@ use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use App\Repository\CategoryRepository;
+use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -20,20 +23,20 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new GetCollection(),
         new Post(
             denormalizationContext: ['groups' => ['category:write']],
-            security: "is_granted('ROLE_ADMIN')"
+            security: "is_granted('ROLE_ADMIN')",
         ),
         new Put(
-            security: "is_granted('ROLE_ADMIN')"
+            security: "is_granted('ROLE_ADMIN')",
         ),
         new Delete(
-            security: "is_granted('ROLE_ADMIN')"
+            security: "is_granted('ROLE_ADMIN')",
         ),
         new Patch(
-            security: "is_granted('ROLE_ADMIN')"
-        )
+            security: "is_granted('ROLE_ADMIN')",
+        ),
     ],
     filters: [
-        "categories.search_filter"
+        'categories.search_filter',
     ],
     denormalizationContext: ['groups' => ['category:write']],
     normalizationContext: ['groups' => ['category:read', 'product:read:details']],
@@ -45,7 +48,8 @@ class Category
     #[ORM\GeneratedValue]
     #[ORM\Column]
     #[Groups(['category:read', 'product:read:details'])]
-    private ?int $id = null;
+    // @phpstan-ignore property.onlyRead
+    private $id;
 
     #[ORM\Column(length: 255, nullable: true)]
     #[Groups(['category:read', 'category:write', 'product:read:details'])]
@@ -60,7 +64,7 @@ class Category
     private ?string $description = null;
 
     #[ORM\Column]
-    private ?\DateTimeImmutable $createdAt = null;
+    private ?DateTimeImmutable $createdAt = null;
 
     /**
      * @var Collection<int, Product>
@@ -76,7 +80,7 @@ class Category
 
     public function __construct()
     {
-        $this->createdAt = new \DateTimeImmutable();
+        $this->createdAt = new DateTimeImmutable();
         $this->products = new ArrayCollection();
         $this->subcategories = new ArrayCollection();
     }
@@ -122,12 +126,12 @@ class Category
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
+    public function getCreatedAt(): ?DateTimeImmutable
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(\DateTimeImmutable $createdAt): static
+    public function setCreatedAt(DateTimeImmutable $createdAt): static
     {
         $this->createdAt = $createdAt;
 

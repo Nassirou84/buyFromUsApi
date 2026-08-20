@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
@@ -9,6 +11,7 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Link;
 use ApiPlatform\Metadata\Post;
 use App\Repository\PaymentMethodRepository;
+use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Kyzegs\DoctrineEncryptionBundle\Attribute\Encrypted;
@@ -21,28 +24,28 @@ use Symfony\Component\Validator\Constraints as Assert;
             denormalizationContext: ['groups' => ['card:write']],
             normalizationContext: ['groups' => ['card:read']],
             security: "is_granted('ROLE_USER')",
-            processor: \App\State\PaymentMethodStateProcessor::class
+            processor: \App\State\PaymentMethodStateProcessor::class,
         ),
         new Get(
             normalizationContext: ['groups' => ['card:read']],
             security: "is_granted('ROLE_USER') and object.getUser() == user",
             cacheHeaders: ['cache_control' => 'no-store, no-cache, must-revalidate, max-age=0'],
-            provider: \App\DataProvider\PaymentMethodDataProvider::class
+            provider: \App\DataProvider\PaymentMethodDataProvider::class,
         ),
         new GetCollection(
             uriTemplate: '/users/{customerId}/payment_methods',
             uriVariables: [
                 'customerId' => new Link(
-                    fromClass: \App\Entity\User::class,
+                    fromClass: User::class,
                     fromProperty: 'paymentMethods',
-                )
+                ),
             ],
             paginationEnabled: true,
             paginationItemsPerPage: 10,
             order: ['createdAt' => 'desc'],
             normalizationContext: ['groups' => ['card:list']],
             security: "is_granted('ROLE_USER') and user.getId() == customerId",
-            provider: \App\DataProvider\PaymentMethodDataProvider::class
+            provider: \App\DataProvider\PaymentMethodDataProvider::class,
         ),
         new Delete(
             security: "is_granted('ROLE_USER') and object.getUser() == user",
@@ -56,13 +59,12 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: "is_granted('ROLE_USER') and object.getUser() == user",
             controller: \App\Controller\EditPaymentMethodController::class,
             cacheHeaders: ['cache_control' => 'no-store, no-cache, must-revalidate, max-age=0'],
-        )
-    ]
+        ),
+    ],
 )]
 #[ORM\Entity(repositoryClass: PaymentMethodRepository::class)]
 class PaymentMethod
 {
-
     public const METHOD_CARD = 'card';
     public const METHOD_MOBILE_PAYMENT = 'mobile_payment';
 
@@ -70,7 +72,8 @@ class PaymentMethod
     #[ORM\GeneratedValue]
     #[ORM\Column]
     #[Groups(['card:read', 'card:list'])]
-    private ?int $id = null;
+    // @phpstan-ignore property.onlyRead
+    private $id;
 
     #[ORM\Column(length: 255)]
     #[Groups(['card:read', 'card:list', 'card:write'])]
@@ -87,7 +90,6 @@ class PaymentMethod
     private ?string $expiry = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-
     #[Groups(['card:read', 'card:list', 'card:write'])]
     private ?string $cardHolderName = null;
 
@@ -96,12 +98,11 @@ class PaymentMethod
     private ?string $lastFourDigits = null;
 
     #[ORM\Column(length: 100, nullable: true)]
-
     #[Groups(['card:read', 'card:list', 'card:write'])]
     private ?string $cardBrand = null;
 
     #[ORM\Column]
-    private ?\DateTimeImmutable $createdAt = null;
+    private ?DateTimeImmutable $createdAt = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     #[Encrypted]
@@ -131,7 +132,7 @@ class PaymentMethod
 
     public function __construct()
     {
-        $this->createdAt = new \DateTimeImmutable();
+        $this->createdAt = new DateTimeImmutable();
         $this->isActive = true;
         $this->isDefault = false;
     }
@@ -161,7 +162,7 @@ class PaymentMethod
     public function setCardNumber(?string $cardNumber): static
     {
         $this->cardNumber = $cardNumber;
-        if ($this->method === self::METHOD_CARD && $cardNumber) {
+        if (self::METHOD_CARD === $this->method && $cardNumber) {
             $this->lastFourDigits = substr($cardNumber, -4);
             $this->cardBrand = $this->detectCardBrand($cardNumber);
         }
@@ -217,12 +218,12 @@ class PaymentMethod
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
+    public function getCreatedAt(): ?DateTimeImmutable
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(\DateTimeImmutable $createdAt): static
+    public function setCreatedAt(DateTimeImmutable $createdAt): static
     {
         $this->createdAt = $createdAt;
 
@@ -237,7 +238,7 @@ class PaymentMethod
     public function setMobilePaymentNumber(?string $mobilePaymentNumber): static
     {
         $this->mobilePaymentNumber = $mobilePaymentNumber;
-        if ($this->method === self::METHOD_MOBILE_PAYMENT && $mobilePaymentNumber) {
+        if (self::METHOD_MOBILE_PAYMENT === $this->method && $mobilePaymentNumber) {
             $this->lastFourDigits = substr($mobilePaymentNumber, -4);
         }
 
@@ -264,7 +265,7 @@ class PaymentMethod
             'amex' => '/^3[47][0-9]{13}$/',
             'discover' => '/^6(?:011|5[0-9]{2})[0-9]{12}$/',
             'diners' => '/^3(?:0[0-5]|[68][0-9])[0-9]{11}$/',
-            'jcb' => '/^(?:2131|1800|35\d{3})\d{11}$/'
+            'jcb' => '/^(?:2131|1800|35\d{3})\d{11}$/',
         ];
 
         foreach ($patterns as $brand => $pattern) {
@@ -300,7 +301,6 @@ class PaymentMethod
         return $this;
     }
 
-
     #[Groups(['card:read', 'card:list'])]
     public function isDefault(): ?bool
     {
@@ -313,7 +313,6 @@ class PaymentMethod
 
         return $this;
     }
-
 
     #[Groups(['card:read', 'card:list'])]
     public function isActive(): ?bool

@@ -1,10 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repository;
 
 use App\Entity\EmailQueue;
+use DateTimeImmutable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
+
+use function sprintf;
 
 /**
  * @extends ServiceEntityRepository<EmailQueue>
@@ -21,7 +26,7 @@ class EmailQueueRepository extends ServiceEntityRepository
      */
     public function getEmailBatch(int $batchSize, int $recoveryThresholdMinutes = 5): array
     {
-        $now = new \DateTimeImmutable();
+        $now = new DateTimeImmutable();
         $staleProcessingThreshold = $now->modify(sprintf('-%d minutes', $recoveryThresholdMinutes));
 
         return $this->createQueryBuilder('eq')

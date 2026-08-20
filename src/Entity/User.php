@@ -1,17 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
-use ApiPlatform\Metadata\Put;
 use ApiPlatform\OpenApi\Model\Operation;
 use App\Controller\CurrentlyLoginController;
 use App\Controller\EditCurrentUserController;
 use App\Repository\UserRepository;
 use App\State\RegisterStateProcessor;
+use DateTime;
+use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
@@ -22,13 +25,13 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 #[GetCollection(
     normalizationContext: ['groups' => ['user:read']],
-    security: "is_granted('ROLE_ADMIN')"
+    security: "is_granted('ROLE_ADMIN')",
 )]
 #[ApiResource(
     operations: [
         new Post(
             processor: RegisterStateProcessor::class,
-            denormalizationContext: ['groups' => ['user:create']]
+            denormalizationContext: ['groups' => ['user:create']],
         ),
         new GetCollection(),
         new Get(),
@@ -41,14 +44,14 @@ use Symfony\Component\Serializer\Attribute\Groups;
             routeName: 'app_change_password_validate',
             openapi: new Operation(
                 summary: 'Validate password reset token',
-                description: 'Validates the password reset token and returns a response indicating whether the token is valid or not.'
-            )
+                description: 'Validates the password reset token and returns a response indicating whether the token is valid or not.',
+            ),
         ),
         new Post(
             security: 'is_granted("ROLE_USER")',
             controller: EditCurrentUserController::class,
             uriTemplate: '/edit-me',
-            denormalizationContext: ['groups' => ['user:edit']]
+            denormalizationContext: ['groups' => ['user:edit']],
         ),
         new Post(
             routeName: 'app_change_password_request',
@@ -57,10 +60,10 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new Post(
             routeName: 'app_change_password',
             deserialize: false,
-        )
+        ),
     ],
     denormalizationContext: ['groups' => ['user:create', 'user:edit']],
-    normalizationContext: ['groups' => ['user:read', 'user:login:read']]
+    normalizationContext: ['groups' => ['user:read', 'user:login:read']],
 )]
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_EMAIL', fields: ['email'])]
@@ -70,7 +73,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\GeneratedValue]
     #[ORM\Column]
     #[Groups(['user:read'])]
-    private ?int $id = null;
+    // @phpstan-ignore property.onlyRead
+    private $id;
 
     #[ORM\Column(length: 180)]
     #[Groups(['user:create', 'user:login:read'])]
@@ -94,7 +98,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?string $registrationToken = null;
 
     #[ORM\Column(nullable: true)]
-    private ?\DateTime $registrationTokenCreatedAt = null;
+    private ?DateTime $registrationTokenCreatedAt = null;
 
     #[ORM\Column(length: 255)]
     #[Groups(['user:create', 'user:read'])]
@@ -106,7 +110,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\Column(nullable: true)]
     #[Groups(['user:read'])]
-    private ?\DateTimeImmutable $createdAt = null;
+    private ?DateTimeImmutable $createdAt = null;
 
     #[Groups(['user:read', 'user:edit'])]
     #[ORM\Column(length: 255, nullable: true)]
@@ -134,7 +138,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[Groups(['user:login:read'])]
     #[ORM\Column(nullable: true)]
-    private ?\DateTime $lastLoginAt = null;
+    private ?DateTime $lastLoginAt = null;
 
     /**
      * @var Collection<int, Order>
@@ -166,17 +170,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToOne(mappedBy: 'user', cascade: ['persist', 'remove'])]
     private ?Basket $basket = null;
 
-    /**
-     * @var Collection<int, UserLoginHistory>
-     */
-    #[ORM\OneToMany(targetEntity: UserLoginHistory::class, mappedBy: 'user', orphanRemoval: true)]
-    private Collection $userLoginHistories;
-
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $passwordResetToken = null;
 
     #[ORM\Column(nullable: true)]
-    private ?\DateTime $passwordResetTokenExpiredAt = null;
+    private ?DateTime $passwordResetTokenExpiredAt = null;
 
     #[ORM\Column(nullable: true)]
     #[Groups(['user:login:read', 'user:edit'])]
@@ -193,6 +191,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Groups(['user:login:read', 'user:edit'])]
     private ?string $twoFactorContactMethod = null;
 
+    /**
+     * @var Collection<int, TrustedDevice>
+     */
+    #[ORM\OneToMany(targetEntity: TrustedDevice::class, mappedBy: 'user')]
+    private Collection $trustedDevices;
+
     public function __construct()
     {
         $this->country = 'CIV';
@@ -200,10 +204,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->wishlists = new ArrayCollection();
         $this->shoppingRequests = new ArrayCollection();
         $this->paymentMethods = new ArrayCollection();
-        $this->userLoginHistories = new ArrayCollection();
         $this->twoFactor = false;
-        $this->createdAt = new \DateTimeImmutable();
+        $this->createdAt = new DateTimeImmutable();
         $this->twoFactorContactMethod = 'email';
+        $this->trustedDevices = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -293,12 +297,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    public function getRegistrationTokenCreatedAt(): ?\DateTime
+    public function getRegistrationTokenCreatedAt(): ?DateTime
     {
         return $this->registrationTokenCreatedAt;
     }
 
-    public function setRegistrationTokenCreatedAt(?\DateTime $registrationTokenCreatedAt): static
+    public function setRegistrationTokenCreatedAt(?DateTime $registrationTokenCreatedAt): static
     {
         $this->registrationTokenCreatedAt = $registrationTokenCreatedAt;
 
@@ -329,12 +333,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
+    public function getCreatedAt(): ?DateTimeImmutable
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(?\DateTimeImmutable $createdAt): static
+    public function setCreatedAt(?DateTimeImmutable $createdAt): static
     {
         $this->createdAt = $createdAt;
 
@@ -413,12 +417,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    public function getLastLoginAt(): ?\DateTime
+    public function getLastLoginAt(): ?DateTime
     {
         return $this->lastLoginAt;
     }
 
-    public function setLastLoginAt(?\DateTime $lastLoginAt): static
+    public function setLastLoginAt(?DateTime $lastLoginAt): static
     {
         $this->lastLoginAt = $lastLoginAt;
 
@@ -574,36 +578,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    /**
-     * @return Collection<int, UserLoginHistory>
-     */
-    public function getUserLoginHistories(): Collection
-    {
-        return $this->userLoginHistories;
-    }
-
-    public function addUserLoginHistory(UserLoginHistory $userLoginHistory): static
-    {
-        if (!$this->userLoginHistories->contains($userLoginHistory)) {
-            $this->userLoginHistories->add($userLoginHistory);
-            $userLoginHistory->setUser($this);
-        }
-
-        return $this;
-    }
-
-    public function removeUserLoginHistory(UserLoginHistory $userLoginHistory): static
-    {
-        if ($this->userLoginHistories->removeElement($userLoginHistory)) {
-            // set the owning side to null (unless already changed)
-            if ($userLoginHistory->getUser() === $this) {
-                $userLoginHistory->setUser(null);
-            }
-        }
-
-        return $this;
-    }
-
     public function getPasswordResetToken(): ?string
     {
         return $this->passwordResetToken;
@@ -616,12 +590,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    public function getPasswordResetTokenExpiredAt(): ?\DateTime
+    public function getPasswordResetTokenExpiredAt(): ?DateTime
     {
         return $this->passwordResetTokenExpiredAt;
     }
 
-    public function setPasswordResetTokenExpiredAt(?\DateTime $passwordResetTokenExpiredAt): static
+    public function setPasswordResetTokenExpiredAt(?DateTime $passwordResetTokenExpiredAt): static
     {
         $this->passwordResetTokenExpiredAt = $passwordResetTokenExpiredAt;
 
@@ -678,6 +652,36 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setTwoFactorContactMethod(?string $twoFactorContactMethod): static
     {
         $this->twoFactorContactMethod = $twoFactorContactMethod;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, TrustedDevice>
+     */
+    public function getTrustedDevices(): Collection
+    {
+        return $this->trustedDevices;
+    }
+
+    public function addTrustedDevice(TrustedDevice $trustedDevice): static
+    {
+        if (!$this->trustedDevices->contains($trustedDevice)) {
+            $this->trustedDevices->add($trustedDevice);
+            $trustedDevice->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeTrustedDevice(TrustedDevice $trustedDevice): static
+    {
+        if ($this->trustedDevices->removeElement($trustedDevice)) {
+            // set the owning side to null (unless already changed)
+            if ($trustedDevice->getUser() === $this) {
+                $trustedDevice->setUser(null);
+            }
+        }
 
         return $this;
     }

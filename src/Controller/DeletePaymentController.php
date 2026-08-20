@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
 
 use App\Entity\PaymentMethod;
@@ -13,7 +15,7 @@ final class DeletePaymentController extends AbstractController
     public function __invoke(
         PaymentMethod $paymentMethod,
         EntityManagerInterface $entityManagerInterface,
-        TokenStorageInterface $tokenStorageInterface
+        TokenStorageInterface $tokenStorageInterface,
     ): JsonResponse {
         if (!$tokenStorageInterface->getToken()) {
             return $this->json(['message' => 'Unauthorized'], 401);

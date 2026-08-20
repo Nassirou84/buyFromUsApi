@@ -1,15 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\State;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Entity\Wishlist;
 
-class WhishListProcessor implements ProcessorInterface
+class WishlistProcessor implements ProcessorInterface
 {
     public function __construct(
-        private \App\Service\WhishlistService $whishlistService,
+        private \App\Service\WishlistService $wishlistService,
     ) {
     }
 
@@ -17,9 +19,10 @@ class WhishListProcessor implements ProcessorInterface
         mixed $wishlist,
         Operation $operation,
         array $uriVariables = [],
-        array $context = []
+        array $context = [],
     ): Wishlist {
-        $wishlist = $this->whishlistService->createWishlist($wishlist);
+        $wishlist = $this->wishlistService->createWishlist($wishlist);
+
         return $wishlist;
     }
 }

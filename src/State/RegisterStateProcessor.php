@@ -1,19 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\State;
 
-use App\Entity\User;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Entity\User;
 use App\Repository\UserRepository;
 use App\Service\UserService;
+use Exception;
 
 class RegisterStateProcessor implements ProcessorInterface
 {
-
     public function __construct(
         private UserService $userService,
-        private UserRepository $userRepository
+        private UserRepository $userRepository,
     ) {
     }
 
@@ -21,13 +23,14 @@ class RegisterStateProcessor implements ProcessorInterface
         mixed $user,
         Operation $operation,
         array $uriVariables = [],
-        array $context = []
+        array $context = [],
     ): User {
         $userExist = (bool) $this->userRepository->findOneBy(['email' => $user->getEmail()]);
         if ($userExist) {
-            throw new \Exception('Cet email est déjà utilisé.');
+            throw new Exception('Cet email est déjà utilisé.');
         }
         $user = $this->userService->createUser($user);
+
         return $user;
     }
 }

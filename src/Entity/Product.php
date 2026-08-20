@@ -1,6 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
+
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\GetCollection;
@@ -8,6 +11,7 @@ use ApiPlatform\Metadata\Patch;
 use App\Repository\ProductRepository;
 use App\Service\PriceCalculator;
 use App\State\ProductStateProcessor;
+use DateTime;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
@@ -20,11 +24,11 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new GetCollection(
             normalizationContext: ['groups' => ['product:read', 'product:read:details']],
             paginationItemsPerPage: 12,
-            filters: ['products.search_filter', 'products.order_filter', 'products.range_filter']
+            filters: ['products.search_filter', 'products.order_filter', 'products.range_filter'],
         ),
         new \ApiPlatform\Metadata\Post(
             processor: ProductStateProcessor::class,
-            security: "is_granted('ROLE_ADMIN')"
+            security: "is_granted('ROLE_ADMIN')",
         ),
         new \ApiPlatform\Metadata\Put(),
         new GetCollection(
@@ -32,28 +36,29 @@ use Symfony\Component\Serializer\Attribute\Groups;
             routeName: 'app_product_scrape',
             name: 'app_product_scrape',
             paginationEnabled: false,
-            normalizationContext: ['groups' => ['product:read', 'product:read:details']]
+            normalizationContext: ['groups' => ['product:read', 'product:read:details']],
         ),
         new Patch(
-            security: "is_granted('ROLE_ADMIN')"
+            security: "is_granted('ROLE_ADMIN')",
         ),
         new Delete(
-            security: "is_granted('ROLE_ADMIN')"
-        )
+            security: "is_granted('ROLE_ADMIN')",
+        ),
     ],
     normalizationContext: ['groups' => ['product:read', 'product:read:details', 'order:read', 'wishlist:read', 'basket:read']],
-    filters: ['products.search_filter', 'products.order_filter']
+    filters: ['products.search_filter', 'products.order_filter'],
 )]
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
 class Product
 {
-    const SALES_TAX_RATES = 0.18;
+    public const SALES_TAX_RATES = 0.18;
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
     #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read'])]
-    private ?int $id = null;
+    // @phpstan-ignore property.onlyRead
+    private $id;
 
     #[ORM\Column(length: 255)]
     #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read'])]
@@ -61,7 +66,7 @@ class Product
 
     #[ORM\Column]
     #[Groups(['product:read', 'wishlist:read', 'basket:read'])]
-    private ?\DateTime $createdAt = null;
+    private ?DateTime $createdAt = null;
 
     /**
      * @var Collection<int, Photo>
@@ -113,7 +118,7 @@ class Product
 
     #[ORM\Column(nullable: true)]
     #[Groups(['product:read'])]
-    private ?\DateTime $lastScrappingAt = null;
+    private ?DateTime $lastScrappingAt = null;
 
     #[ORM\Column(nullable: true)]
     #[Groups(['product:read:details'])]
@@ -123,15 +128,12 @@ class Product
     #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read'])]
     private ?string $slug = null;
 
-    #[Groups(['product:read', 'product:read:details', 'order:read', 'wishlist:read', 'basket:read'])]
-    private ?float $actualPrice = null;
-
     #[ORM\ManyToOne(inversedBy: 'products')]
     private ?Subcategory $subcategory = null;
 
     public function __construct(
     ) {
-        $this->createdAt = new \DateTime();
+        $this->createdAt = new DateTime();
         $this->photos = new ArrayCollection();
         $this->lastScrappingAt = null;
     }
@@ -153,12 +155,12 @@ class Product
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTime
+    public function getCreatedAt(): ?DateTime
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(\DateTime $createdAt): static
+    public function setCreatedAt(DateTime $createdAt): static
     {
         $this->createdAt = $createdAt;
 
@@ -315,12 +317,12 @@ class Product
         return $this;
     }
 
-    public function getLastScrappingAt(): ?\DateTime
+    public function getLastScrappingAt(): ?DateTime
     {
         return $this->lastScrappingAt;
     }
 
-    public function setLastScrappingAt(?\DateTime $lastScrappingAt): static
+    public function setLastScrappingAt(?DateTime $lastScrappingAt): static
     {
         $this->lastScrappingAt = $lastScrappingAt;
 
@@ -355,13 +357,6 @@ class Product
     public function getActualPrice(): ?float
     {
         return PriceCalculator::calculate($this->usdPrice);
-    }
-
-    public function setActualPrice(): static
-    {
-        $this->actualPrice = PriceCalculator::calculate($this->usdPrice);
-
-        return $this;
     }
 
     public function getSubcategory(): ?Subcategory

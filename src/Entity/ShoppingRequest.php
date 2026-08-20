@@ -1,11 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use App\Repository\ShoppingRequestRepository;
+use DateTime;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -24,18 +27,18 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ORM\Entity(repositoryClass: ShoppingRequestRepository::class)]
 class ShoppingRequest
 {
-
-    const STATUS_SUBMITTED = 'submitted';
-    const STATUS_IN_PROGRESS = 'in_progress';
-    const STATUS_ORDER_PLACED = 'order_placed';
-    const STATUS_CANCELLED = 'cancelled';
-    const STATUS_COMPLETED = 'completed';
+    public const STATUS_SUBMITTED = 'submitted';
+    public const STATUS_IN_PROGRESS = 'in_progress';
+    public const STATUS_ORDER_PLACED = 'order_placed';
+    public const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_COMPLETED = 'completed';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
     #[Groups('shopping_request:read')]
-    private ?int $id = null;
+    // @phpstan-ignore property.onlyRead
+    private $id;
 
     #[ORM\Column(length: 255)]
     #[Groups(['shopping_request:read', 'shopping_request:write'])]
@@ -71,10 +74,10 @@ class ShoppingRequest
 
     #[ORM\Column]
     #[Groups(['shopping_request:read'])]
-    private ?\DateTime $createdAt = null;
+    private ?DateTime $createdAt = null;
 
     #[ORM\Column(nullable: true)]
-    private ?\DateTime $updatedAt = null;
+    private ?DateTime $updatedAt = null;
 
     #[ORM\Column(length: 255)]
     #[Groups(['shopping_request:read'])]
@@ -94,8 +97,8 @@ class ShoppingRequest
 
     public function __construct()
     {
-        $this->createdAt = new \DateTime();
-        $this->updatedAt = new \DateTime();
+        $this->createdAt = new DateTime();
+        $this->updatedAt = new DateTime();
         $this->status = 'submitted';
     }
 
@@ -200,24 +203,24 @@ class ShoppingRequest
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTime
+    public function getCreatedAt(): ?DateTime
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(\DateTime $createdAt): static
+    public function setCreatedAt(DateTime $createdAt): static
     {
         $this->createdAt = $createdAt;
 
         return $this;
     }
 
-    public function getUpdatedAt(): ?\DateTime
+    public function getUpdatedAt(): ?DateTime
     {
         return $this->updatedAt;
     }
 
-    public function setUpdatedAt(?\DateTime $updatedAt): static
+    public function setUpdatedAt(?DateTime $updatedAt): static
     {
         $this->updatedAt = $updatedAt;
 

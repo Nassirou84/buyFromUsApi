@@ -1,27 +1,32 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service;
+
 use Stichoza\GoogleTranslate\GoogleTranslate;
+
 class TranslatorService
 {
-  private GoogleTranslate $googleTranslate;
-  public function __construct(
-  ) {
-    $this->googleTranslate = new GoogleTranslate();
-  }
+    private GoogleTranslate $googleTranslate;
 
-  public function translate(string $text, string $targetLanguage): string
-  {
-    return $this->googleTranslate->setTarget($targetLanguage)->translate($text);
-  }
+    public function __construct(
+    ) {
+        $this->googleTranslate = new GoogleTranslate();
+    }
 
-  public function translateProductData(array $productData, string $targetLanguage = 'fr'): array
-  {
-    $productData['title'] = $this->translate($productData['title'] ?? '', $targetLanguage);
-    $productData['description'] = $this->translate($productData['description'] ?? '', $targetLanguage);
-    $productData['customer_says'] = $this->translate($productData['customer_says'] ?? '', $targetLanguage);
-    $productData['features'] = array_map(fn($feature) => $this->translate($feature, $targetLanguage), $productData['features'] ?? []);
+    public function translate(string $text, string $targetLanguage): string
+    {
+        return $this->googleTranslate->setTarget($targetLanguage)->translate($text);
+    }
 
-    return $productData;
-  }
+    public function translateProductData(array $productData, string $targetLanguage = 'fr'): array
+    {
+        $productData['title'] = $this->translate($productData['title'] ?? '', $targetLanguage);
+        $productData['description'] = $this->translate($productData['description'] ?? '', $targetLanguage);
+        $productData['customer_says'] = $this->translate($productData['customer_says'] ?? '', $targetLanguage);
+        $productData['features'] = array_map(fn ($feature) => $this->translate($feature, $targetLanguage), $productData['features'] ?? []);
+
+        return $productData;
+    }
 }

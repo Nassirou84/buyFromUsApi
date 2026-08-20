@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Service;
 
 use App\Repository\UserRepository;
@@ -35,7 +37,7 @@ class TokenService
         return $token;
     }
 
-    public function generateCode(): string
+    public function generateCode(): int
     {
         return rand(100000, 999999);
     }

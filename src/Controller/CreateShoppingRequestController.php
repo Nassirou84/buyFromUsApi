@@ -1,15 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
 
 use App\Entity\ShoppingRequest;
 use App\Service\FileUploader;
 use App\Service\UniqUidGenerator;
 use Doctrine\ORM\EntityManagerInterface;
+use Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+
+use function count;
 
 final class CreateShoppingRequestController extends AbstractController
 {
@@ -18,9 +23,9 @@ final class CreateShoppingRequestController extends AbstractController
         FileUploader $fileUploader,
         EntityManagerInterface $entityManagerInterface,
         UniqUidGenerator $uniqUidGenerator,
-        TokenStorageInterface $tokenStorageInterface
+        TokenStorageInterface $tokenStorageInterface,
     ): JsonResponse {
-        //Get Image from the request
+        // Get Image from the request
         $files = $request->files;
         $pictureDirectory = $this->getParameter('picture_directory');
         $siteUrl = $this->getParameter('site_url');
@@ -28,11 +33,11 @@ final class CreateShoppingRequestController extends AbstractController
 
         $images = [];
 
-        $shoppingRequest = new \App\Entity\ShoppingRequest();
+        $shoppingRequest = new ShoppingRequest();
         if (
-            $request->request->has('title') && $request->request->has('description') && $request->request->has('quantity') && $request->request->has('fullName') && $request->request->has('email') && $request->request->has('phone') &&
-            $request->request->has('address') &&
-            $request->request->has('preferredContact')
+            $request->request->has('title') && $request->request->has('description') && $request->request->has('quantity') && $request->request->has('fullName') && $request->request->has('email') && $request->request->has('phone')
+            && $request->request->has('address')
+            && $request->request->has('preferredContact')
         ) {
             $shoppingRequest->setTitle((string) $request->request->get('title'));
             $shoppingRequest->setDescription((string) $request->request->get('description'));
@@ -43,7 +48,7 @@ final class CreateShoppingRequestController extends AbstractController
             $shoppingRequest->setAddress((string) $request->request->get('address'));
             $shoppingRequest->setPreferredContact((string) $request->request->get('preferredContact'));
         } else {
-            throw new \Exception('Veuillez remplir tous les champs obligatoires.');
+            throw new Exception('Veuillez remplir tous les champs obligatoires.');
         }
 
         $images = [];
@@ -53,15 +58,19 @@ final class CreateShoppingRequestController extends AbstractController
             $images[] = $uploadedIcon;
         }
 
-        if (count($images) === 0) {
-            throw new \Exception('Veuillez envoyer au moins une image.');
+        if (0 === count($images)) {
+            throw new Exception('Veuillez envoyer au moins une image.');
         }
 
         $token = $tokenStorageInterface->getToken();
-        if ($token) {
-            $currentUser = $token->getUser();
-            $shoppingRequest->setCustomer($currentUser);
+        if (!$token) {
+            throw new Exception('Utilisateur non authentifié.');
         }
+        $currentUser = $token->getUser();
+        if (!$currentUser instanceof \App\Entity\User) {
+            throw new Exception('Utilisateur non authentifié.');
+        }
+        $shoppingRequest->setCustomer($currentUser);
 
         $shoppingRequest->setImages($images);
         $shoppingRequest->setStatus(ShoppingRequest::STATUS_SUBMITTED);
