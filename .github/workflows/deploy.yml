@@ -1,0 +1,40 @@
+name: Deploy Symfony to Hostinger
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Build and Deploy to Production
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH Exec
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          username: ${{ secrets.HOSTINGER_SSH_USER }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          script: |
+            # 1. Navigate to domain directory
+            cd public_html
+
+            # 2. Pull latest main branch changes
+            git fetch origin main
+            git reset --hard origin/main
+
+            # 3. Install Symfony PHP dependencies (optimizing autoloader for prod)
+            composer install --no-dev --optimize-autoloader --no-interaction
+
+            # 4. Run Doctrine Database Migrations safely
+            php bin/console doctrine:schema:update --force --env=prod
+
+            # 5. Clear and warmup Symfony Application Cache
+            php bin/console cache:clear --env=prod
+            php bin/console cache:warmup --env=prod
