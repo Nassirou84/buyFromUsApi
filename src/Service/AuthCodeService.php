@@ -21,7 +21,6 @@ class AuthCodeService
     public function validateAuthCode(string $inputCode, string $storedCode): bool
     {
         $inputCode = hash('sha256', $inputCode);
-
         return $inputCode === $storedCode;
     }
 
@@ -30,10 +29,9 @@ class AuthCodeService
         $authCode = $this->generateAuthCode();
         $hashedAuthCode = hash('sha256', $authCode);
         $cacheKey = 'auth_code_' . $userId;
-        // Store the auth code in the cache with a 5-minute expiration
         $this->cacheInterface->get($cacheKey, static function () use ($hashedAuthCode) {
             return $hashedAuthCode;
-        }, 300);
+        }, 900);
 
         return $authCode;
     }
@@ -53,7 +51,6 @@ class AuthCodeService
         if (null === $storedCode) {
             return false; // No auth code found for this user
         }
-
         return $this->validateAuthCode($inputCode, $storedCode);
     }
 

@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-// src/Controller/Api/AuthController.php
-
 namespace App\Controller;
 
 use App\Entity\User;
@@ -44,6 +42,40 @@ class AuthController extends AbstractController
   public function googleLogin(Request $request, GoogleAuthenticator $authenticator): Response
   {
     return new Response('', 200);
+  }
+
+  // Resend 2FA code endpoint
+  #[Route('/api/resend-2fa-code', name: 'api_resend_2fa_code', methods: ['POST', 'OPTIONS'])]
+  public function resend2FACode(
+    Request $request,
+    AuthCodeService $authCodeService,
+    MessageBusInterface $messageBusInterface,
+    UserRepository $userRepository,
+  ): JsonResponse {
+    $data = json_decode($request->getContent(), true);
+    $email = $data['email'] ?? '';
+
+    $user = $userRepository->findOneBy(['email' => $email]);
+
+    if (!$user) {
+      return $this->json(['message' => 'User not found'], 404);
+    }
+    $authCodeService->removeAuthCode($user->getId());
+    $code = $authCodeService->generateAndStoreAuthCode($user->getId());
+    $sendMethod = $user->getTwoFactorContactMethod();
+
+    if ('email' === $sendMethod) {
+      $messageBusInterface->dispatch(
+        new TwoFactorCodeMessage($user->getEmail(), $code, $user->getFullName()),
+      );
+    }
+
+    return $this->json([
+      'message' => 'A new 2FA code has been sent to your ' . $sendMethod . '.',
+      'TFARequired' => true,
+      'email' => $user->getEmail(),
+      'success' => true,
+    ], 200);
   }
 
   #[Route('/api/user_login', name: 'api_login', methods: ['POST', 'OPTIONS'])]
@@ -106,7 +138,7 @@ class AuthController extends AbstractController
   {
     $data = json_decode($request->getContent(), true);
     $email = $data['email'] ?? '';
-    $authCode = $data['authCode'] ?? '';
+    $authCode = $data['code'] ?? '';
     $fingerprint = $data['fingerprint'] ?? '';
 
     $user = $this->userRepository->findOneBy(['email' => $email]);

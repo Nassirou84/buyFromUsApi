@@ -4,16 +4,28 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Delete;
 use App\Repository\TrustedDeviceRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
+#[ApiResource(
+    operations: [
+        new Delete(
+            security: "is_granted('ROLE_USER')"
+        )
+    ],
+    denormalizationContext: ['groups' => ['trusted_device:read', 'user:login:read']],
+)]
 #[ORM\Entity(repositoryClass: TrustedDeviceRepository::class)]
 class TrustedDevice
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['trusted_device:read', 'user:login:read'])]
     // @phpstan-ignore property.onlyRead
     private $id;
 
@@ -21,15 +33,19 @@ class TrustedDevice
     private ?string $visitorId = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['trusted_device:read', 'user:login:read'])]
     private ?string $language = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['trusted_device:read', 'user:login:read'])]
     private ?string $platform = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['trusted_device:read', 'user:login:read'])]
     private ?string $timeZone = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['trusted_device:read', 'user:login:read'])]
     private ?string $userAgent = null;
 
     #[ORM\Column]

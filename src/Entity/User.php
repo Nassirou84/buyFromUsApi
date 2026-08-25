@@ -195,6 +195,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * @var Collection<int, TrustedDevice>
      */
     #[ORM\OneToMany(targetEntity: TrustedDevice::class, mappedBy: 'user')]
+    #[Groups(['user:login:read'])]
     private Collection $trustedDevices;
 
     public function __construct()
