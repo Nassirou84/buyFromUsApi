@@ -24,7 +24,7 @@ jobs:
           port: ${{ secrets.HOSTINGER_SSH_PORT }}
           script: |
             # 1. Navigate to domain directory
-            cd public_html
+            cd domains/apikariaire.in/public_html/buyFromUsApi
 
             # 2. Pull latest main branch changes
             git fetch origin main
