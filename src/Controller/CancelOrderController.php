@@ -22,7 +22,7 @@ final class CancelOrderController extends AbstractController
                 return $this->json(['status' => 'error', 'message' => 'Failed to cancel order']);
             }
 
-            return $this->json(['status' => 'success', 'message' => 'Order cancelled successfully']);
+            return $this->json(['status' => 'success', 'message' => 'Your order has been cancelled successfully']);
         } catch (Exception $e) {
             return $this->json(['status' => 'error', 'message' => $e->getMessage()]);
         }
