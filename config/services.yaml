@@ -77,12 +77,6 @@ services:
         autoconfigure: true
         public: true
 
-    App\Filter\:
-        resource: '../src/Filter/'
-        autowire: true
-        autoconfigure: true
-        public: true
-
     App\Command\ProcessEmailQueueCommand:
         arguments:
             $environment: '%env(APP_ENV)%'
