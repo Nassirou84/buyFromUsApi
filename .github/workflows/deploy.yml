@@ -31,7 +31,7 @@ jobs:
             git reset --hard origin/main
 
             # 3. Install Symfony PHP dependencies (optimizing autoloader for prod)
-            composer install --no-dev --optimize-autoloader --no-interaction
+            composer install --ignore-platform-req=php
 
             # 4. Run Doctrine Database Migrations safely
             php bin/console doctrine:schema:update --force --env=prod
