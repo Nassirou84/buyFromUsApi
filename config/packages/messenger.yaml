@@ -12,6 +12,8 @@ framework:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
                 options:
                     queue_name: default
+
+            failed: 'doctrine://default?queue_name=failed'
             # failed: 'doctrine://default?queue_name=failed'
             # sync: 'sync://'
 
