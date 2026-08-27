@@ -73,8 +73,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\GeneratedValue]
     #[ORM\Column]
     #[Groups(['user:read'])]
-    // @phpstan-ignore property.onlyRead
-    private $id;
+    /** @phpstan-ignore-next-line */
+    private ?int $id = null;
 
     #[ORM\Column(length: 180)]
     #[Groups(['user:create', 'user:login:read'])]
@@ -170,12 +170,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToOne(mappedBy: 'user', cascade: ['persist', 'remove'])]
     private ?Basket $basket = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $passwordResetToken = null;
-
-    #[ORM\Column(nullable: true)]
-    private ?DateTime $passwordResetTokenExpiredAt = null;
-
     #[ORM\Column(nullable: true)]
     #[Groups(['user:login:read', 'user:edit'])]
     private ?array $addresses = [];
@@ -183,9 +177,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(nullable: true)]
     #[Groups(['user:login:read', 'user:edit'])]
     private ?bool $twoFactor = null;
-
-    #[ORM\Column(length: 8, nullable: true)]
-    private ?string $twoFactorCode = null;
 
     #[ORM\Column(length: 10, nullable: true)]
     #[Groups(['user:login:read', 'user:edit'])]
@@ -579,30 +570,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    public function getPasswordResetToken(): ?string
-    {
-        return $this->passwordResetToken;
-    }
-
-    public function setPasswordResetToken(?string $passwordResetToken): static
-    {
-        $this->passwordResetToken = $passwordResetToken;
-
-        return $this;
-    }
-
-    public function getPasswordResetTokenExpiredAt(): ?DateTime
-    {
-        return $this->passwordResetTokenExpiredAt;
-    }
-
-    public function setPasswordResetTokenExpiredAt(?DateTime $passwordResetTokenExpiredAt): static
-    {
-        $this->passwordResetTokenExpiredAt = $passwordResetTokenExpiredAt;
-
-        return $this;
-    }
-
     public function getFullName(): string
     {
         return trim($this->firstName . ' ' . $this->lastName);
@@ -629,18 +596,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setTwoFactor(?bool $twoFactor): static
     {
         $this->twoFactor = $twoFactor;
-
-        return $this;
-    }
-
-    public function getTwoFactorCode(): ?string
-    {
-        return $this->twoFactorCode;
-    }
-
-    public function setTwoFactorCode(?string $twoFactorCode): static
-    {
-        $this->twoFactorCode = $twoFactorCode;
 
         return $this;
     }

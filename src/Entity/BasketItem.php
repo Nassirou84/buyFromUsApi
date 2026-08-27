@@ -16,8 +16,8 @@ class BasketItem
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    // @phpstan-ignore property.onlyRead
-    private $id;
+    /** @phpstan-ignore-next-line */
+    private ?int $id = null;
 
     #[ORM\Column]
     private ?DateTime $createdAt = null;

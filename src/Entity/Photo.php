@@ -33,8 +33,8 @@ class Photo
     #[ORM\GeneratedValue]
     #[ORM\Column]
     #[Groups(['photo:read'])]
-    // @phpstan-ignore property.onlyRead
-    private $id;
+    /** @phpstan-ignore-next-line */
+    private ?int $id = null;
 
     #[ORM\Column]
     private ?DateTimeImmutable $createdAt = null;

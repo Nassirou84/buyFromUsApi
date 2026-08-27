@@ -37,8 +37,8 @@ class ShoppingRequest
     #[ORM\GeneratedValue]
     #[ORM\Column]
     #[Groups('shopping_request:read')]
-    // @phpstan-ignore property.onlyRead
-    private $id;
+    /** @phpstan-ignore-next-line */
+    private ?int $id = null;
 
     #[ORM\Column(length: 255)]
     #[Groups(['shopping_request:read', 'shopping_request:write'])]

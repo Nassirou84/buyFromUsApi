@@ -48,8 +48,8 @@ class Category
     #[ORM\GeneratedValue]
     #[ORM\Column]
     #[Groups(['category:read', 'product:read:details'])]
-    // @phpstan-ignore property.onlyRead
-    private $id;
+    /** @phpstan-ignore-next-line */
+    private ?int $id = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     #[Groups(['category:read', 'category:write', 'product:read:details'])]

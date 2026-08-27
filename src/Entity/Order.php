@@ -76,8 +76,8 @@ class Order
     #[ORM\GeneratedValue]
     #[ORM\Column]
     #[Groups(['order:read'])]
-    // @phpstan-ignore property.onlyRead
-    private $id;
+    /** @phpstan-ignore-next-line */
+    private ?int $id = null;
 
     #[ORM\Column]
     #[Groups(['order:write', 'order:read'])]

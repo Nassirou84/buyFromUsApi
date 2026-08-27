@@ -57,8 +57,8 @@ class Product
     #[ORM\GeneratedValue]
     #[ORM\Column]
     #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read'])]
-    // @phpstan-ignore property.onlyRead
-    private $id;
+    /** @phpstan-ignore-next-line */
+    private ?int $id = null;
 
     #[ORM\Column(length: 255)]
     #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read'])]

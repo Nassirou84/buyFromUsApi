@@ -20,8 +20,8 @@ class OrderItem
     #[ORM\GeneratedValue]
     #[ORM\Column]
     #[Groups(['order:read'])]
-    // @phpstan-ignore property.onlyRead
-    private $id;
+    /** @phpstan-ignore-next-line */
+    private ?int $id = null;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]

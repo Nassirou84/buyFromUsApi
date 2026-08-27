@@ -68,8 +68,8 @@ class Basket
     #[ORM\GeneratedValue]
     #[ORM\Column]
     #[Groups(['basket:read'])]
-    // @phpstan-ignore property.onlyRead
-    private $id;
+    /** @phpstan-ignore-next-line */
+    private ?int $id;
 
     #[ORM\OneToOne(inversedBy: 'basket', cascade: ['persist', 'remove'])]
     #[ORM\JoinColumn(nullable: false)]

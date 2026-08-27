@@ -72,8 +72,8 @@ class PaymentMethod
     #[ORM\GeneratedValue]
     #[ORM\Column]
     #[Groups(['card:read', 'card:list'])]
-    // @phpstan-ignore property.onlyRead
-    private $id;
+    /** @phpstan-ignore-next-line */
+    private ?int $id = null;
 
     #[ORM\Column(length: 255)]
     #[Groups(['card:read', 'card:list', 'card:write'])]
