@@ -1,6 +1,7 @@
 api_platform:
     title: BuyFromUs API
     version: 1.0.0
+    enable_swagger_ui: true
     swagger:
         api_keys:
             JWT:

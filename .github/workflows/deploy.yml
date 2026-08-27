@@ -34,7 +34,7 @@ jobs:
             composer install --no-dev --optimize-autoloader --no-interaction
 
             # 4. Run Doctrine Database Migrations safely
-            php bin/console doctrine:schema:update --force --env=prod
+            php bin/console d:s:u --f
 
             # 5. Clear and warmup Symfony Application Cache
             php bin/console cache:clear --env=prod
