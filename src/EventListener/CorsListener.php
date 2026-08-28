@@ -19,6 +19,7 @@ class CorsListener
     private array $allowedOrigins = [
         'http://localhost:3000',
         'http://127.0.0.1:3000',
+        'https://buy-from-us-self.vercel.app/'
     ];
 
     public function onKernelRequest(RequestEvent $event): void

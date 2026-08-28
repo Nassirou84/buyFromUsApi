@@ -26,8 +26,8 @@ class TrustedDevice
     #[ORM\GeneratedValue]
     #[ORM\Column]
     #[Groups(['trusted_device:read', 'user:login:read'])]
-    // @phpstan-ignore property.onlyRead
-    private $id;
+    /** @phpstan-ignore-next-line */
+    private ?int $id = null;
 
     #[ORM\Column(length: 255)]
     private ?string $visitorId = null;
