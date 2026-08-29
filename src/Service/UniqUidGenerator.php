@@ -6,12 +6,14 @@ namespace App\Service;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\String\Slugger\SluggerInterface;
+use Psr\Cache\CacheItemPoolInterface;
 
 class UniqUidGenerator
 {
     public function __construct(
         private SluggerInterface $slugger,
         private EntityManagerInterface $entityManager,
+        private CacheItemPoolInterface $cacheInterface
     ) {
     }
 
@@ -40,11 +42,13 @@ class UniqUidGenerator
     public function generateUniqueTokenForUser(): string
     {
         $token = '';
-        $userRepository = $this->entityManager->getRepository('App\Entity\User');
 
         do {
             $token = substr(uniqid(), -10);
-        } while ($userRepository->findOneBy(['passwordResetToken' => $token]));
+            $exists = $this->cacheInterface->hasItem(
+                hash('sha256', $token)
+            );
+        } while ($exists);
 
         return $token;
     }

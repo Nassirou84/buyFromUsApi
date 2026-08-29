@@ -8,13 +8,12 @@ use App\Entity\RefreshToken;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use App\Service\BasketService;
-use DateTime;
 use Doctrine\ORM\EntityManagerInterface;
-use Exception;
 use Gesdinet\JWTRefreshTokenBundle\Generator\RefreshTokenGeneratorInterface;
 use Gesdinet\JWTRefreshTokenBundle\Model\RefreshTokenManagerInterface;
 use Google\Client;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -85,7 +84,7 @@ class GoogleAuthenticator extends AbstractAuthenticator implements Authenticatio
             );
         } catch (AuthenticationException $e) {
             throw $e;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             throw new AuthenticationException('Google authentication failed: ' . $e->getMessage());
         }
     }
@@ -96,7 +95,6 @@ class GoogleAuthenticator extends AbstractAuthenticator implements Authenticatio
         $googleId = $payload['sub'];
         $firstName = $payload['given_name'] ?? '';
         $lastName = $payload['family_name'] ?? '';
-        $avatarUrl = $payload['picture'] ?? null;
 
         $existingUser = $this->userRepository->findOneBy(['email' => $email]);
 
@@ -147,7 +145,7 @@ class GoogleAuthenticator extends AbstractAuthenticator implements Authenticatio
                 $this->googleClient->verifyIdToken($token);
 
                 return $token;
-            } catch (Exception $e) {
+            } catch (\Exception $e) {
                 // Not a valid Google ID token
             }
         }
@@ -171,14 +169,28 @@ class GoogleAuthenticator extends AbstractAuthenticator implements Authenticatio
         $normalizedUser = $this->objectNormalizer->normalize($user, null, ['groups' => ['user:read', 'user:login:read']]);
 
         // Prepare response with both tokens
-        return new JsonResponse([
+        $response = new JsonResponse([
             'success' => true,
-            'token' => $accessToken,
-            'refresh_token' => $refreshTokenString,
+            'access_token' => $accessToken,
             'token_type' => 'Bearer',
             'expires_in' => 3600, // 1 hour in seconds
             'user' => $normalizedUser,
         ]);
+
+        $response->headers->setCookie($this->createRefreshCookie($refreshTokenString));
+
+        return $response;
+    }
+
+    private function createRefreshCookie(string $refreshTokenString): Cookie
+    {
+        return Cookie::create('refresh_token')
+            ->withValue($refreshTokenString)
+            ->withExpires(new \DateTimeImmutable('+30 days'))
+            ->withPath('/')
+            ->withHttpOnly(true)
+            ->withSecure(true)
+            ->withSameSite(Cookie::SAMESITE_NONE);
     }
 
     private function generateRefreshToken(User $user): string
@@ -209,16 +221,16 @@ class GoogleAuthenticator extends AbstractAuthenticator implements Authenticatio
 
             $refreshToken->setRefreshToken($refreshTokenString);
             $refreshToken->setUsername($user->getEmail());
-            $refreshToken->setValid((new DateTime())->modify('+30 days'));
+            $refreshToken->setValid((new \DateTime())->modify('+30 days'));
 
             // RefreshTokenManagerInterface guarantees that save() is available.
             $this->refreshTokenManager->save($refreshToken);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             // Fallback: Use EntityManager directly
             $refreshToken = new RefreshToken();
             $refreshToken->setRefreshToken($refreshTokenString);
             $refreshToken->setUsername($user->getEmail());
-            $refreshToken->setValid((new DateTime())->modify('+30 days'));
+            $refreshToken->setValid((new \DateTime())->modify('+30 days'));
 
             $this->entityManager->persist($refreshToken);
             $this->entityManager->flush();
