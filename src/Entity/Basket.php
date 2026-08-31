@@ -72,7 +72,7 @@ class Basket
     private ?int $id;
 
     #[ORM\OneToOne(inversedBy: 'basket', cascade: ['persist', 'remove'])]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: true)]
     private ?User $user = null;
 
     #[ORM\Column]
@@ -131,6 +131,13 @@ class Basket
     public function getBasketItems(): Collection
     {
         return $this->basketItems;
+    }
+
+    public function setBasketItems(array $basketItems): static
+    {
+        $this->basketItems = new ArrayCollection($basketItems);
+
+        return $this;
     }
 
     public function addBasketItem(BasketItem $basketItem): static

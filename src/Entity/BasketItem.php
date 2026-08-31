@@ -16,7 +16,6 @@ class BasketItem
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    /** @phpstan-ignore-next-line */
     private ?int $id = null;
 
     #[ORM\Column]
@@ -47,6 +46,13 @@ class BasketItem
         $this->createdAt = new DateTime();
         $this->priceDropNotifiedAt = new DateTime();
         $this->quantity = 1;
+    }
+
+    public function setId(?int $id): static
+    {
+        $this->id = $id;
+
+        return $this;
     }
 
     public function getId(): ?int
@@ -136,5 +142,19 @@ class BasketItem
         $this->quantity = $quantity;
 
         return $this;
+    }
+
+    public function jsonSerialize(): array
+    {
+        return [
+            'id' => $this->id,
+            'createdAt' => $this->createdAt?->format(\DateTimeInterface::ATOM),
+            'priceAtAdd' => $this->priceAtAdd,
+            'variant' => $this->variant,
+            'priceDropNotifiedAt' => $this->priceDropNotifiedAt?->format(\DateTimeInterface::ATOM),
+            'product' => $this->product,
+            'basket' => $this->basket?->getUid(),
+            'quantity' => $this->quantity,
+        ];
     }
 }

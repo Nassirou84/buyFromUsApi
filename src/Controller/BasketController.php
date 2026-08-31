@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Repository\BasketItemRepository;
+use App\Service\GuestBasketService;
 use App\Repository\ProductRepository;
 use App\Repository\WishlistRepository;
 use App\Service\BasketService;
 use App\Service\WishlistService;
-use Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -25,25 +25,27 @@ final class BasketController extends AbstractController
         Request $request,
         BasketService $basketService,
         ProductRepository $productRepository,
+        GuestBasketService $guestBasketService,
     ): JsonResponse {
         $user = $this->getUser();
-        if (!$user instanceof \App\Entity\User) {
-            return $this->json(['success' => false, 'error' => 'Utilisateur non authentifié.'], 401);
-        }
-
         $params = json_decode($request->getContent(), true);
         $productId = $params['productId'] ?? null;
         if (!$productId) {
             return $this->json(['success' => false, 'error' => 'ID du produit manquant.'], 400);
         }
-        // Get the product from the repository
         $product = $productRepository->find($productId);
         if (!$product) {
             return $this->json(['success' => false, 'error' => 'Produit non trouvé.'], 404);
         }
-
         $variantId = $params['variant'] ?? null;
         $quantity = $params['quantity'] ?? 1;
+        if (!$user instanceof \App\Entity\User) {
+            $guestBasketUid = $request->cookies->get('guest_basket_uid')
+                ?? null;
+            $basketItem = $guestBasketService->addToBasket($product, $guestBasketUid, $quantity, $variantId);
+            return $this->json(['success' => true, 'message' => 'Ajouté au panier', 'basketItem' => $basketItem], 200);
+
+        }
 
         $basketItem = $basketService->addToBasket($user, $product, $quantity, $variantId);
 
@@ -55,23 +57,24 @@ final class BasketController extends AbstractController
         int $basketItemId,
         BasketService $basketService,
         BasketItemRepository $basketItemRepository,
+        GuestBasketService $guestBasketService,
+        Request $request,
     ): JsonResponse {
         $user = $this->getUser();
-        if (!$user instanceof \App\Entity\User) {
-            return $this->json(['success' => false, 'error' => 'Utilisateur non authentifié.'], 401);
-        }
         $basketItem = $basketItemRepository->find($basketItemId);
         if (!$basketItem) {
             return $this->json(['success' => false, 'error' => 'Élément du panier non trouvé.'], 404);
         }
 
-        try {
-            $basketService->removeFromBasket($user, $basketItem);
-
+        if (!$user instanceof \App\Entity\User) {
+            $guestBasketUid = $request->cookies->get('guest_basket_uid')
+                ?? null;
+            $guestBasketService->removeFromBasket($guestBasketUid, $basketItem);
             return $this->json(['success' => true, 'message' => 'Élément retiré du panier'], 200);
-        } catch (Exception $e) {
-            return $this->json(['success' => false, 'error' => $e->getMessage()], 400);
         }
+
+        $basketService->removeFromBasket($user, $basketItem);
+        return $this->json(['success' => true, 'message' => 'Élément retiré du panier'], 200);
     }
 
     #[Route('/update-quantity/{basketItemId}', name: 'app_update_basket_item_quantity', methods: ['POST'])]
@@ -80,47 +83,51 @@ final class BasketController extends AbstractController
         BasketItemRepository $basketItemRepository,
         Request $request,
         BasketService $basketService,
+        GuestBasketService $guestBasketService,
     ): JsonResponse {
         $user = $this->getUser();
-        if (!$user instanceof \App\Entity\User) {
-            return $this->json(['success' => false, 'error' => 'Utilisateur non authentifié.'], 401);
-        }
-        $basketItem = $basketItemRepository->find($basketItemId);
-        if (!$basketItem) {
-            return $this->json(['success' => false, 'error' => 'Élément du panier non trouvé.'], 404);
-        }
-
         $params = json_decode($request->getContent(), true);
         $newQuantity = $params['quantity'] ?? null;
 
         if (null === $newQuantity || !is_int($newQuantity) || $newQuantity < 1) {
             return $this->json(['success' => false, 'error' => 'Quantité invalide.'], 400);
         }
+        $basketItem = $basketItemRepository->find($basketItemId);
+        if (!$basketItem) {
+            return $this->json(['success' => false, 'error' => 'Élément du panier non trouvé.'], 404);
 
-        try {
-            $basketItem = $basketService->updateBasketItemQuantity($user, $basketItem, $newQuantity);
-
-            return $this->json(['success' => true, 'message' => 'Quantité mise à jour', 'newQuantity' => $basketItem->getQuantity()], 200);
-        } catch (Exception $e) {
-            return $this->json(['success' => false, 'error' => $e->getMessage()], 400);
         }
+
+        if (!$user instanceof \App\Entity\User) {
+            $guestBasketUid = $request->cookies->get('guest_basket_uid')
+                ?? null;
+            $basketItem = $guestBasketService->updateBasketItemQuantity($guestBasketUid, $basketItem, $newQuantity);
+            return $this->json(['success' => true, 'message' => 'Quantité mise à jour', 'newQuantity' => $basketItem->getQuantity()], 200);
+        }
+
+        $basketItem = $basketService->updateBasketItemQuantity($user, $basketItem, $newQuantity);
+
+        return $this->json(['success' => true, 'message' => 'Quantité mise à jour', 'newQuantity' => $basketItem->getQuantity()], 200);
     }
 
     #[Route('/clear', name: 'app_clear_basket', methods: ['POST'])]
-    public function clearBasket(BasketService $basketService): JsonResponse
-    {
+    public function clearBasket(
+        BasketService $basketService,
+        GuestBasketService $guestBasketService,
+        Request $request,
+    ): JsonResponse {
         $user = $this->getUser();
         if (!$user instanceof \App\Entity\User) {
-            return $this->json(['success' => false, 'error' => 'Utilisateur non authentifié.'], 401);
-        }
-
-        try {
-            $basketService->clearBasket($user);
-
+            $guestBasketUid = $request->cookies->get('guest_basket_uid')
+                ?? null;
+            $guestBasketService->clearBasket($guestBasketUid);
             return $this->json(['success' => true, 'message' => 'Panier vidé avec succès'], 200);
-        } catch (Exception $e) {
-            return $this->json(['success' => false, 'error' => $e->getMessage()], 400);
         }
+
+        $basketService->clearBasket($user);
+
+        return $this->json(['success' => true, 'message' => 'Panier vidé avec succès'], 200);
+
     }
 
     #[Route('/move-to-basket/{wishlistId}', name: 'app_move_wishlist_to_basket', methods: ['POST'])]
@@ -128,10 +135,15 @@ final class BasketController extends AbstractController
         int $wishlistId,
         WishlistService $wishlistService,
         WishlistRepository $wishlistRepository,
+        GuestBasketService $guestBasketService,
+        Request $request,
     ): JsonResponse {
         $user = $this->getUser();
         if (!$user instanceof \App\Entity\User) {
-            return $this->json(['success' => false, 'error' => 'Utilisateur non authentifié.'], 401);
+            $guestBasketUid = $request->cookies->get('guest_basket_uid')
+                ?? null;
+            $guestBasketService->moveWishlistToBasket($guestBasketUid, $wishlistRepository->find($wishlistId));
+            return $this->json(['success' => true, 'message' => 'Élément déplacé vers le panier'], 200);
         }
 
         $wishlist = $wishlistRepository->find($wishlistId);
@@ -143,7 +155,7 @@ final class BasketController extends AbstractController
             $wishlistService->moveWishlistToBasket($wishlist);
 
             return $this->json(['success' => true, 'message' => 'Élément déplacé vers le panier'], 200);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return $this->json(['success' => false, 'error' => $e->getMessage()], 400);
         }
     }
