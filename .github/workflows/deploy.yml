@@ -33,9 +33,12 @@ jobs:
             # 3. Install Symfony PHP dependencies (optimizing autoloader for prod)
             composer install --no-dev --optimize-autoloader --no-interaction
 
+            # 3.1. Dump Symfony environment variables for production
+            composer dump-env prod
+
             # 4. Run Doctrine Database Migrations safely
             php bin/console d:s:u -f
 
             # 5. Clear and warmup Symfony Application Cache
-            php bin/console cache:clear --env=prod
-            php bin/console cache:warmup --env=prod
+            APP_ENV=prod APP_DEBUG=0 php bin/console cache:clear --env=prod
+            APP_ENV=prod APP_DEBUG=0 php bin/console cache:warmup --env=prod
