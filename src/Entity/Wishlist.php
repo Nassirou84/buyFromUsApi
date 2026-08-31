@@ -6,6 +6,7 @@ namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Link;
+use App\Controller\RemoveProductFromWhistlistController;
 use App\Repository\WishlistRepository;
 use DateTime;
 use Doctrine\DBAL\Types\Types;
@@ -23,6 +24,11 @@ use Symfony\Component\Serializer\Attribute\Groups;
                     fromProperty: 'wishlists',
                 ),
             ],
+        ),
+        new \ApiPlatform\Metadata\Post(
+            security: "is_granted('ROLE_USER')",
+            controller: RemoveProductFromWhistlistController::class,
+            uriTemplate: '/wishlist/remove-product',
         ),
         new \ApiPlatform\Metadata\Post(
             security: "is_granted('ROLE_USER')",

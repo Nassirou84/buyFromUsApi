@@ -80,4 +80,12 @@ class UserService
         $hashedToken = hash('sha256', $token);
         $this->cacheInterface->delete($hashedToken);
     }
+
+    public function updateUserPassword(User $user, string $newPassword): void
+    {
+        $hashedPassword = $this->passwordHasher->hashPassword($user, $newPassword);
+        $user->setPassword($hashedPassword);
+        $this->entityManager->persist($user);
+        $this->entityManager->flush();
+    }
 }

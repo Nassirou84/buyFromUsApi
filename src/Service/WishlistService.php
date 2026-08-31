@@ -70,4 +70,24 @@ class WishlistService
         $this->entityManagerInterface->remove($wishlist);
         $this->entityManagerInterface->flush();
     }
+
+    public function removeProduct(int $productId): void
+    {
+        if (!$this->tokenService->getToken()) {
+            throw new Exception('Utilisateur non authentifié.');
+        }
+        $user = $this->tokenService->getToken()->getUser();
+        $wishlist = $this->wishlistRepository->findOneBy([
+            'user' => $user,
+            'product' => $productId,
+        ]);
+        if (!$wishlist) {
+            throw new Exception('Produit non trouvé dans la liste de souhaits.');
+        }
+        if ($wishlist->getUser() !== $user) {
+            throw new Exception('Vous n\'êtes pas autorisé à effectuer cette action.');
+        }
+        $this->entityManagerInterface->remove($wishlist);
+        $this->entityManagerInterface->flush();
+    }
 }
