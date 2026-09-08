@@ -46,7 +46,7 @@ final class GuestActionController extends AbstractController
     {
         return Cookie::create('guest_basket_uid')
             ->withValue($basketUid)
-            ->withExpires(new \DateTimeImmutable('+1 year'))
+            ->withExpires(new \DateTimeImmutable('+30 days'))
             ->withPath('/')
             ->withHttpOnly(true)
             ->withSecure(true)

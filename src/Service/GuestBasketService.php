@@ -4,6 +4,7 @@ namespace App\Service;
 use App\Entity\Basket;
 use App\Entity\BasketItem;
 use App\Entity\Product;
+use App\Entity\User;
 use App\Entity\Wishlist;
 use App\Repository\BasketItemRepository;
 use App\Repository\BasketRepository;
@@ -119,5 +120,42 @@ class GuestBasketService
     $this->addToBasket($productInWishlist, $basketUid, 1, null);
     $this->entityManager->remove($wishlist);
     $this->entityManager->flush();
+  }
+
+  public function mergeGuestBasketIntoUserBasket(?string $guestBasketUid, User $user): Basket
+  {
+    $userBasket = $this->basketRepository->findOneBy(['user' => $user]);
+    $guestBasket = $this->retrieveBasket($guestBasketUid);
+
+    $userBasketItemsByProduct = [];
+    foreach ($userBasket->getBasketItems() as $item) {
+      $userBasketItemsByProduct[$item->getProduct()->getId()] = $item;
+    }
+
+    $guestItems = $guestBasket->getBasketItems()->toArray();
+
+    foreach ($guestItems as $guestItem) {
+      $productId = $guestItem->getProduct()->getId();
+
+      if (isset($userBasketItemsByProduct[$productId])) {
+        $existingItem = $userBasketItemsByProduct[$productId];
+        $newQuantity = max($existingItem->getQuantity(), $guestItem->getQuantity());
+        $existingItem->setQuantity($newQuantity);
+
+        $guestBasket->removeBasketItem($guestItem);
+        $this->entityManager->remove($guestItem);
+      } else {
+        $guestBasket->removeBasketItem($guestItem);
+
+        $guestItem->setBasket($userBasket);
+        $userBasket->addBasketItem($guestItem);
+
+        $this->entityManager->persist($guestItem);
+      }
+    }
+
+    $this->entityManager->flush();
+
+    return $userBasket;
   }
 }

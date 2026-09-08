@@ -3,12 +3,12 @@
 declare(strict_types=1);
 
 namespace App\Controller;
-
 use App\Repository\BasketItemRepository;
-use App\Service\GuestBasketService;
+use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use App\Repository\ProductRepository;
 use App\Repository\WishlistRepository;
 use App\Service\BasketService;
+use App\Service\GuestBasketService;
 use App\Service\WishlistService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -50,6 +50,39 @@ final class BasketController extends AbstractController
         $basketItem = $basketService->addToBasket($user, $product, $quantity, $variantId);
 
         return $this->json(['success' => true, 'message' => 'Ajouté au panier', 'basketItem' => $basketItem], 200);
+    }
+
+    #[Route('/merge-guest-basket', name: 'app_merge_guest_basket', methods: ['POST'])]
+    public function mergeGuestBasket(
+        GuestBasketService $guestBasketService,
+        Request $request,
+        NormalizerInterface $objectNormalizer,
+    ): JsonResponse {
+        $user = $this->getUser();
+        if (!$user instanceof \App\Entity\User) {
+            return $this->json(['success' => false, 'error' => 'Utilisateur non authentifié.'], 401);
+        }
+        $guestBasketUid = $request->cookies->get('guest_basket_uid')
+            ?? null;
+
+        if (!$guestBasketUid) {
+            return $this->json(['success' => false, 'error' => 'Panier invité introuvable.'], 404);
+        }
+
+        $basket = $guestBasketService->mergeGuestBasketIntoUserBasket($guestBasketUid, $user);
+
+        $normalizedBasket = $objectNormalizer->normalize($basket, null, [
+            'groups' => ['basket:read']
+        ]);
+
+        $response = new JsonResponse(
+            [
+                'success' => true,
+                'message' => 'Panier invité fusionné avec succès',
+                'basket' => $normalizedBasket
+            ]
+        );
+        return $response;
     }
 
     #[Route('/remove/{basketItemId}', name: 'app_remove_from_basket', methods: ['POST'])]
