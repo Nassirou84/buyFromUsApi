@@ -42,7 +42,6 @@ class UniqUidGenerator
     public function generateUniqueTokenForUser(): string
     {
         $token = '';
-
         do {
             $token = substr(uniqid(), -10);
             $exists = $this->cacheInterface->hasItem(
@@ -50,6 +49,18 @@ class UniqUidGenerator
             );
         } while ($exists);
 
+        return $token;
+    }
+
+    public function generateUniqueUidForBasket(): string
+    {
+        $token = '';
+        do {
+            $token = 'guest_basket_' . substr(uniqid(), -10);
+            $exists = $this->cacheInterface->hasItem(
+                $token
+            );
+        } while ($exists);
         return $token;
     }
 }
