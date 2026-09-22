@@ -149,6 +149,24 @@ class Order
     #[ORM\Column(nullable: true)]
     private ?bool $isPriority = null;
 
+    #[ORM\Column(nullable: true)]
+    private ?float $discount = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?float $taxes = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?float $shippingFee = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $phone = null;
+
+    #[ORM\Column(length: 255)]
+    private ?string $accessToken = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTime $deliveredAt = null;
+
     public function __construct()
     {
         $this->createdAt = new DateTime();
@@ -410,5 +428,77 @@ class Order
             . ($this->city ? ', ' . $this->city : '')
             . ($this->state ? ', ' . $this->state : '')
             . ($this->country ? ', ' . $this->country : '');
+    }
+
+    public function getDiscount(): ?float
+    {
+        return $this->discount;
+    }
+
+    public function setDiscount(?float $discount): static
+    {
+        $this->discount = $discount;
+
+        return $this;
+    }
+
+    public function getTaxes(): ?float
+    {
+        return $this->taxes;
+    }
+
+    public function setTaxes(?float $taxes): static
+    {
+        $this->taxes = $taxes;
+
+        return $this;
+    }
+
+    public function getShippingFee(): ?float
+    {
+        return $this->shippingFee;
+    }
+
+    public function setShippingFee(?float $shippingFee): static
+    {
+        $this->shippingFee = $shippingFee;
+
+        return $this;
+    }
+
+    public function getPhone(): ?string
+    {
+        return $this->phone;
+    }
+
+    public function setPhone(?string $phone): static
+    {
+        $this->phone = $phone;
+
+        return $this;
+    }
+
+    public function getAccessToken(): ?string
+    {
+        return $this->accessToken;
+    }
+
+    public function setAccessToken(string $accessToken): static
+    {
+        $this->accessToken = $accessToken;
+
+        return $this;
+    }
+
+    public function getDeliveredAt(): ?\DateTime
+    {
+        return $this->deliveredAt;
+    }
+
+    public function setDeliveredAt(?\DateTime $deliveredAt): static
+    {
+        $this->deliveredAt = $deliveredAt;
+
+        return $this;
     }
 }

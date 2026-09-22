@@ -22,6 +22,7 @@ readonly class OrderConfirmationMessage
     public array $items,
     public array $shippingAddress,
     public string $paymentMethod,
+    public string $accessToken,
     public ?string $paymentLast4 = null,
   ) {
   }

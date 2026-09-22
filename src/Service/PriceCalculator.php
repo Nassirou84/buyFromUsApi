@@ -11,14 +11,15 @@ class PriceCalculator
 
     public static function calculate(float $basePrice): float
     {
-        $currency = getenv('currency') ?: 'xof';
+        $currency = getenv('currency') ?: 'fcfa';
+        $currency = strtolower($currency);
         $taxRate = false !== getenv('taxe_rate') ? (float) getenv('taxe_rate') : self::TAX_RATE;
         $rate = file_get_contents(self::CURRENCY_RATE_FILE);
         $rate = $rate ? json_decode($rate, true)[$currency] : null;
 
         if (null === $rate) {
             switch (strtolower($currency)) {
-                case 'xof':
+                case 'fcfa':
                     $rate = 600;
                     break;
                 case 'gnf':

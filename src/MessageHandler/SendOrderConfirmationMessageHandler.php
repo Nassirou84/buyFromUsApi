@@ -50,7 +50,7 @@ class SendOrderConfirmationMessageHandler
         'PAYMENT_STATUS' => $message->paymentStatus,
         'STORE_TAGLINE' => $this->websiteName,
         'COMPANY_ADDRESS' => $this->websiteName,
-        'INVOICE_URL' => $this->frontendURL . '/invoice/' . $message->orderId,
+        'INVOICE_URL' => $this->frontendURL . '/receipt/?reference=' . $message->orderId . '&accessToken=' . $message->accessToken,
         'ACCOUNT_ORDER_URL' => $this->frontendURL . '/account/orders',
         'TRACKING_URL' => $this->frontendURL . '/tracking/?order=' . $message->orderId,
       ],

@@ -26,7 +26,7 @@ class ExchangeRateApiService
             $data = json_decode($response->getContent(), true);
 
             $rates = [
-                'xof' => ceil($data['conversion_rates']['XOF']),
+                'fcfa' => ceil($data['conversion_rates']['XOF']),
                 'gnf' => ceil($data['conversion_rates']['GNF']),
             ];
 

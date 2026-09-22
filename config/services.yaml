@@ -121,6 +121,7 @@ services:
         arguments:
             $expressShippingCost: '%env(EXPRESS_SHIPPING_COST)%'
             $expressShippingDuration: '%env(EXPRESS_SHIPPING_DURATION)%'
+            $taxRate: '%env(TAXE_RATE)%'
 
     gesdinet.jwtrefreshtoken:
         class: Gesdinet\JWTRefreshTokenBundle\Service\RefreshToken

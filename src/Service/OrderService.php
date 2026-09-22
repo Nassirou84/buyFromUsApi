@@ -24,6 +24,7 @@ final class OrderService
         private MessageBusInterface $messageBusInterface,
         private int $expressShippingCost,
         private string $expressShippingDuration,
+        private float $taxRate,
     ) {
     }
 
@@ -77,6 +78,7 @@ final class OrderService
         $basketTotal = $basket->getTotalAmount();
         $totalAmount = $basketTotal;
         $discountAmount = 0;
+        $taxAmount = ceil($totalAmount * $this->taxRate);
         if ($promoCode && $this->promoCodeService->checkPromoCode($promoCode, $basket)) {
             $totalAmount = $this->promoCodeService->amountAfterDiscount($promoCode, $basket);
             $discountAmount = $basketTotal - $totalAmount;
@@ -114,21 +116,27 @@ final class OrderService
         $order->setStreet($shippingAddress['street'] ?? '');
         $order->setCity($shippingAddress['city'] ?? '');
         $order->setCountry('Ivory Coast');
+        $order->setAccessToken(bin2hex(random_bytes(32)));
         $order->setSuite($shippingAddress['suite'] ?? '');
         $order->setState($shippingAddress['state'] ?? '');
         $order->setFullName($shippingAddress['fullName'] ?? '');
         $order->setEmail($shippingAddress['email'] ?? '');
+        $order->setPhone($shippingAddress['phone'] ?? '');
         $isExpressShipping = $shippingAddress['shippingOption'] == 'express';
         if ($isExpressShipping) {
             $totalAmount += $this->expressShippingCost;
             $shippingCost = $this->expressShippingCost;
             $order->setEstimatedDeliveryAt((new \DateTime())->modify('+' . $this->expressShippingDuration));
+            $order->setShippingFee($shippingCost);
         } else {
             $shippingCost = 0;
+            $order->setShippingFee($shippingCost);
             $order->setEstimatedDeliveryAt((new \DateTime())->modify('+3 weeks'));
         }
         $order->setUid($this->uniqUidGenerator->generateUniqueUid(Order::class));
         $order->setIsPriority($isExpressShipping);
+        $order->setDiscount($discountAmount);
+        $order->setTaxes($taxAmount);
         $order->setOrderPrice($totalAmount);
         $order->setStatus(Order::STATUS_ORDER_PLACED);
 
@@ -161,7 +169,6 @@ final class OrderService
         }
 
         //Saving payment transaction
-        $taxAmount = ceil($totalAmount * 0.18);
         $paymentTransaction = new Payment();
         $paymentTransaction->setUserOrder($order);
         $paymentTransaction->setPaymentMethod($paymentMethod);
@@ -225,6 +232,7 @@ final class OrderService
                 $items,
                 $shippingAddress,
                 $paymentType,
+                $order->getAccessToken(),
                 $payment->getPaymentLast4()
             )
         );
