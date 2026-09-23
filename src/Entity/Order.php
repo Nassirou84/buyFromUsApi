@@ -88,11 +88,8 @@ class Order
 
     #[ORM\Column(length: 255)]
     #[Groups(['order:write', 'order:read'])]
-    private ?string $firstName = null;
+    private ?string $fullName = null;
 
-    #[ORM\Column(length: 255)]
-    #[Groups(['order:write', 'order:read'])]
-    private ?string $lastName = null;
 
     #[ORM\Column(length: 255)]
     #[Groups(['order:write', 'order:read'])]
@@ -137,12 +134,46 @@ class Order
     #[Groups(['order:read'])]
     private ?string $country = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $suite = null;
+
+    /**
+     * @var Collection<int, Payment>
+     */
+    #[ORM\OneToMany(targetEntity: Payment::class, mappedBy: 'userOrder')]
+    private Collection $payments;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $email = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?bool $isPriority = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?float $discount = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?float $taxes = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?float $shippingFee = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $phone = null;
+
+    #[ORM\Column(length: 255)]
+    private ?string $accessToken = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTime $deliveredAt = null;
+
     public function __construct()
     {
         $this->createdAt = new DateTime();
         $this->updatedAt = new DateTime();
         $this->status = self::STATUS_ORDER_PLACED;
         $this->products = new ArrayCollection();
+        $this->payments = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -174,26 +205,14 @@ class Order
         return $this;
     }
 
-    public function getFirstName(): ?string
+    public function getFullName(): ?string
     {
-        return $this->firstName;
+        return $this->fullName;
     }
 
-    public function setFirstName(string $firstName): static
+    public function setFullName(string $fullName): static
     {
-        $this->firstName = $firstName;
-
-        return $this;
-    }
-
-    public function getLastName(): ?string
-    {
-        return $this->lastName;
-    }
-
-    public function setLastName(string $lastName): static
-    {
-        $this->lastName = $lastName;
+        $this->fullName = $fullName;
 
         return $this;
     }
@@ -332,6 +351,153 @@ class Order
     public function setCountry(?string $country): static
     {
         $this->country = $country;
+
+        return $this;
+    }
+
+    public function getSuite(): ?string
+    {
+        return $this->suite;
+    }
+
+    public function setSuite(?string $suite): static
+    {
+        $this->suite = $suite;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Payment>
+     */
+    public function getPayments(): Collection
+    {
+        return $this->payments;
+    }
+
+    public function addPayment(Payment $payment): static
+    {
+        if (!$this->payments->contains($payment)) {
+            $this->payments->add($payment);
+            $payment->setUserOrder($this);
+        }
+
+        return $this;
+    }
+
+    public function removePayment(Payment $payment): static
+    {
+        if ($this->payments->removeElement($payment)) {
+            // set the owning side to null (unless already changed)
+            if ($payment->getUserOrder() === $this) {
+                $payment->setUserOrder(null);
+            }
+        }
+
+        return $this;
+    }
+
+    public function getEmail(): ?string
+    {
+        return $this->email;
+    }
+
+    public function setEmail(?string $email): static
+    {
+        $this->email = $email;
+
+        return $this;
+    }
+
+    public function isPriority(): ?bool
+    {
+        return $this->isPriority;
+    }
+
+    public function setIsPriority(?bool $isPriority): static
+    {
+        $this->isPriority = $isPriority;
+
+        return $this;
+    }
+
+    public function getFullAddress(): ?string
+    {
+        return $this->street
+            . ($this->suite ? ', ' . $this->suite : '')
+            . ($this->city ? ', ' . $this->city : '')
+            . ($this->state ? ', ' . $this->state : '')
+            . ($this->country ? ', ' . $this->country : '');
+    }
+
+    public function getDiscount(): ?float
+    {
+        return $this->discount;
+    }
+
+    public function setDiscount(?float $discount): static
+    {
+        $this->discount = $discount;
+
+        return $this;
+    }
+
+    public function getTaxes(): ?float
+    {
+        return $this->taxes;
+    }
+
+    public function setTaxes(?float $taxes): static
+    {
+        $this->taxes = $taxes;
+
+        return $this;
+    }
+
+    public function getShippingFee(): ?float
+    {
+        return $this->shippingFee;
+    }
+
+    public function setShippingFee(?float $shippingFee): static
+    {
+        $this->shippingFee = $shippingFee;
+
+        return $this;
+    }
+
+    public function getPhone(): ?string
+    {
+        return $this->phone;
+    }
+
+    public function setPhone(?string $phone): static
+    {
+        $this->phone = $phone;
+
+        return $this;
+    }
+
+    public function getAccessToken(): ?string
+    {
+        return $this->accessToken;
+    }
+
+    public function setAccessToken(string $accessToken): static
+    {
+        $this->accessToken = $accessToken;
+
+        return $this;
+    }
+
+    public function getDeliveredAt(): ?\DateTime
+    {
+        return $this->deliveredAt;
+    }
+
+    public function setDeliveredAt(?\DateTime $deliveredAt): static
+    {
+        $this->deliveredAt = $deliveredAt;
 
         return $this;
     }

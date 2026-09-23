@@ -22,6 +22,7 @@ framework:
             # 'App\Message\YourMessage': async
             'App\Message\TwoFactorCodeMessage': async_priority_high
             'App\Message\ResetEmailMessage': async_priority_high
+            'App\Message\OrderConfirmationMessage': async_priority_high
 
 # when@test:
 #    framework:

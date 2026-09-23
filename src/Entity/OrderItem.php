@@ -50,6 +50,9 @@ class OrderItem
     #[ORM\JoinColumn(nullable: false)]
     private ?Order $currentOrder = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $variant = null;
+
     public function __construct()
     {
         $this->createdAt = new DateTime();
@@ -142,6 +145,18 @@ class OrderItem
     public function setCurrentOrder(?Order $currentOrder): static
     {
         $this->currentOrder = $currentOrder;
+
+        return $this;
+    }
+
+    public function getVariant(): ?string
+    {
+        return $this->variant;
+    }
+
+    public function setVariant(?string $variant): static
+    {
+        $this->variant = $variant;
 
         return $this;
     }

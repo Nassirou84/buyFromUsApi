@@ -173,4 +173,14 @@ class Basket
 
         return $this;
     }
+
+    public function getTotalAmount(): float
+    {
+        $total = 0.0;
+        foreach ($this->basketItems as $basketItem) {
+            $product = $basketItem->getProduct();
+            $total += $product->getActualPrice() * $basketItem->getQuantity();
+        }
+        return $total;
+    }
 }

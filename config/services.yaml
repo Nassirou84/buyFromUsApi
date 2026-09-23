@@ -18,6 +18,8 @@ parameters:
     gcp_key_file_path: '%env(resolve:GCP_KEY_FILE_PATH)%'
     gcs_bucket_name: '%env(resolve:GCS_BUCKET_NAME)%'
     tfa_code_template_id: '%env(resolve:TFA_CODE_TEMPLATE_ID)%'
+    order_confirmation_template_id: '%env(resolve:ORDER_CONFIRMATION_TEMPLATE_ID)%'
+    
 
 services:
     # default configuration for services in *this* file
@@ -115,6 +117,12 @@ services:
             $apiKey: '%env(BREVO_API_KEY)%'
         tags: ['monolog.logger']
 
+    App\Service\OrderService:
+        arguments:
+            $expressShippingCost: '%env(EXPRESS_SHIPPING_COST)%'
+            $expressShippingDuration: '%env(EXPRESS_SHIPPING_DURATION)%'
+            $taxRate: '%env(TAXE_RATE)%'
+
     gesdinet.jwtrefreshtoken:
         class: Gesdinet\JWTRefreshTokenBundle\Service\RefreshToken
         arguments:
@@ -172,6 +180,12 @@ services:
             $resetPasswordPagePath: '%env(PASSWORD_RESET_URL)%'
             $websiteName: '%env(WEBSITE_NAME)%'
             $passwordResetTemplateId: '%env(PASSWORD_RESET_TEMPLATE_ID)%'
+    App\MessageHandler\SendOrderConfirmationMessageHandler:
+        arguments:
+            $orderConfirmationTemplateId: '%env(ORDER_CONFIRMATION_TEMPLATE_ID)%'
+            $frontendURL: '%env(FRONTEND_URL)%'
+            $websiteName: '%env(WEBSITE_NAME)%'
+            $currency: '%env(TARGET_CURRENCY)%'
 
     App\Service\EmailQueueService:
         arguments:

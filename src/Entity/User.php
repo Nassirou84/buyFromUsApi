@@ -189,6 +189,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Groups(['user:login:read'])]
     private Collection $trustedDevices;
 
+    /**
+     * @var Collection<int, PromoCode>
+     */
+    #[ORM\OneToMany(targetEntity: PromoCode::class, mappedBy: 'user')]
+    private Collection $promoCodes;
+
     public function __construct()
     {
         $this->country = 'CIV';
@@ -200,6 +206,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->createdAt = new DateTimeImmutable();
         $this->twoFactorContactMethod = 'email';
         $this->trustedDevices = new ArrayCollection();
+        $this->promoCodes = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -636,6 +643,36 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             // set the owning side to null (unless already changed)
             if ($trustedDevice->getUser() === $this) {
                 $trustedDevice->setUser(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, PromoCode>
+     */
+    public function getPromoCodes(): Collection
+    {
+        return $this->promoCodes;
+    }
+
+    public function addPromoCode(PromoCode $promoCode): static
+    {
+        if (!$this->promoCodes->contains($promoCode)) {
+            $this->promoCodes->add($promoCode);
+            $promoCode->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removePromoCode(PromoCode $promoCode): static
+    {
+        if ($this->promoCodes->removeElement($promoCode)) {
+            // set the owning side to null (unless already changed)
+            if ($promoCode->getUser() === $this) {
+                $promoCode->setUser(null);
             }
         }
 
