@@ -8,13 +8,19 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\GetCollection;
 use App\Repository\PromoCodeRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ApiResource(
     operations: [
         new GetCollection(
             routeName: 'api_check_promo_code'
+        ),
+        new GetCollection(
+            routeName: 'app_get_available_discount',
+            paginationEnabled: false
         )
-    ]
+    ],
+    normalizationContext: ['groups' => ['promo_code:read']]
 )]
 #[ORM\Entity(repositoryClass: PromoCodeRepository::class)]
 class PromoCode
@@ -29,10 +35,12 @@ class PromoCode
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['promo_code:read'])]
     /** @phpstan-ignore-next-line */
     private ?int $id = null;
 
     #[ORM\Column(length: 15)]
+    #[Groups(['promo_code:read'])]
     private ?string $code = null;
 
     #[ORM\ManyToOne(inversedBy: 'promoCodes')]
@@ -42,12 +50,14 @@ class PromoCode
     private ?\DateTime $createdAt = null;
 
     #[ORM\Column]
+    #[Groups(['promo_code:read'])]
     private ?\DateTime $expiresAt = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $terms = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['promo_code:read'])]
     private ?string $discount = null;
 
     #[ORM\Column(length: 255, nullable: true)]

@@ -17,6 +17,7 @@ class SendOrderConfirmationMessageHandler
     private string $orderConfirmationTemplateId,
     private string $frontendURL,
     private string $currency,
+    private string $websiteTagline,
   ) {
   }
 
@@ -48,10 +49,10 @@ class SendOrderConfirmationMessageHandler
         'PAYMENT_TYPE' => $message->paymentMethod,
         'PAYMENT_LAST4' => $message->paymentLast4 ? 'se terminant par ' . $message->paymentLast4 : '',
         'PAYMENT_STATUS' => $message->paymentStatus,
-        'STORE_TAGLINE' => $this->websiteName,
+        'STORE_TAGLINE' => $this->websiteTagline,
         'COMPANY_ADDRESS' => $this->websiteName,
         'INVOICE_URL' => $this->frontendURL . '/receipt/?reference=' . $message->orderId . '&accessToken=' . $message->accessToken,
-        'ACCOUNT_ORDER_URL' => $this->frontendURL . '/account/orders',
+        'ACCOUNT_ORDER_URL' => $this->frontendURL . '/user/orders/',
         'TRACKING_URL' => $this->frontendURL . '/tracking/?order=' . $message->orderId,
       ],
       'subject' => 'Confirmation de votre commande',

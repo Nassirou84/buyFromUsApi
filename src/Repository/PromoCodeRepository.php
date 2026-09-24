@@ -18,6 +18,18 @@ class PromoCodeRepository extends ServiceEntityRepository
         parent::__construct($registry, PromoCode::class);
     }
 
+    public function findAllUsersDiscount(): ?PromoCode
+    {
+        return $this->createQueryBuilder('p')
+            ->andWhere('p.terms = :val')
+            ->andWhere('p.expiresAt > :now')
+            ->setParameter('val', PromoCode::APPLY_ALL_USERS)
+            ->setParameter('now', new \DateTime())
+            ->getQuery()
+            ->getOneOrNullResult()
+        ;
+    }
+
     //    /**
     //     * @return PromoCode[] Returns an array of PromoCode objects
     //     */
