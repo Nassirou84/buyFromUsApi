@@ -19,6 +19,8 @@ parameters:
     gcs_bucket_name: '%env(resolve:GCS_BUCKET_NAME)%'
     tfa_code_template_id: '%env(resolve:TFA_CODE_TEMPLATE_ID)%'
     order_confirmation_template_id: '%env(resolve:ORDER_CONFIRMATION_TEMPLATE_ID)%'
+    website_name: '%env(resolve:WEBSITE_NAME)%'
+    website_tagline: '%env(resolve:WEBSITE_TAGLINE)%'
     
 
 services:
@@ -186,6 +188,7 @@ services:
             $frontendURL: '%env(FRONTEND_URL)%'
             $websiteName: '%env(WEBSITE_NAME)%'
             $currency: '%env(TARGET_CURRENCY)%'
+            $websiteTagline: '%env(WEBSITE_TAGLINE)%'
 
     App\Service\EmailQueueService:
         arguments:

@@ -25,16 +25,34 @@ final class ReceiptController extends AbstractController
         $order = $orderRepository->findOneBy(['uid' => $id]);
         $accessToken = $request->query->get('accessToken');
 
+        $token = $tokenStorage->getToken();
+
+        $hasAccess = false;
+
         if (null === $order) {
             return new JsonResponse(['message' => 'Order not found'], 404);
         }
 
         if (null === $accessToken) {
-            return new JsonResponse(['message' => 'Access token is missing'], 401);
+            $hasAccess = false;
         }
 
-        if ($accessToken !== $order->getAccessToken()) {
-            return new JsonResponse(['message' => 'Invalid access token'], 403);
+        if ($accessToken === $order->getAccessToken()) {
+            $hasAccess = true;
+        }
+
+        if ($accessToken === 'self') {
+            $user = $token->getUser();
+            $hasAccess = $order->getCustomer() === $user;
+        } else if ($accessToken === 'admin') {
+            $user = $token->getUser();
+            $hasAccess = $user && in_array('ROLE_ADMIN', $user->getRoles());
+        } else {
+            $hasAccess = false;
+        }
+
+        if (!$hasAccess) {
+            return new JsonResponse(['message' => 'Access denied'], 403);
         }
 
         $items = [];
