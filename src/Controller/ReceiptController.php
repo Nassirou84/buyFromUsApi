@@ -41,14 +41,16 @@ final class ReceiptController extends AbstractController
             $hasAccess = true;
         }
 
-        if ($accessToken === 'self') {
-            $user = $token->getUser();
-            $hasAccess = $order->getCustomer() === $user;
-        } else if ($accessToken === 'admin') {
-            $user = $token->getUser();
-            $hasAccess = $user && in_array('ROLE_ADMIN', $user->getRoles());
-        } else {
-            $hasAccess = false;
+        if (!$hasAccess) {
+            if ($accessToken === 'self') {
+                $user = $token->getUser();
+                $hasAccess = $order->getCustomer() === $user;
+            } else if ($accessToken === 'admin') {
+                $user = $token->getUser();
+                $hasAccess = $user && in_array('ROLE_ADMIN', $user->getRoles());
+            } else {
+                $hasAccess = false;
+            }
         }
 
         if (!$hasAccess) {
