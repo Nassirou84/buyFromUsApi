@@ -18,6 +18,7 @@ class SendOrderConfirmationMessageHandler
     private string $frontendURL,
     private string $currency,
     private string $websiteTagline,
+    private string $companyAddress,
   ) {
   }
 
@@ -50,7 +51,7 @@ class SendOrderConfirmationMessageHandler
         'PAYMENT_LAST4' => $message->paymentLast4 ? 'se terminant par ' . $message->paymentLast4 : '',
         'PAYMENT_STATUS' => $message->paymentStatus,
         'STORE_TAGLINE' => $this->websiteTagline,
-        'COMPANY_ADDRESS' => $this->websiteName,
+        'COMPANY_ADDRESS' => $this->companyAddress,
         'INVOICE_URL' => $this->frontendURL . '/receipt/?reference=' . $message->orderId . '&accessToken=' . $message->accessToken,
         'ACCOUNT_ORDER_URL' => $this->frontendURL . '/user/orders/',
         'TRACKING_URL' => $this->frontendURL . '/tracking/?order=' . $message->orderId,

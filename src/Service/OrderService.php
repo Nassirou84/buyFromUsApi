@@ -135,7 +135,7 @@ final class OrderService
         }
         $order->setUid($this->uniqUidGenerator->generateUniqueUid(Order::class));
         $order->setIsPriority($isExpressShipping);
-        $order->setDiscount($discountAmount);
+        $order->setDiscount(round($discountAmount, 1));
         $order->setTaxes($taxAmount);
         $order->setOrderPrice($totalAmount);
         $order->setStatus(Order::STATUS_ORDER_PLACED);

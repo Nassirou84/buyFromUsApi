@@ -5,10 +5,11 @@ namespace App\Service;
 use App\Entity\Basket;
 use App\Entity\PromoCode;
 use App\Entity\PromoCodeUsage;
+use App\Entity\User;
+use App\Repository\OrderRepository;
 use App\Repository\PromoCodeRepository;
 use App\Repository\PromoCodeUsageRepository;
 use Doctrine\ORM\EntityManagerInterface;
-use App\Repository\OrderRepository;
 
 
 class PromoCodeService
@@ -140,5 +141,21 @@ class PromoCodeService
       }
     }
     return false;
+  }
+
+  public function createPromoCodeForWelcomeUser(User $user): PromoCode
+  {
+    $promoCode = new PromoCode();
+    $promoCode->setCode('WELCOME-' . $user->getId());
+    $promoCode->setDiscount('10');
+    $promoCode->setTerms(PromoCode::APPLY_FIRST_TIME_PURCHASE);
+    $promoCode->setTarget((string) $user->getId());
+    $promoCode->setExpiresAt((new \DateTime())->modify('+1 month'));
+    $promoCode->setUser($user);
+
+    $this->entityManagerInterface->persist($promoCode);
+    $this->entityManagerInterface->flush();
+
+    return $promoCode;
   }
 }

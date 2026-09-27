@@ -39,7 +39,7 @@ class PromoCode
     /** @phpstan-ignore-next-line */
     private ?int $id = null;
 
-    #[ORM\Column(length: 15)]
+    #[ORM\Column(length: 255)]
     #[Groups(['promo_code:read'])]
     private ?string $code = null;
 

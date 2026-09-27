@@ -12,6 +12,10 @@ framework:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
                 options:
                     queue_name: default
+            async_priority_low:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    queue_name: low
 
             failed: 'doctrine://default?queue_name=failed'
             # failed: 'doctrine://default?queue_name=failed'
@@ -23,6 +27,7 @@ framework:
             'App\Message\TwoFactorCodeMessage': async_priority_high
             'App\Message\ResetEmailMessage': async_priority_high
             'App\Message\OrderConfirmationMessage': async_priority_high
+            'App\Message\WelcomeMessage': async_default
 
 # when@test:
 #    framework:

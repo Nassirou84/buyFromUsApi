@@ -29,10 +29,7 @@ final class CheckPromoCodeController extends AbstractController
 
         $isApplicable = $promoCodeService->checkPromoCode($promoCode, $basket);
         if (!$isApplicable) {
-            return new JsonResponse([
-                'success' => false,
-                'error' => 'promo_code_not_applicable'
-            ], 400);
+            throw new \Exception('promo_code_not_applicable');
         }
 
         $amountAfterDiscount = $promoCodeService->amountAfterDiscount($promoCode, $basket);
