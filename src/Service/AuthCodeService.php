@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 
 class AuthCodeService
 {
@@ -29,9 +30,15 @@ class AuthCodeService
         $authCode = $this->generateAuthCode();
         $hashedAuthCode = hash('sha256', $authCode);
         $cacheKey = 'auth_code_' . $userId;
-        $this->cacheInterface->get($cacheKey, static function () use ($hashedAuthCode) {
+
+        // The cache key may already hold a previous (still valid) code, so
+        // it must be cleared before writing, otherwise get() would return
+        // the stale value instead of storing the freshly generated one.
+        $this->cacheInterface->delete($cacheKey);
+        $this->cacheInterface->get($cacheKey, static function (ItemInterface $item) use ($hashedAuthCode) {
+            $item->expiresAfter(900);
             return $hashedAuthCode;
-        }, 900);
+        });
 
         return $authCode;
     }

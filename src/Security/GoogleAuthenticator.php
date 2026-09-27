@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace App\Security;
 
+use App\Entity\PromoCode;
 use App\Entity\RefreshToken;
+use App\Entity\Setting;
 use App\Entity\User;
+use App\Message\WelcomeMessage;
 use App\Repository\UserRepository;
 use App\Service\BasketService;
+use App\Service\PromoCodeService;
+use App\Service\SettingService;
 use Doctrine\ORM\EntityManagerInterface;
 use Gesdinet\JWTRefreshTokenBundle\Generator\RefreshTokenGeneratorInterface;
 use Gesdinet\JWTRefreshTokenBundle\Model\RefreshTokenManagerInterface;
@@ -17,6 +22,7 @@ use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Http\Authenticator\AbstractAuthenticator;
@@ -38,6 +44,9 @@ class GoogleAuthenticator extends AbstractAuthenticator implements Authenticatio
         private RefreshTokenManagerInterface $refreshTokenManager,
         private NormalizerInterface $objectNormalizer,
         private BasketService $basketService,
+        private SettingService $settingService,
+        private PromoCodeService $promoCodeService,
+        private MessageBusInterface $messageBusInterface,
         string $googleClientId,
     ) {
         $this->googleClient = new Client(['client_id' => $googleClientId]);
@@ -119,7 +128,25 @@ class GoogleAuthenticator extends AbstractAuthenticator implements Authenticatio
         $this->entityManager->flush();
         $this->basketService->createBasketForUser($user);
 
+        $welcomeCodeSetting = $this->settingService->getSetting(Setting::WELCOME_PROMO_CODE);
+        $promoCode = null;
+        if ($welcomeCodeSetting == Setting::TRUE) {
+            $promoCode = $this->promoCodeService->createPromoCodeForWelcomeUser($user);
+        }
+        $this->sendWelcomeMessage($user, $promoCode);
+
         return $user;
+    }
+
+    public function sendWelcomeMessage(User $user, ?PromoCode $promoCode): void
+    {
+        $welcomeMessage = new WelcomeMessage(
+            $user->getEmail(),
+            $user->getFullName(),
+            $promoCode?->getCode(),
+            $promoCode?->getDiscount()
+        );
+        $this->messageBusInterface->dispatch($welcomeMessage);
     }
 
     private function extractIdToken(Request $request): ?string

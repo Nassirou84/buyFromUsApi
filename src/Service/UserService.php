@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Entity\Setting;
 use App\Entity\User;
+use App\Message\WelcomeMessage;
 use App\Repository\UserRepository;
+use App\Service\PromoCodeService;
+use App\Entity\PromoCode;
 use DateTime;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 
@@ -21,6 +26,9 @@ class UserService
         private BasketService $basketService,
         private UniqUidGenerator $uniqUidGenerator,
         private CacheInterface $cacheInterface,
+        private SettingService $settingService,
+        private PromoCodeService $promoCodeService,
+        private MessageBusInterface $messageBusInterface,
     ) {
     }
 
@@ -35,7 +43,24 @@ class UserService
         $this->entityManager->flush();
         $this->basketService->createBasketForUser($user);
 
+        $welcomeCodeSetting = $this->settingService->getSetting(Setting::WELCOME_PROMO_CODE);
+        $promoCode = null;
+        if ($welcomeCodeSetting == Setting::TRUE) {
+            $promoCode = $this->promoCodeService->createPromoCodeForWelcomeUser($user);
+        }
+        $this->sendWelcomeMessage($user, $promoCode);
         return $user;
+    }
+
+    public function sendWelcomeMessage(User $user, ?PromoCode $promoCode): void
+    {
+        $welcomeMessage = new WelcomeMessage(
+            $user->getEmail(),
+            $user->getFullName(),
+            $promoCode?->getCode(),
+            $promoCode?->getDiscount()
+        );
+        $this->messageBusInterface->dispatch($welcomeMessage);
     }
 
     public function generateChangePasswordToken(User $user): string

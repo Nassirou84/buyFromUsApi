@@ -27,7 +27,7 @@ class RegisterStateProcessor implements ProcessorInterface
     ): User {
         $userExist = (bool) $this->userRepository->findOneBy(['email' => $user->getEmail()]);
         if ($userExist) {
-            throw new Exception('Cet email est déjà utilisé.');
+            throw new Exception('existing_email');
         }
         $user = $this->userService->createUser($user);
 
