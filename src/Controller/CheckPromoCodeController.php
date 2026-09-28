@@ -27,18 +27,26 @@ final class CheckPromoCodeController extends AbstractController
         }
         $basket = $basketRepository->findOneBy(['user' => $user]);
 
-        $isApplicable = $promoCodeService->checkPromoCode($promoCode, $basket);
-        if (!$isApplicable) {
-            throw new \Exception('promo_code_not_applicable');
+        try {
+
+            $isApplicable = $promoCodeService->checkPromoCode($promoCode, $basket);
+            if (!$isApplicable) {
+                throw new \Exception('promo_code_not_applicable');
+            }
+
+            $amountAfterDiscount = $promoCodeService->amountAfterDiscount($promoCode, $basket);
+            $discountedAmount = $promoCodeService->discountedAmount($promoCode, $basket);
+
+            return new JsonResponse([
+                'success' => true,
+                'amountAfterDiscount' => $amountAfterDiscount,
+                'discountedAmount' => $discountedAmount,
+            ]);
+        } catch (\Exception $e) {
+            return new JsonResponse([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 400);
         }
-
-        $amountAfterDiscount = $promoCodeService->amountAfterDiscount($promoCode, $basket);
-        $discountedAmount = $promoCodeService->discountedAmount($promoCode, $basket);
-
-        return new JsonResponse([
-            'success' => true,
-            'amountAfterDiscount' => $amountAfterDiscount,
-            'discountedAmount' => $discountedAmount,
-        ]);
     }
 }
