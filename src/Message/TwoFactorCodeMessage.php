@@ -10,6 +10,8 @@ readonly class TwoFactorCodeMessage
         public string $email,
         public string $authCode,
         public string $fullName,
+        public int $expiryMinutes,
+        public ?string $deviceInfo = null,
     ) {
     }
 }
