@@ -47,6 +47,7 @@ final class ChangePasswordController extends AbstractController
                 $user->getEmail(),
                 $user->getFullName(),
                 $token,
+                15
             ),
         );
 

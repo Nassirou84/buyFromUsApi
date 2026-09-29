@@ -30,6 +30,21 @@ services:
         autowire: true      # Automatically injects dependencies in your services.
         autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
 
+    # shared arguments injected into every App\MessageHandler\MessageHandlerParentClass subclass
+    _instanceof:
+        App\MessageHandler\MessageHandlerParentClass:
+            bind:
+                $frontendURL: '%env(FRONTEND_URL)%'
+                $websiteName: '%env(WEBSITE_NAME)%'
+                $websiteTagline: '%env(WEBSITE_TAGLINE)%'
+                $companyAddress: '%env(COMPANY_ADDRESS)%'
+                $supportEmail: '%env(SUPPORT_EMAIL)%'
+                $socialInstagram: '%env(INSTAGRAM_URL)%'
+                $socialFacebook: '%env(FACEBOOK_URL)%'
+                $socialTwitter: '%env(TWITTER_URL)%'
+                $socialTikTok: '%env(TIKTOK_URL)%'
+                $currency: '%env(TARGET_CURRENCY)%'
+
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name
     App\:
@@ -179,26 +194,16 @@ services:
 
     App\MessageHandler\SendResetEmailMessageHandler:
         arguments:
-            $frontendURL: '%env(FRONTEND_URL)%'
             $resetPasswordPagePath: '%env(PASSWORD_RESET_URL)%'
-            $websiteName: '%env(WEBSITE_NAME)%'
             $passwordResetTemplateId: '%env(PASSWORD_RESET_TEMPLATE_ID)%'
+
     App\MessageHandler\SendOrderConfirmationMessageHandler:
         arguments:
             $orderConfirmationTemplateId: '%env(ORDER_CONFIRMATION_TEMPLATE_ID)%'
-            $frontendURL: '%env(FRONTEND_URL)%'
-            $websiteName: '%env(WEBSITE_NAME)%'
-            $currency: '%env(TARGET_CURRENCY)%'
-            $websiteTagline: '%env(WEBSITE_TAGLINE)%'
-            $companyAddress: '%env(COMPANY_ADDRESS)%'
 
     App\MessageHandler\WelcomeMessageHandler:
         arguments:
             $welcomeEmailTemplateId: '%env(WELCOME_EMAIL_TEMPLATE_ID)%'
-            $frontendURL: '%env(FRONTEND_URL)%'
-            $websiteName: '%env(WEBSITE_NAME)%'
-            $websiteTagline: '%env(WEBSITE_TAGLINE)%'
-            $companyAddress: '%env(COMPANY_ADDRESS)%'
 
     App\Service\EmailQueueService:
         arguments:

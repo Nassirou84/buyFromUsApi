@@ -5,21 +5,40 @@ declare(strict_types=1);
 namespace App\MessageHandler;
 
 use App\Message\OrderConfirmationMessage;
-use Symfony\Component\Messenger\Attribute\AsMessageHandler;
+use App\MessageHandler\MessageHandlerParentClass;
 use App\Service\BrevoEmailService;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
-class SendOrderConfirmationMessageHandler
+class SendOrderConfirmationMessageHandler extends MessageHandlerParentClass
 {
   public function __construct(
-    private BrevoEmailService $brevoMailer,
-    private string $websiteName,
-    private string $orderConfirmationTemplateId,
-    private string $frontendURL,
-    private string $currency,
-    private string $websiteTagline,
-    private string $companyAddress,
+    BrevoEmailService $brevoMailer,
+    string $frontendURL,
+    string $websiteName,
+    string $websiteTagline,
+    string $companyAddress,
+    string $supportEmail,
+    string $socialInstagram,
+    string $socialFacebook,
+    string $socialTwitter,
+    string $socialTikTok,
+    string $currency,
+    private string $orderConfirmationTemplateId
   ) {
+    parent::__construct(
+      $brevoMailer,
+      $frontendURL,
+      $websiteName,
+      $websiteTagline,
+      $companyAddress,
+      $supportEmail,
+      $socialInstagram,
+      $socialFacebook,
+      $socialTwitter,
+      $socialTikTok,
+      $currency,
+    );
   }
 
   public function __invoke(OrderConfirmationMessage $message)
@@ -55,6 +74,10 @@ class SendOrderConfirmationMessageHandler
         'INVOICE_URL' => $this->frontendURL . '/receipt/?reference=' . $message->orderId . '&accessToken=' . $message->accessToken,
         'ACCOUNT_ORDER_URL' => $this->frontendURL . '/user/orders/',
         'TRACKING_URL' => $this->frontendURL . '/tracking/?order=' . $message->orderId,
+        'social_instagram' => $this->socialInstagram,
+        'social_facebook' => $this->socialFacebook,
+        'social_twitter' => $this->socialTwitter,
+        'social_tiktok' => $this->socialTikTok,
       ],
       'subject' => 'Confirmation de votre commande',
     ];

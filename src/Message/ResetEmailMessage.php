@@ -10,6 +10,7 @@ readonly class ResetEmailMessage
         public string $email,
         public string $fullName,
         public string $resetToken,
+        public int $expiryMinutes,
     ) {
     }
 }

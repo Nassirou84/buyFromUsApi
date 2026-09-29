@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Controller;
 use App\Repository\BasketRepository;
-use App\Repository\PromoCodeRepository;
 use App\Service\PromoCodeService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -16,7 +15,6 @@ final class CheckPromoCodeController extends AbstractController
     #[Route(name: 'api_check_promo_code', path: 'api/promo_codes/check/{promoCode}')]
     public function checkPromoCode(
         string $promoCode,
-        PromoCodeRepository $promoCodeRepository,
         BasketRepository $basketRepository,
         PromoCodeService $promoCodeService,
     ): JsonResponse {

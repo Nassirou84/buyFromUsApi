@@ -54,6 +54,7 @@ class AuthController extends AbstractController
   ): JsonResponse {
     $data = json_decode($request->getContent(), true);
     $email = $data['email'] ?? '';
+    $fingerprint = $data['fingerprint'] ?? '';
 
     $user = $userRepository->findOneBy(['email' => $email]);
 
@@ -66,7 +67,13 @@ class AuthController extends AbstractController
 
     if ('email' === $sendMethod) {
       $messageBusInterface->dispatch(
-        new TwoFactorCodeMessage($user->getEmail(), $code, $user->getFullName()),
+        new TwoFactorCodeMessage(
+          $user->getEmail(),
+          $code,
+          $user->getFullName(),
+          15,
+          $fingerprint['userAgent'] ?? null
+        ),
       );
     }
 
@@ -105,7 +112,13 @@ class AuthController extends AbstractController
 
         if ('email' === $sendMethod) {
           $messageBusInterface->dispatch(
-            new TwoFactorCodeMessage($user->getEmail(), $code, $user->getFullName()),
+            new TwoFactorCodeMessage(
+              $user->getEmail(),
+              $code,
+              $user->getFullName(),
+              15,
+              $fingerprint['userAgent'] ?? null
+            ),
           );
         }
 
