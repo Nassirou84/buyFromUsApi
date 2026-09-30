@@ -8,6 +8,7 @@ use App\Repository\PaymentRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: PaymentRepository::class)]
+#[ORM\UniqueConstraint(name: 'UNIQ_PAYMENT_TRANSACTION_ID', fields: ['transactionId'])]
 class Payment
 {
 

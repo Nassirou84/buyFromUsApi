@@ -23,18 +23,18 @@ use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Serializer\Attribute\Groups;
 
-#[GetCollection(
-    normalizationContext: ['groups' => ['user:read']],
-    security: "is_granted('ROLE_ADMIN')",
-)]
 #[ApiResource(
     operations: [
         new Post(
             processor: RegisterStateProcessor::class,
             denormalizationContext: ['groups' => ['user:create']],
         ),
-        new GetCollection(),
-        new Get(),
+        new GetCollection(
+            security: "is_granted('ROLE_ADMIN')",
+        ),
+        new Get(
+            security: "is_granted('ROLE_ADMIN') or object == user",
+        ),
         new GetCollection(
             controller: CurrentlyLoginController::class,
             security: 'is_granted("ROLE_USER")',

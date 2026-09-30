@@ -113,8 +113,9 @@ class PaymentMethod
     #[ORM\JoinColumn(nullable: false)]
     private ?User $user = null;
 
-    #[ORM\Column(length: 10, nullable: true)]
-    #[Encrypted]
+    // Not an ORM column on purpose: PCI-DSS forbids storing the CVV after
+    // authorization. It only exists transiently for CardValidator's checks
+    // in PaymentMethodStateProcessor and must never reach the database.
     #[Groups(['card:write'])]
     private ?string $cvv = null;
 

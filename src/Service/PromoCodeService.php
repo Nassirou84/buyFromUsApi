@@ -9,6 +9,7 @@ use App\Entity\User;
 use App\Repository\OrderRepository;
 use App\Repository\PromoCodeRepository;
 use App\Repository\PromoCodeUsageRepository;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 
 
@@ -31,7 +32,13 @@ class PromoCodeService
       $promoCodeUsage->setPromoCode($promoCodeEntity);
       $promoCodeUsage->setUser($basket->getUser());
       $this->entityManagerInterface->persist($promoCodeUsage);
-      $this->entityManagerInterface->flush();
+      try {
+        $this->entityManagerInterface->flush();
+      } catch (UniqueConstraintViolationException) {
+        // Two concurrent checkouts both passed the earlier "already used"
+        // check; the DB-level unique constraint is the real guard here.
+        throw new \Exception('promo_code_already_used');
+      }
     }
   }
 

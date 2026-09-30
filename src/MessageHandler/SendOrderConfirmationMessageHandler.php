@@ -73,7 +73,7 @@ class SendOrderConfirmationMessageHandler extends MessageHandlerParentClass
         'COMPANY_ADDRESS' => $this->companyAddress,
         'INVOICE_URL' => $this->frontendURL . '/receipt/?reference=' . $message->orderId . '&accessToken=' . $message->accessToken,
         'ACCOUNT_ORDER_URL' => $this->frontendURL . '/user/orders/',
-        'TRACKING_URL' => $this->frontendURL . '/tracking/?order=' . $message->orderId,
+        'TRACKING_URL' => $this->frontendURL . '/tracking/?order=' . $message->orderId . '&email=' . $message->email,
         'social_instagram' => $this->socialInstagram,
         'social_facebook' => $this->socialFacebook,
         'social_twitter' => $this->socialTwitter,

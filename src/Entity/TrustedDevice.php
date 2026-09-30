@@ -14,7 +14,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ApiResource(
     operations: [
         new Delete(
-            security: "is_granted('ROLE_USER')"
+            security: "is_granted('ROLE_ADMIN') or object.getUser() == user"
         )
     ],
     denormalizationContext: ['groups' => ['trusted_device:read', 'user:login:read']],

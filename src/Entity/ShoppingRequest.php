@@ -15,7 +15,9 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ApiResource(
     operations: [
-        new GetCollection(),
+        new GetCollection(
+            security: "is_granted('ROLE_ADMIN')",
+        ),
         new Post(
             uriTemplate: '/shopping_requests/create',
             controller: \App\Controller\CreateShoppingRequestController::class,
@@ -25,6 +27,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
     normalizationContext: ['groups' => ['shopping_request:read']],
 )]
 #[ORM\Entity(repositoryClass: ShoppingRequestRepository::class)]
+#[ORM\UniqueConstraint(name: 'UNIQ_SHOPPING_REQUEST_UID', fields: ['uid'])]
 class ShoppingRequest
 {
     public const STATUS_SUBMITTED = 'submitted';

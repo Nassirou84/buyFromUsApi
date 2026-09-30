@@ -15,7 +15,9 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ApiResource(
     operations: [
-        new \ApiPlatform\Metadata\Get(),
+        new \ApiPlatform\Metadata\Get(
+            security: "is_granted('ROLE_ADMIN') or object.getUser() == user",
+        ),
         new \ApiPlatform\Metadata\GetCollection(
             uriTemplate: '/customer/{customerId}/wishlists',
             uriVariables: [
@@ -24,6 +26,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
                     fromProperty: 'wishlists',
                 ),
             ],
+            security: "is_granted('ROLE_ADMIN') or user.getId() == customerId",
         ),
         new \ApiPlatform\Metadata\Post(
             security: "is_granted('ROLE_USER')",
@@ -34,7 +37,9 @@ use Symfony\Component\Serializer\Attribute\Groups;
             security: "is_granted('ROLE_USER')",
             processor: \App\State\WishlistProcessor::class,
         ),
-        new \ApiPlatform\Metadata\Delete(),
+        new \ApiPlatform\Metadata\Delete(
+            security: "is_granted('ROLE_ADMIN') or object.getUser() == user",
+        ),
     ],
     normalizationContext: ['groups' => ['wishlist:read']],
     denormalizationContext: ['groups' => ['wishlist:write']],

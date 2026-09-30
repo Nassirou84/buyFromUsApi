@@ -30,6 +30,10 @@ services:
         autowire: true      # Automatically injects dependencies in your services.
         autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
 
+    App\Service\AuthCodeService:
+        arguments:
+            $cacheInterface: '@auth_codes.cache'
+
     # shared arguments injected into every App\MessageHandler\MessageHandlerParentClass subclass
     _instanceof:
         App\MessageHandler\MessageHandlerParentClass:

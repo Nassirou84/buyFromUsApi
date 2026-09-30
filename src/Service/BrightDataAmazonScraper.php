@@ -99,7 +99,6 @@ class BrightDataAmazonScraper
             'Content-Type: application/json',
         ]);
         curl_setopt($ch, CURLOPT_TIMEOUT, 60);
-
         $response = curl_exec($ch);
         curl_close($ch);
 
@@ -136,6 +135,7 @@ class BrightDataAmazonScraper
             'Authorization: Bearer ' . $this->apiKey,
             'Content-Type: application/json',
         ]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
 
         $response = curl_exec($ch);
         curl_close($ch);

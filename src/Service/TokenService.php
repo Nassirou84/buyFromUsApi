@@ -26,19 +26,4 @@ class TokenService
         return $token;
     }
 
-    public function generateResetPasswordToken(): string
-    {
-        $userUsersExist = true;
-        do {
-            $token = $this->tokenGenerator->generateToken();
-            $userUsersExist = $this->userRepository->findOneBy(['resetPasswordToken' => $token]);
-        } while ($userUsersExist);
-
-        return $token;
-    }
-
-    public function generateCode(): int
-    {
-        return rand(100000, 999999);
-    }
 }
