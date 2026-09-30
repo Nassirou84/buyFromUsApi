@@ -18,6 +18,7 @@ use Symfony\Component\Validator\Constraints as Assert;
     operations: [
         new \ApiPlatform\Metadata\Get(),
         new \ApiPlatform\Metadata\Post(
+            security: "is_granted('ROLE_ADMIN')",
             controller: \App\Controller\CreateMediaObjectController::class,
             deserialize: false,
             inputFormats: [

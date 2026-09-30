@@ -63,13 +63,18 @@ security:
         #     provider: app_user_provider
 
     access_control:
+        # NOTE: authorization for individual /api endpoints is enforced per-resource via
+        # API Platform `security:` expressions (see src/Entity/*.php) and, for plain
+        # controllers, explicit checks in the controller/processor. This firewall-level
+        # list only needs to stay ordered most-specific-first so a narrow rule is never
+        # shadowed by the catch-all `^/api` rule below it.
+        - { path: ^/api/payment_methods, roles: ROLE_USER }
         - { path: ^/api/token/refresh, roles: PUBLIC_ACCESS }
         - { path: ^/api/(login|token/refresh), roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/google, roles: PUBLIC_ACCESS }
         - { path: ^/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/user_login, roles: PUBLIC_ACCESS }
-        - { path: ^/api, roles: PUBLIC_ACCESS } 
-        - { path: ^/api/payment_methods, roles: ROLE_USER }
+        - { path: ^/api, roles: PUBLIC_ACCESS }
     
 when@test:
     security:

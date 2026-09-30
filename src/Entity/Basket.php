@@ -62,6 +62,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
     denormalizationContext: ['groups' => ['basket:write']],
 )]
 #[ORM\Entity(repositoryClass: BasketRepository::class)]
+#[ORM\UniqueConstraint(name: 'UNIQ_BASKET_UID', fields: ['uid'])]
 class Basket
 {
     #[ORM\Id]

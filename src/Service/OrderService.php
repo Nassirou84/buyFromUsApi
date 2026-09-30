@@ -22,6 +22,7 @@ final class OrderService
         private UniqUidGenerator $uniqUidGenerator,
         private PromoCodeService $promoCodeService,
         private MessageBusInterface $messageBusInterface,
+        private CardValidator $cardValidator,
         private int $expressShippingCost,
         private string $expressShippingDuration,
         private float $taxRate,
@@ -79,38 +80,88 @@ final class OrderService
         $totalAmount = $basketTotal;
         $discountAmount = 0;
         $taxAmount = ceil($totalAmount * $this->taxRate);
-        if ($promoCode && $this->promoCodeService->checkPromoCode($promoCode, $basket)) {
+        $promoCodeApplicable = $promoCode && $this->promoCodeService->checkPromoCode($promoCode, $basket);
+        if ($promoCodeApplicable) {
             $totalAmount = $this->promoCodeService->amountAfterDiscount($promoCode, $basket);
             $discountAmount = $basketTotal - $totalAmount;
-
-            $this->promoCodeService->markAsUsed($promoCode, $basket);
         }
 
-        $isPaymentValid = false;
-        $transactionId = uniqid('txn_');
+        $isPaymentValid = in_array($paymentMethod, ['credit_card', 'wave-money', 'cod'], true);
 
-        if ($paymentMethod === 'credit_card') {
-            // Handle credit card payment logic here
-            $isPaymentValid = true;
-            $transactionId = uniqid('txn_');
-        }
-
-        if ($paymentMethod === 'wave-money') {
-            // Handle wave payment logic here
-            $isPaymentValid = true;
-            $transactionId = uniqid('txn_');
-        }
-
-        if ($paymentMethod === 'cod') {
-            // Handle cash on delivery logic here
-            $isPaymentValid = true;
-            $transactionId = uniqid('txn_');
+        if ($isPaymentValid && 'credit_card' === $paymentMethod) {
+            $isPaymentValid = [] === $this->cardValidator->validateCard($paymentDetails);
         }
 
         if (!$isPaymentValid) {
             throw new Exception('Invalid payment method or payment failed.');
         }
 
+        $transactionId = 'txn_' . bin2hex(random_bytes(16));
+
+        // Everything below is wrapped in one transaction so that a failure
+        // partway through (e.g. while persisting order items) rolls back the
+        // promo code usage too, instead of leaving it permanently consumed
+        // with no order to show for it.
+        [$order, $paymentTransaction, $orderItems, $shippingCost] = $this->entityManager->wrapInTransaction(
+            function () use (
+                $promoCodeApplicable,
+                $promoCode,
+                $basket,
+                $shippingAddress,
+                $totalAmount,
+                $discountAmount,
+                $taxAmount,
+                $paymentMethod,
+                $transactionId,
+                $user,
+            ) {
+                // Only consume the promo code once payment has been validated, so a
+                // rejected/invalid payment never burns a single-use code.
+                if ($promoCodeApplicable) {
+                    $this->promoCodeService->markAsUsed($promoCode, $basket);
+                }
+
+                return $this->persistOrder(
+                    $shippingAddress,
+                    $basket,
+                    $totalAmount,
+                    $discountAmount,
+                    $taxAmount,
+                    $paymentMethod,
+                    $transactionId,
+                    $user,
+                );
+            }
+        );
+
+        $this->sendOrderConfirmationMessage(
+            $order,
+            $paymentTransaction,
+            $orderItems,
+            $discountAmount,
+            $order->getOrderPrice(),
+            $basketTotal,
+            $taxAmount,
+            $shippingCost,
+            $shippingAddress
+        );
+
+        return $order;
+    }
+
+    /**
+     * @return array{0: Order, 1: Payment, 2: array, 3: float|int}
+     */
+    private function persistOrder(
+        array $shippingAddress,
+        Basket $basket,
+        float $totalAmount,
+        float $discountAmount,
+        float $taxAmount,
+        string $paymentMethod,
+        string $transactionId,
+        ?\Symfony\Component\Security\Core\User\UserInterface $user,
+    ): array {
         // Creating a new order entity and setting its properties
         $order = new Order();
         $order->setStreet($shippingAddress['street'] ?? '');
@@ -191,19 +242,7 @@ final class OrderService
         $this->entityManager->persist($paymentTransaction);
         $this->entityManager->flush();
 
-        $this->sendOrderConfirmationMessage(
-            $order,
-            $paymentTransaction,
-            $orderItems,
-            $discountAmount,
-            $totalAmount,
-            $basketTotal,
-            $taxAmount,
-            $shippingCost,
-            $shippingAddress
-        );
-
-        return $order;
+        return [$order, $paymentTransaction, $orderItems, $shippingCost];
     }
 
     public function sendOrderConfirmationMessage(Order $order, Payment $payment, $items, $discountAmount, $totalAmount, $subTotal, $taxAmount, $shippingCost, $shippingAddress, ): void

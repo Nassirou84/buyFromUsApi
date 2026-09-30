@@ -8,6 +8,7 @@ use App\Service\OrderService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 
 final class PlaceOrderController extends AbstractController
 {
@@ -15,6 +16,7 @@ final class PlaceOrderController extends AbstractController
         Request $request,
         OrderService $orderService,
         BasketRepository $basketRepository,
+        TokenStorageInterface $tokenStorage,
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
 
@@ -25,6 +27,18 @@ final class PlaceOrderController extends AbstractController
         $promoCode = $data['promoCode'] ?? null;
 
         $basket = $basketRepository->findOneBy(['uid' => $basketUid]);
+
+        if (null === $basket) {
+            return new JsonResponse(['success' => false, 'message' => 'basket_not_found'], 404);
+        }
+
+        // A basket already tied to an account may only be checked out by that
+        // same account, otherwise an attacker who guesses/leaks a basketUid
+        // could complete someone else's basket using their own shipping/payment details.
+        $currentUser = $tokenStorage->getToken()?->getUser();
+        if ($basket->getUser() && $basket->getUser() !== $currentUser) {
+            return new JsonResponse(['success' => false, 'message' => 'basket_not_found'], 404);
+        }
 
         $order = $orderService->placeNewOrder(
             $shippingAddress,

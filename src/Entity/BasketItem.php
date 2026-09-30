@@ -11,7 +11,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: BasketItemRepository::class)]
 #[Groups(['basket:read'])]
-class BasketItem
+class BasketItem implements \JsonSerializable
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]

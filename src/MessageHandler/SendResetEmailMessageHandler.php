@@ -60,7 +60,7 @@ class SendResetEmailMessageHandler extends MessageHandlerParentClass
                 'social_instagram' => $this->socialInstagram ?? '',
                 'social_facebook' => $this->socialFacebook ?? '',
                 'social_twitter' => $this->socialTwitter ?? '',
-                'social_tiktok' => $this->socialTiktok ?? ''
+                'social_tiktok' => $this->socialTikTok ?? ''
             ],
             'subject' => 'Réinitialisation de votre mot de passe',
         ];

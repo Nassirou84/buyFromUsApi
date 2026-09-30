@@ -5,24 +5,22 @@ declare(strict_types=1);
 namespace App\Security;
 
 use App\Entity\PromoCode;
-use App\Entity\RefreshToken;
 use App\Entity\Setting;
 use App\Entity\User;
 use App\Message\WelcomeMessage;
 use App\Repository\UserRepository;
 use App\Service\BasketService;
 use App\Service\PromoCodeService;
+use App\Service\RefreshTokenCookieFactory;
 use App\Service\SettingService;
 use Doctrine\ORM\EntityManagerInterface;
-use Gesdinet\JWTRefreshTokenBundle\Generator\RefreshTokenGeneratorInterface;
-use Gesdinet\JWTRefreshTokenBundle\Model\RefreshTokenManagerInterface;
 use Google\Client;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
-use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Http\Authenticator\AbstractAuthenticator;
@@ -40,13 +38,13 @@ class GoogleAuthenticator extends AbstractAuthenticator implements Authenticatio
         private EntityManagerInterface $entityManager,
         private UserRepository $userRepository,
         private JWTTokenManagerInterface $jwtManager,
-        private RefreshTokenGeneratorInterface $refreshTokenGenerator,
-        private RefreshTokenManagerInterface $refreshTokenManager,
+        private RefreshTokenCookieFactory $refreshTokenCookieFactory,
         private NormalizerInterface $objectNormalizer,
         private BasketService $basketService,
         private SettingService $settingService,
         private PromoCodeService $promoCodeService,
         private MessageBusInterface $messageBusInterface,
+        private UserPasswordHasherInterface $passwordHasher,
         string $googleClientId,
     ) {
         $this->googleClient = new Client(['client_id' => $googleClientId]);
@@ -121,8 +119,8 @@ class GoogleAuthenticator extends AbstractAuthenticator implements Authenticatio
         $user->setGoogleId($googleId);
         $user->setFirstName($firstName);
         $user->setLastName($lastName);
-        $user->setPassword(uniqid('google_', true));
         $user->setRoles(['ROLE_USER']);
+        $user->setPassword($this->passwordHasher->hashPassword($user, bin2hex(random_bytes(32))));
 
         $this->entityManager->persist($user);
         $this->entityManager->flush();
@@ -191,7 +189,7 @@ class GoogleAuthenticator extends AbstractAuthenticator implements Authenticatio
         $accessToken = $this->jwtManager->create($user);
 
         // Generate refresh token
-        $refreshTokenString = $this->generateRefreshToken($user);
+        $refreshTokenString = $this->refreshTokenCookieFactory->createForUser($user);
 
         $normalizedUser = $this->objectNormalizer->normalize($user, null, ['groups' => ['user:read', 'user:login:read']]);
 
@@ -204,64 +202,9 @@ class GoogleAuthenticator extends AbstractAuthenticator implements Authenticatio
             'user' => $normalizedUser,
         ]);
 
-        $response->headers->setCookie($this->createRefreshCookie($refreshTokenString));
+        $response->headers->setCookie($this->refreshTokenCookieFactory->createCookie($refreshTokenString));
 
         return $response;
-    }
-
-    private function createRefreshCookie(string $refreshTokenString): Cookie
-    {
-        return Cookie::create('refresh_token')
-            ->withValue($refreshTokenString)
-            ->withExpires(new \DateTimeImmutable('+30 days'))
-            ->withPath('/')
-            ->withHttpOnly(true)
-            ->withSecure(true)
-            ->withSameSite(Cookie::SAMESITE_NONE);
-    }
-
-    private function generateRefreshToken(User $user): string
-    {
-        $refreshTokenString = (string) $this->refreshTokenGenerator->createForUserWithTtl($user, 2592000);
-
-        // Save refresh token to database
-        $this->saveRefreshToken($user, $refreshTokenString);
-
-        return (string) $refreshTokenString;
-    }
-
-    private function saveRefreshToken(User $user, string $refreshTokenString): void
-    {
-        try {
-            // Method 1: Use manager (check if create method exists)
-            if (method_exists($this->refreshTokenManager, 'create')) {
-                $refreshToken = $this->refreshTokenManager->create();
-            }
-            // Method 2: Use createEntity method
-            elseif (method_exists($this->refreshTokenManager, 'createEntity')) {
-                $refreshToken = $this->refreshTokenManager->createEntity();
-            }
-            // Method 3: Manual instantiation
-            else {
-                $refreshToken = new RefreshToken();
-            }
-
-            $refreshToken->setRefreshToken($refreshTokenString);
-            $refreshToken->setUsername($user->getEmail());
-            $refreshToken->setValid((new \DateTime())->modify('+30 days'));
-
-            // RefreshTokenManagerInterface guarantees that save() is available.
-            $this->refreshTokenManager->save($refreshToken);
-        } catch (\Exception $e) {
-            // Fallback: Use EntityManager directly
-            $refreshToken = new RefreshToken();
-            $refreshToken->setRefreshToken($refreshTokenString);
-            $refreshToken->setUsername($user->getEmail());
-            $refreshToken->setValid((new \DateTime())->modify('+30 days'));
-
-            $this->entityManager->persist($refreshToken);
-            $this->entityManager->flush();
-        }
     }
 
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): ?Response

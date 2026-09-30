@@ -9,6 +9,7 @@ use DateTime;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: PromoCodeUsageRepository::class)]
+#[ORM\UniqueConstraint(name: 'UNIQ_PROMO_CODE_USAGE_USER_PROMO', fields: ['user', 'promoCode'])]
 class PromoCodeUsage
 {
     #[ORM\Id]

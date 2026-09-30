@@ -7,6 +7,7 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: BannerRepository::class)]
+#[ORM\UniqueConstraint(name: 'UNIQ_BANNER_NAME', fields: ['name'])]
 class Banner
 {
     const WELCOME_EMAIL_BANNER_NAME = 'welcome_email_banner';

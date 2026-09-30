@@ -9,10 +9,10 @@ use App\Message\TwoFactorCodeMessage;
 use App\Repository\UserRepository;
 use App\Security\GoogleAuthenticator;
 use App\Service\AuthCodeService;
+use App\Service\RateLimiterService;
+use App\Service\RefreshTokenCookieFactory;
 use App\Service\TrustedDeviceService;
-use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
-use Gesdinet\JWTRefreshTokenBundle\Generator\RefreshTokenGeneratorInterface;
 use Gesdinet\JWTRefreshTokenBundle\Model\RefreshTokenManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -30,11 +30,12 @@ class AuthController extends AbstractController
 {
   public function __construct(
     private UserRepository $userRepository,
-    private RefreshTokenGeneratorInterface $refreshTokenGenerator,
     private RefreshTokenManagerInterface $refreshTokenManager,
     private NormalizerInterface $objectNormalizer,
     private JWTTokenManagerInterface $jwtManager,
     private EntityManagerInterface $entityManager,
+    private RateLimiterService $rateLimiter,
+    private RefreshTokenCookieFactory $refreshTokenCookieFactory,
   ) {
   }
 
@@ -56,10 +57,15 @@ class AuthController extends AbstractController
     $email = $data['email'] ?? '';
     $fingerprint = $data['fingerprint'] ?? '';
 
+    if ($this->rateLimiter->tooManyAttempts('resend_2fa_' . $email, 3)) {
+      return $this->json(['message' => 'Too many requests. Please try again later.'], 429);
+    }
+    $this->rateLimiter->hit('resend_2fa_' . $email, 600);
+
     $user = $userRepository->findOneBy(['email' => $email]);
 
     if (!$user) {
-      return $this->json(['message' => 'User not found'], 404);
+      return $this->json(['message' => 'A new 2FA code has been sent if the account exists.', 'success' => true], 200);
     }
     $authCodeService->removeAuthCode($user->getId());
     $code = $authCodeService->generateAndStoreAuthCode($user->getId());
@@ -99,9 +105,15 @@ class AuthController extends AbstractController
     $password = $data['password'] ?? '';
     $fingerprint = $data['fingerprint'] ?? '';
 
+    if ($this->rateLimiter->tooManyAttempts('login_' . $email, 10)) {
+      return $this->json(['message' => 'Too many login attempts. Please try again later.'], 429);
+    }
+
     $user = $userRepository->findOneBy(['email' => $email]);
 
     if (!$user || !$passwordHasher->isPasswordValid($user, $password)) {
+      $this->rateLimiter->hit('login_' . $email, 900);
+
       return $this->json(['message' => 'Invalid credentials'], 401);
     }
 
@@ -131,7 +143,7 @@ class AuthController extends AbstractController
     }
 
     $accessToken = $this->jwtManager->create($user);
-    $refreshTokenString = $this->generateRefreshTokenString($user);
+    $refreshTokenString = $this->refreshTokenCookieFactory->createForUser($user);
     $normalizedUser = $this->objectNormalizer->normalize($user, null, ['groups' => ['user:read', 'user:login:read']]);
 
     $response = new JsonResponse([
@@ -141,7 +153,7 @@ class AuthController extends AbstractController
       'user' => $normalizedUser,
     ]);
 
-    $response->headers->setCookie($this->createRefreshCookie($refreshTokenString));
+    $response->headers->setCookie($this->refreshTokenCookieFactory->createCookie($refreshTokenString));
 
     return $response;
   }
@@ -154,13 +166,21 @@ class AuthController extends AbstractController
     $authCode = $data['code'] ?? '';
     $fingerprint = $data['fingerprint'] ?? '';
 
+    if ($this->rateLimiter->tooManyAttempts('2fa_verify_' . $email, 10)) {
+      return $this->json(['message' => 'Too many attempts. Please try again later.'], 429);
+    }
+
     $user = $this->userRepository->findOneBy(['email' => $email]);
 
     if (!$user instanceof User) {
+      $this->rateLimiter->hit('2fa_verify_' . $email, 900);
+
       return $this->json(['message' => 'User not found'], 404);
     }
 
     if (!$authCodeService->isAuthCodeValid($user->getId(), $authCode)) {
+      $this->rateLimiter->hit('2fa_verify_' . $email, 900);
+
       return $this->json(['message' => 'Invalid or expired auth code'], 403);
     }
 
@@ -168,7 +188,7 @@ class AuthController extends AbstractController
     $authCodeService->removeAuthCode($user->getId());
 
     $accessToken = $this->jwtManager->create($user);
-    $refreshTokenString = $this->generateRefreshTokenString($user);
+    $refreshTokenString = $this->refreshTokenCookieFactory->createForUser($user);
     $normalizedUser = $this->objectNormalizer->normalize($user, null, ['groups' => ['user:read', 'user:login:read']]);
 
     $response = new JsonResponse([
@@ -177,7 +197,7 @@ class AuthController extends AbstractController
       'user' => $normalizedUser,
     ]);
 
-    $response->headers->setCookie($this->createRefreshCookie($refreshTokenString));
+    $response->headers->setCookie($this->refreshTokenCookieFactory->createCookie($refreshTokenString));
 
     return $response;
   }
@@ -186,7 +206,6 @@ class AuthController extends AbstractController
   public function refreshToken(
     Request $request,
     RefreshTokenManagerInterface $refreshTokenManager,
-    RefreshTokenGeneratorInterface $refreshTokenGenerator,
     JWTTokenManagerInterface $jwtManager,
     UserProviderInterface $userProvider,
   ): JsonResponse {
@@ -213,10 +232,8 @@ class AuthController extends AbstractController
     // 1. Capture the old token string before generating the new one
     $oldTokenString = $refreshToken->getRefreshToken();
 
-    // 2. Generate and save the NEW token (createForUserWithTtl persists it automatically)
-    $ttl = 2592000; // 30 days
-    $newRefreshToken = $refreshTokenGenerator->createForUserWithTtl($user, $ttl);
-    $refreshTokenManager->save($newRefreshToken);
+    // 2. Generate and save the NEW token
+    $newRefreshTokenString = $this->refreshTokenCookieFactory->createForUser($user);
 
     // 3. Delete the OLD token from the database using DQL
     $this->entityManager->createQuery(
@@ -232,7 +249,7 @@ class AuthController extends AbstractController
       'message' => 'Token refreshed successfully',
     ]);
 
-    $response->headers->setCookie($this->createRefreshCookie($newRefreshToken->getRefreshToken()));
+    $response->headers->setCookie($this->refreshTokenCookieFactory->createCookie($newRefreshTokenString));
 
     return $response;
   }
@@ -266,23 +283,4 @@ class AuthController extends AbstractController
     return $response;
   }
 
-  private function generateRefreshTokenString(User $user): string
-  {
-    $ttl = 2592000; // 30 days
-    $refreshToken = $this->refreshTokenGenerator->createForUserWithTtl($user, $ttl);
-    $this->refreshTokenManager->save($refreshToken);
-
-    return $refreshToken->getRefreshToken();
-  }
-
-  private function createRefreshCookie(string $refreshTokenString): Cookie
-  {
-    return Cookie::create('refresh_token')
-      ->withValue($refreshTokenString)
-      ->withExpires(new DateTimeImmutable('+30 days'))
-      ->withPath('/')
-      ->withHttpOnly(true)
-      ->withSecure(true)
-      ->withSameSite(Cookie::SAMESITE_NONE);
-  }
 }

@@ -23,6 +23,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
     normalizationContext: ['groups' => ['promo_code:read']]
 )]
 #[ORM\Entity(repositoryClass: PromoCodeRepository::class)]
+#[ORM\UniqueConstraint(name: 'UNIQ_PROMO_CODE_CODE', fields: ['code'])]
 class PromoCode
 {
     const APPLY_ALL_USERS = 'all_users';

@@ -6,6 +6,7 @@ use App\Repository\SettingRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: SettingRepository::class)]
+#[ORM\UniqueConstraint(name: 'UNIQ_SETTING_NAME', fields: ['name'])]
 class Setting
 {
 

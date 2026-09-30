@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\Service;
 
-use Symfony\Contracts\Cache\CacheInterface;
-use Symfony\Contracts\Cache\ItemInterface;
+use Psr\Cache\CacheItemPoolInterface;
 
 class AuthCodeService
 {
     public function __construct(
-        private CacheInterface $cacheInterface,
+        private CacheItemPoolInterface $cacheInterface,
     ) {
     }
 
@@ -22,7 +21,7 @@ class AuthCodeService
     public function validateAuthCode(string $inputCode, string $storedCode): bool
     {
         $inputCode = hash('sha256', $inputCode);
-        return $inputCode === $storedCode;
+        return hash_equals($storedCode, $inputCode);
     }
 
     public function generateAndStoreAuthCode(int $userId): string
@@ -31,25 +30,22 @@ class AuthCodeService
         $hashedAuthCode = hash('sha256', $authCode);
         $cacheKey = 'auth_code_' . $userId;
 
-        // The cache key may already hold a previous (still valid) code, so
-        // it must be cleared before writing, otherwise get() would return
-        // the stale value instead of storing the freshly generated one.
-        $this->cacheInterface->delete($cacheKey);
-        $this->cacheInterface->get($cacheKey, static function (ItemInterface $item) use ($hashedAuthCode) {
-            $item->expiresAfter(900);
-            return $hashedAuthCode;
-        });
+        // A single save() overwrites any previous code atomically, unlike the
+        // previous delete()-then-get() pattern which left a window where a
+        // concurrent read could permanently cache a null "not found" result.
+        $item = $this->cacheInterface->getItem($cacheKey);
+        $item->set($hashedAuthCode);
+        $item->expiresAfter(900);
+        $this->cacheInterface->save($item);
 
         return $authCode;
     }
 
     public function getStoredAuthCode(int $userId): ?string
     {
-        $cacheKey = 'auth_code_' . $userId;
+        $item = $this->cacheInterface->getItem('auth_code_' . $userId);
 
-        return $this->cacheInterface->get($cacheKey, static function () {
-            return null; // Return null if the auth code is not found
-        });
+        return $item->isHit() ? $item->get() : null;
     }
 
     public function isAuthCodeValid(int $userId, string $inputCode): bool
@@ -63,7 +59,6 @@ class AuthCodeService
 
     public function removeAuthCode(int $userId): void
     {
-        $cacheKey = 'auth_code_' . $userId;
-        $this->cacheInterface->delete($cacheKey);
+        $this->cacheInterface->deleteItem('auth_code_' . $userId);
     }
 }

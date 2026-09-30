@@ -23,9 +23,14 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ApiResource(
     operations: [
-        new Get(),
-        new GetCollection(),
+        new Get(
+            security: "is_granted('ROLE_ADMIN') or object.getCustomer() == user",
+        ),
+        new GetCollection(
+            security: "is_granted('ROLE_ADMIN')",
+        ),
         new Post(
+            security: "is_granted('ROLE_USER')",
             processor: \App\Service\OrderService::class,
         ),
         new GetCollection(
@@ -42,19 +47,24 @@ use Symfony\Component\Serializer\Attribute\Groups;
             ],
             paginationItemsPerPage: 10,
             order: ['createdAt' => 'desc'],
+            security: "is_granted('ROLE_ADMIN') or user.getId() == customerId",
         ),
         new Post(
             controller: PlaceOrderController::class,
             uriTemplate: '/orders/finalize',
         ),
         new Post(
+            security: "is_granted('ROLE_USER')",
             controller: CancelOrderController::class,
             uriTemplate: '/orders/{id}/cancel',
         ),
         new Put(
+            security: "is_granted('ROLE_ADMIN')",
             denormalizationContext: ['groups' => ['order:edit']],
         ),
-        new Delete(),
+        new Delete(
+            security: "is_granted('ROLE_ADMIN')",
+        ),
     ],
     denormalizationContext: ['groups' => ['order:write', 'order:edit']],
     normalizationContext: ['groups' => ['order:read']],
@@ -62,6 +72,8 @@ use Symfony\Component\Serializer\Attribute\Groups;
 )]
 #[ORM\Entity(repositoryClass: OrderRepository::class)]
 #[ORM\Table(name: '`order`')]
+#[ORM\UniqueConstraint(name: 'UNIQ_ORDER_UID', fields: ['uid'])]
+#[ORM\UniqueConstraint(name: 'UNIQ_ORDER_ACCESS_TOKEN', fields: ['accessToken'])]
 class Order
 {
     public const STATUS_ORDER_PLACED = 'placed';
@@ -140,7 +152,7 @@ class Order
     /**
      * @var Collection<int, Payment>
      */
-    #[ORM\OneToMany(targetEntity: Payment::class, mappedBy: 'userOrder')]
+    #[ORM\OneToMany(targetEntity: Payment::class, mappedBy: 'userOrder', orphanRemoval: true)]
     private Collection $payments;
 
     #[ORM\Column(length: 255, nullable: true)]

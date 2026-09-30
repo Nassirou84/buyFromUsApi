@@ -5,13 +5,11 @@ declare(strict_types=1);
 namespace App\Service;
 
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\String\Slugger\SluggerInterface;
 use Psr\Cache\CacheItemPoolInterface;
 
 class UniqUidGenerator
 {
     public function __construct(
-        private SluggerInterface $slugger,
         private EntityManagerInterface $entityManager,
         private CacheItemPoolInterface $cacheInterface
     ) {
@@ -33,7 +31,7 @@ class UniqUidGenerator
         }
 
         do {
-            $uid = $this->slugger->slug($prefix . substr(uniqid(), -5));
+            $uid = $prefix . substr(bin2hex(random_bytes(3)), 0, 6);
         } while ($repository->findOneBy(['uid' => $uid]));
 
         return (string) $uid;
@@ -43,7 +41,7 @@ class UniqUidGenerator
     {
         $token = '';
         do {
-            $token = substr(uniqid(), -10);
+            $token = bin2hex(random_bytes(32));
             $exists = $this->cacheInterface->hasItem(
                 hash('sha256', $token)
             );

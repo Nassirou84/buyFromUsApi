@@ -38,26 +38,25 @@ class BasketService
             $basket = $this->createBasketForUser($user);
         }
 
+        $existingItem = $this->basketItemRepository->findOneBy([
+            'basket' => $basket,
+            'product' => $product,
+        ]);
+
+        if ($existingItem) {
+            $existingItem->setVariant($variant);
+            $existingItem->setQuantity($existingItem->getQuantity() + $quantity);
+            $this->entityManager->persist($existingItem);
+            $this->entityManager->flush();
+
+            return $existingItem;
+        }
+
         $basketItem = new BasketItem();
         $basketItem->setProduct($product);
         $basketItem->setVariant($variant);
         $basketItem->setPriceAtAdd($product->getActualPrice());
         $basketItem->setBasket($basket);
-        if ($basket->getBasketItems()->contains($basketItem)) {
-            $existingItem = $this->basketItemRepository->findOneBy([
-                'basket' => $basket,
-                'product' => $product,
-            ]);
-
-            if ($existingItem) {
-                $existingItem->setVariant($variant);
-                $existingItem->setQuantity($existingItem->getQuantity() + $quantity);
-                $this->entityManager->persist($existingItem);
-                $this->entityManager->flush();
-
-                return $existingItem;
-            }
-        }
         $basketItem->setQuantity($quantity);
         $this->entityManager->persist($basketItem);
         $this->entityManager->flush();
