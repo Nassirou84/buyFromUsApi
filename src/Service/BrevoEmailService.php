@@ -40,6 +40,8 @@ class BrevoEmailService
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
             ],
+            'timeout' => 5,
+            'max_duration' => 10,
         ]);
         $this->logger = $logger;
         $this->sender = new Address($fromEmail, $fromName);
