@@ -155,7 +155,7 @@ class PromoCodeService
     $promoCode = new PromoCode();
     $promoCode->setCode('WELCOME-' . $user->getId());
     $promoCode->setDiscount('10');
-    $promoCode->setTerms(PromoCode::APPLY_FIRST_TIME_PURCHASE);
+    $promoCode->setTerms(PromoCode::APPLY_SPECIFIC_USERS);
     $promoCode->setTarget((string) $user->getId());
     $promoCode->setExpiresAt((new \DateTime())->modify('+1 month'));
     $promoCode->setUser($user);

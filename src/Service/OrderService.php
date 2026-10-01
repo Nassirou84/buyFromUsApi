@@ -8,7 +8,10 @@ use App\Entity\Basket;
 use App\Entity\Order;
 use App\Entity\OrderItem;
 use App\Entity\Payment;
+use App\Entity\User;
 use App\Message\OrderConfirmationMessage;
+use App\Repository\OrderRepository;
+use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -16,6 +19,7 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 
 final class OrderService
 {
+
     public function __construct(
         private EntityManagerInterface $entityManager,
         private TokenStorageInterface $tokenService,
@@ -23,6 +27,8 @@ final class OrderService
         private PromoCodeService $promoCodeService,
         private MessageBusInterface $messageBusInterface,
         private CardValidator $cardValidator,
+        private OrderRepository $orderRepository,
+        private UserRepository $userRepository,
         private int $expressShippingCost,
         private string $expressShippingDuration,
         private float $taxRate,
@@ -103,18 +109,7 @@ final class OrderService
         // promo code usage too, instead of leaving it permanently consumed
         // with no order to show for it.
         [$order, $paymentTransaction, $orderItems, $shippingCost] = $this->entityManager->wrapInTransaction(
-            function () use (
-                $promoCodeApplicable,
-                $promoCode,
-                $basket,
-                $shippingAddress,
-                $totalAmount,
-                $discountAmount,
-                $taxAmount,
-                $paymentMethod,
-                $transactionId,
-                $user,
-            ) {
+            function () use ($promoCodeApplicable, $promoCode, $basket, $shippingAddress, $totalAmount, $discountAmount, $taxAmount, $paymentMethod, $transactionId, $user, ) {
                 // Only consume the promo code once payment has been validated, so a
                 // rejected/invalid payment never burns a single-use code.
                 if ($promoCodeApplicable) {
@@ -191,8 +186,14 @@ final class OrderService
         $order->setOrderPrice($totalAmount);
         $order->setStatus(Order::STATUS_ORDER_PLACED);
 
-        if ($user instanceof \App\Entity\User) {
+        if ($user instanceof User) {
             $order->setCustomer($user);
+        } else {
+            $userFromEmail = $shippingAddress['email'] ?? null;
+            $foundUser = $this->userRepository->findOneBy(['email' => $userFromEmail]);
+            if ($foundUser) {
+                $order->setCustomer($foundUser);
+            }
         }
         $this->entityManager->persist($order);
 
@@ -275,5 +276,16 @@ final class OrderService
                 $payment->getPaymentLast4()
             )
         );
+    }
+
+    public function assignPreviousOrderToUser(User $user): void
+    {
+        $email = $user->getEmail();
+        $previousOrders = $this->orderRepository->findBy(['email' => $email]);
+        foreach ($previousOrders as $previousOrder) {
+            $previousOrder->setCustomer($user);
+            $this->entityManager->persist($previousOrder);
+        }
+        $this->entityManager->flush();
     }
 }
