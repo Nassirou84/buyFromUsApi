@@ -73,7 +73,6 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ORM\Entity(repositoryClass: OrderRepository::class)]
 #[ORM\Table(name: '`order`')]
 #[ORM\UniqueConstraint(name: 'UNIQ_ORDER_UID', fields: ['uid'])]
-#[ORM\UniqueConstraint(name: 'UNIQ_ORDER_ACCESS_TOKEN', fields: ['accessToken'])]
 class Order
 {
     public const STATUS_ORDER_PLACED = 'placed';

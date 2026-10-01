@@ -61,6 +61,10 @@ use Symfony\Component\Serializer\Attribute\Groups;
             routeName: 'app_change_password',
             deserialize: false,
         ),
+        new Post(
+            routeName: 'app_add_to_newsletter',
+            deserialize: false,
+        )
     ],
     denormalizationContext: ['groups' => ['user:create', 'user:edit']],
     normalizationContext: ['groups' => ['user:read', 'user:login:read']],
