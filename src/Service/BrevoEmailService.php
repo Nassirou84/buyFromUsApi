@@ -184,6 +184,36 @@ class BrevoEmailService
         return $formatted;
     }
 
+    public function addContact(string $email, ?string $firstName = null, int $listId = 2): bool
+    {
+        $payload = [
+            'email' => $email,
+            'attributes' => ['FIRSTNAME' => $firstName ?? ''],
+            'listIds' => [$listId],
+            'updateEnabled' => true,
+        ];
+
+        try {
+            $this->client->request('POST', self::BASE_URL . '/contacts', [
+                'json' => $payload,
+            ]);
+
+            $this->logger?->info('Contact added', [
+                'email' => $email,
+                'list_id' => $listId,
+            ]);
+
+            return true;
+        } catch (Exception $e) {
+            $this->logger?->error('Add contact failed', [
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
     public function getTemplate(int $id): ?array
     {
         try {

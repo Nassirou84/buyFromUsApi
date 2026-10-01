@@ -29,6 +29,7 @@ class UserService
         private SettingService $settingService,
         private PromoCodeService $promoCodeService,
         private MessageBusInterface $messageBusInterface,
+        private OrderService $orderService
     ) {
     }
 
@@ -42,7 +43,7 @@ class UserService
         $this->entityManager->persist($user);
         $this->entityManager->flush();
         $this->basketService->createBasketForUser($user);
-
+        $this->orderService->assignPreviousOrderToUser($user);
         $welcomeCodeSetting = $this->settingService->getSetting(Setting::WELCOME_PROMO_CODE);
         $promoCode = null;
         if ($welcomeCodeSetting == Setting::TRUE) {
@@ -58,6 +59,7 @@ class UserService
             $user->getEmail(),
             $user->getFullName(),
             $promoCode?->getCode(),
+            $promoCode?->getExpiresAt()?->format('Y-m-d'),
             $promoCode?->getDiscount()
         );
         $this->messageBusInterface->dispatch($welcomeMessage);

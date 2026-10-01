@@ -11,6 +11,7 @@ readonly class WelcomeMessage
     public string $email,
     public string $fullName,
     public ?string $discountCode = null,
+    public ?string $discountExpirationDate = null,
     public ?string $discountAmount = null
   ) {
   }

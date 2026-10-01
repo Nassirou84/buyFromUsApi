@@ -63,6 +63,7 @@ class WelcomeMessageHandler extends MessageHandlerParentClass
         'full_name' => $message->fullName,
         'STORE_NAME' => $this->websiteName,
         'discount_code' => $message->discountCode,
+        'discount_expiration_date' => $message->discountExpirationDate,
         'discount_percent' => $message->discountAmount,
         'website_url' => $this->frontendURL,
         'STORE_TAGLINE' => $this->websiteTagline,
