@@ -29,10 +29,6 @@ class AuthCodeService
         $authCode = $this->generateAuthCode();
         $hashedAuthCode = hash('sha256', $authCode);
         $cacheKey = 'auth_code_' . $userId;
-
-        // A single save() overwrites any previous code atomically, unlike the
-        // previous delete()-then-get() pattern which left a window where a
-        // concurrent read could permanently cache a null "not found" result.
         $item = $this->cacheInterface->getItem($cacheKey);
         $item->set($hashedAuthCode);
         $item->expiresAfter(900);

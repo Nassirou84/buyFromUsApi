@@ -6,10 +6,9 @@ namespace App\State;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
-use App\Entity\User;
 use App\Repository\UserRepository;
 use App\Service\UserService;
-use Exception;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 class RegisterStateProcessor implements ProcessorInterface
 {
@@ -24,10 +23,10 @@ class RegisterStateProcessor implements ProcessorInterface
         Operation $operation,
         array $uriVariables = [],
         array $context = [],
-    ): User {
+    ): mixed {
         $userExist = (bool) $this->userRepository->findOneBy(['email' => $user->getEmail()]);
         if ($userExist) {
-            throw new Exception('existing_email');
+            throw new BadRequestHttpException('existing_email');
         }
         $user = $this->userService->createUser($user);
 
