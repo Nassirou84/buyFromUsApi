@@ -69,11 +69,9 @@ final class ChangePasswordController extends AbstractController
 
     #[Route('/change', name: 'app_change_password', methods: ['POST'])]
     public function changePassword(
-        EntityManagerInterface $entityManager,
         UserService $userService,
         UserRepository $userRepository,
         Request $request,
-        UserPasswordHasherInterface $passwordHasher,
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
         $token = $data['token'] ?? null;

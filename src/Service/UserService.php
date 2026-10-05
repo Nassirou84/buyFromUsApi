@@ -15,6 +15,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Contracts\Cache\CacheInterface;
+use Symfony\Contracts\Cache\ItemInterface;
 
 class UserService
 {
@@ -72,9 +73,10 @@ class UserService
 
         $userEmail = $user->getEmail();
 
-        $this->cacheInterface->get($hashedToken, static function () use ($userEmail) {
+        $this->cacheInterface->get($hashedToken, static function (ItemInterface $item) use ($userEmail) {
+            $item->expiresAfter(900); // store for 15 minutes
             return $userEmail;
-        }, 900); // store for 15 minutes
+        });
 
         return $token;
     }
