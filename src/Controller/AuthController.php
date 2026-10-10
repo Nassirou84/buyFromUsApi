@@ -65,7 +65,9 @@ class AuthController extends AbstractController
     $user = $userRepository->findOneBy(['email' => $email]);
 
     if (!$user) {
-      return $this->json(['message' => 'A new 2FA code has been sent if the account exists.', 'success' => true], 200);
+      return $this->json([
+        'message' => 'User not found.',
+      ], 404);
     }
     $authCodeService->removeAuthCode($user->getId());
     $code = $authCodeService->generateAndStoreAuthCode($user->getId());
@@ -156,6 +158,71 @@ class AuthController extends AbstractController
     $response->headers->setCookie($this->refreshTokenCookieFactory->createCookie($refreshTokenString));
 
     return $response;
+  }
+
+  #[Route('/api/admin_login', name: 'api_admin_login', methods: ['POST', 'OPTIONS'])]
+  public function adminLogin(
+    Request $request,
+    UserRepository $userRepository,
+    UserPasswordHasherInterface $passwordHasher,
+    AuthCodeService $authCodeService,
+    MessageBusInterface $messageBusInterface,
+  ): JsonResponse {
+    $data = json_decode($request->getContent(), true);
+    $email = $data['email'] ?? '';
+    $password = $data['password'] ?? '';
+    $fingerprint = $data['fingerprint'] ?? '';
+
+    if ($this->rateLimiter->tooManyAttempts('login_' . $email, 10)) {
+      return $this->json(['message' => 'Too many login attempts. Please try again later.'], 429);
+    }
+
+    $user = $userRepository->findOneBy(['email' => $email]);
+
+    if (!$user || !$passwordHasher->isPasswordValid($user, $password)) {
+      $this->rateLimiter->hit('login_' . $email, 900);
+
+      return $this->json(['message' => 'Invalid credentials'], 401);
+    }
+
+    $roles = $user->getRoles();
+
+    if (!in_array('ROLE_ADMIN', $roles, true)) {
+      return $this->json(['message' => 'Access denied. Admins only.'], 403);
+    }
+
+    $code = $authCodeService->generateAndStoreAuthCode($user->getId());
+
+    $messageBusInterface->dispatch(
+      new TwoFactorCodeMessage(
+        $user->getEmail(),
+        $code,
+        $user->getFullName(),
+        15,
+        $fingerprint['userAgent'] ?? null
+      ),
+    );
+
+    return $this->json([
+      'message' => 'A code has been sent to your email for verification.',
+      'TFARequired' => true,
+      'email' => $user->getEmail(),
+    ], 403);
+
+    // $accessToken = $this->jwtManager->create($user);
+    // $refreshTokenString = $this->refreshTokenCookieFactory->createForUser($user);
+    // $normalizedUser = $this->objectNormalizer->normalize($user, null, ['groups' => ['user:read', 'user:login:read']]);
+
+    // $response = new JsonResponse([
+    //   'success' => true,
+    //   'message' => 'Authentication successful',
+    //   'access_token' => $accessToken,
+    //   'user' => $normalizedUser,
+    // ]);
+
+    // $response->headers->setCookie($this->refreshTokenCookieFactory->createCookie($refreshTokenString));
+
+    // return $response;
   }
 
   #[Route('/api/2fa/verify', name: 'api_2fa_verify', methods: ['POST', 'OPTIONS'])]

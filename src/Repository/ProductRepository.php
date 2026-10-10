@@ -18,6 +18,17 @@ class ProductRepository extends ServiceEntityRepository
         parent::__construct($registry, Product::class);
     }
 
+
+    public function countRecentlyUpdatedInDays(int $days): int
+    {
+        return $this->createQueryBuilder('p')
+            ->select('COUNT(p.id)')
+            ->andWhere('p.updatedAt IS NOT NULL')
+            ->andWhere('p.updatedAt >= :date')
+            ->setParameter('date', new \DateTime("-$days days"))
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
     //    /**
     //     * @return Product[] Returns an array of Product objects
     //     */

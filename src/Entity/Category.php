@@ -21,6 +21,13 @@ use Symfony\Component\Serializer\Attribute\Groups;
     operations: [
         new \ApiPlatform\Metadata\Get(),
         new GetCollection(),
+        new GetCollection(
+            normalizationContext: ['groups' => ['category:read', 'product:read:details', 'category:read:admin']],
+            paginationItemsPerPage: 12,
+            filters: ['categories.search_filter'],
+            security: "is_granted('ROLE_ADMIN')",
+            uriTemplate: 'admin/categories',
+        ),
         new Post(
             denormalizationContext: ['groups' => ['category:write']],
             security: "is_granted('ROLE_ADMIN')",
@@ -76,6 +83,7 @@ class Category
      * @var Collection<int, Subcategory>
      */
     #[ORM\OneToMany(targetEntity: Subcategory::class, mappedBy: 'category')]
+    #[Groups(['category:read', 'category:read:admin'])]
     private Collection $subcategories;
 
     public function __construct()
@@ -196,5 +204,11 @@ class Category
         }
 
         return $this;
+    }
+
+    #[Groups(['category:read:admin'])]
+    public function getProductLength(): int
+    {
+        return $this->products->count();
     }
 }

@@ -30,7 +30,9 @@ use Symfony\Component\Serializer\Attribute\Groups;
             processor: ProductStateProcessor::class,
             security: "is_granted('ROLE_ADMIN')",
         ),
-        new \ApiPlatform\Metadata\Put(),
+        new \ApiPlatform\Metadata\Put(
+            security: "is_granted('ROLE_ADMIN')",
+        ),
         new GetCollection(
             security: "is_granted('ROLE_ADMIN')",
             routeName: 'app_product_scrape',
@@ -130,6 +132,19 @@ class Product
 
     #[ORM\ManyToOne(inversedBy: 'products')]
     private ?Subcategory $subcategory = null;
+
+    #[ORM\Column(length: 10)]
+    #[Groups(['product:read:details'])]
+    private ?string $uid = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTime $updatedAt = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?float $latestPrice = null;
+
+    #[ORM\Column]
+    private ?float $fullPrice = null;
 
     public function __construct(
     ) {
@@ -367,6 +382,54 @@ class Product
     public function setSubcategory(?Subcategory $subcategory): static
     {
         $this->subcategory = $subcategory;
+
+        return $this;
+    }
+
+    public function getUid(): ?string
+    {
+        return $this->uid;
+    }
+
+    public function setUid(string $uid): static
+    {
+        $this->uid = $uid;
+
+        return $this;
+    }
+
+    public function getUpdatedAt(): ?\DateTime
+    {
+        return $this->updatedAt;
+    }
+
+    public function setUpdatedAt(?\DateTime $updatedAt): static
+    {
+        $this->updatedAt = $updatedAt;
+
+        return $this;
+    }
+
+    public function getLatestPrice(): ?float
+    {
+        return $this->latestPrice;
+    }
+
+    public function setLatestPrice(?float $latestPrice): static
+    {
+        $this->latestPrice = $latestPrice;
+
+        return $this;
+    }
+
+    public function getFullPrice(): ?float
+    {
+        return $this->fullPrice;
+    }
+
+    public function setFullPrice(float $fullPrice): static
+    {
+        $this->fullPrice = $fullPrice;
 
         return $this;
     }
