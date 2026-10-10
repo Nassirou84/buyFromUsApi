@@ -18,6 +18,36 @@ class SubcategoryRepository extends ServiceEntityRepository
         parent::__construct($registry, Subcategory::class);
     }
 
+    public function getAverageMarkup(): ?float
+    {
+        $qb = $this->createQueryBuilder('s')
+            ->select('AVG(s.markup) as avg_markup')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return $qb !== null ? (float) $qb : null; // avg_markup
+    }
+
+    public function getLowestMarkup(): ?float
+    {
+        $qb = $this->createQueryBuilder('s')
+            ->select('MIN(s.markup) as lowest_markup')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return $qb !== null ? (float) $qb : null; // lowest_markup
+    }
+
+    public function getHighestMarkup(): ?float
+    {
+        $qb = $this->createQueryBuilder('s')
+            ->select('MAX(s.markup) as highest_markup')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return $qb !== null ? (float) $qb : null; // highest_markup
+    }
+
     //    /**
     //     * @return Subcategory[] Returns an array of Subcategory objects
     //     */

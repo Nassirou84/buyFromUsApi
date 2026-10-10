@@ -19,6 +19,7 @@
         "kyzegs/doctrine-encryption-bundle": ">=1.1.1",
         "lexik/jwt-authentication-bundle": "^3.2",
         "nelmio/cors-bundle": "^2.6.1",
+        "php-amqplib/php-amqplib": "^3.7",
         "phpdocumentor/reflection-docblock": "^6.0.3",
         "phpstan/phpdoc-parser": "^2.3.3",
         "picqer/php-barcode-generator": "^3.3",
@@ -104,6 +105,8 @@
         "friendsofphp/php-cs-fixer": "^3.95.22",
         "phpstan/phpstan": "^2.2.9",
         "phpstan/phpstan-symfony": "^2.0.20",
+        "phpunit/phpunit": "^13.3",
+        "symfony/browser-kit": "8.1.*",
         "symfony/maker-bundle": "^1.67"
     }
 }

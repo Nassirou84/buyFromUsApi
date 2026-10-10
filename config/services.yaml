@@ -158,7 +158,7 @@ services:
 
     products.search_filter:
       parent: 'api_platform.doctrine.orm.search_filter'
-      arguments: [{title: 'partial', slug: 'exact', isAvailable: 'exact', category.title: 'exact'}]
+      arguments: [{title: 'partial', slug: 'exact', isAvailable: 'exact', category.title: 'exact', subcategory.title: 'exact'}]
       tags:
           - { name: api_platform.filter }
 
@@ -211,3 +211,11 @@ services:
             $passwordResetTemplateId: '%env(PASSWORD_RESET_TEMPLATE_ID)%'
             $emailConfirmationTemplateId: '%env(EMAIL_CONFIRMATION_TEMPLATE_ID)%'
             $passwordChangedTemplateId: '%env(PASSWORD_CHANGED_TEMPLATE_ID)%'
+
+    App\Service\RabbitMqMessengerService:
+        arguments:
+            $host: '%env(RABBITMQ_HOST)%'
+            $port: '%env(RABBITMQ_PORT)%'
+            $user: '%env(RABBITMQ_USER)%'
+            $password: '%env(RABBITMQ_PASSWORD)%'
+            $vhost: '%env(RABBITMQ_VHOST)%'

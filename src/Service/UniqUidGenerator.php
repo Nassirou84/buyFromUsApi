@@ -28,6 +28,8 @@ class UniqUidGenerator
             $prefix = 'O-';
         } elseif ('App\Entity\User' === $classEntity) {
             $prefix = 'U-';
+        } elseif ('App\Entity\Product' === $classEntity) {
+            $prefix = 'P-';
         }
 
         do {
