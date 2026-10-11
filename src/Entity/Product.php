@@ -131,6 +131,7 @@ class Product
     private ?string $slug = null;
 
     #[ORM\ManyToOne(inversedBy: 'products')]
+    #[Groups(['product:read:details'])]
     private ?Subcategory $subcategory = null;
 
     #[ORM\Column(length: 10)]

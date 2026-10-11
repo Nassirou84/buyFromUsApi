@@ -33,7 +33,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
             security: "is_granted('ROLE_ADMIN')",
         ),
     ],
-    normalizationContext: ['groups' => ['subcategory:read', 'product:read:details', 'category:read:admin']],
+    normalizationContext: ['groups' => ['subcategory:read', 'product:read:details', 'category:read:admin', 'product:read:details']],
 )]
 #[ORM\Entity(repositoryClass: SubcategoryRepository::class)]
 class Subcategory
@@ -41,12 +41,12 @@ class Subcategory
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['subcategory:read', 'product:read:details'])]
+    #[Groups(['subcategory:read', 'product:read:details', 'product:read:details'])]
     /** @phpstan-ignore-next-line */
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['subcategory:read', 'subcategory:write', 'product:read:details', 'subcategory:write', 'subcategory:write'])]
+    #[Groups(['subcategory:read', 'subcategory:write', 'product:read:details', 'subcategory:write', 'subcategory:write', 'product:read:details'])]
     private ?string $title = null;
 
     #[ORM\ManyToOne(inversedBy: 'subcategories')]
