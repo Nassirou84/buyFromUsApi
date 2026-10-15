@@ -4,76 +4,110 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Service\BrightDataAmazonScraper;
+use App\Entity\Product;
 use App\Service\TranslatorService;
+use App\Service\GcsUploaderService;
+use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
+use App\Service\PhotoService;
+use App\Service\UniqUidGenerator;
+use App\Repository\CategoryRepository;
+use App\Repository\SubcategoryRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
-
-use function array_slice;
-use function is_array;
+use Symfony\Component\String\Slugger\SluggerInterface;
 
 #[Route('api/product')]
 final class ProductController extends AbstractController
 {
-    #[Route('/scrape', name: 'app_product_scrape', methods: ['POST'])]
-    public function scrape(
+    #[Route('/publish-product', name: 'app_product_scrape', methods: ['POST'])]
+    public function publishProduct(
         Request $request,
-        BrightDataAmazonScraper $brightDataAmazonScraper,
         TranslatorService $translatorService,
+        EntityManagerInterface $entityManager,
+        GcsUploaderService $gcsUploaderService,
+        UniqUidGenerator $uniqUidGenerator,
+        CategoryRepository $categoryRepository,
+        SubcategoryRepository $subcategoryRepository,
+        PhotoService $photoService,
+        NormalizerInterface $normalizer,
+        SluggerInterface $slugger,
     ): JsonResponse {
-        set_time_limit(180);
-        $url = $request->getContent();
-        $url = json_decode($url, true)['url'] ?? null;
-        $response = new JsonResponse();
-        if (!$url) {
-            return new JsonResponse(['error' => 'URL parameter is missing'], 400);
+        // Implementation goes here
+        $user = $this->getUser();
+        if (!$user) {
+            return new JsonResponse(['error' => 'Unauthorized'], JsonResponse::HTTP_UNAUTHORIZED);
         }
-        $productData = $brightDataAmazonScraper->scrapeProduct($url);
-        $productData = $translatorService->translateProductData($productData);
+        if (in_array('ROLE_ADMIN', $user->getRoles()) === false) {
+            return new JsonResponse(['error' => 'Forbidden'], JsonResponse::HTTP_FORBIDDEN);
+        }
 
-        $productDetails = $productData['product_details'] ?? null;
+        // data is being retrieved from a form submission
+        $data = $request->request->all();
 
-        if (is_array($productDetails)) {
-            foreach ($productDetails as $key => $detail) {
-                if ('brand' === $detail['type']) {
-                    continue;
+        $images = $request->files->get('images');
+
+        $variants = json_decode($data['variants'] ?? '[]', true) ?: [];
+        foreach ($variants as &$variant) {
+            if (!empty($variant['image']) && str_starts_with($variant['image'], 'data:')) {
+                try {
+                    $variant['image'] = $gcsUploaderService->uploadDataUri(
+                        $variant['image'],
+                        $variant['title'] ?? 'variant'
+                    );
+                } catch (\InvalidArgumentException $e) {
+                    return new JsonResponse(['error' => $e->getMessage()], JsonResponse::HTTP_BAD_REQUEST);
                 }
-                $productDetails[$key] = [
-                    'type' => $translatorService->translate($detail['type'] ?? '', 'fr'),
-                    'value' => $translatorService->translate($detail['value'] ?? '', 'fr'),
-                ];
             }
         }
+        unset($variant);
 
-        $variants = $productData['variations'] ?? null;
-        $variants = array_slice($variants ?? [], 0, 10);
-        // if (is_array($variants)) {
-        //     foreach ($variants as $key => $variant) {
-        //         foreach ($variant as $key => $value) {
-        //             if (!filter_var($value, FILTER_VALIDATE_URL)) {
-        //                 $variant[$key] = $translatorService->translate($variant[$key] ?? '', 'fr') ?? null;
-        //             }
-        //         }
-        //         $variants[$key] = $variant;
-        //     }
-        // }
+        $productUid = $uniqUidGenerator->generateUniqueUid(Product::class);
 
-        $response->setData([
-            'title' => $productData['title'] ?? null,
-            'description' => $productData['description'] ?? null,
-            'seller' => $productData['seller_name'] ?? null,
-            'usdPrice' => $productData['final_price'] ?? null,
-            'brand' => $productData['brand'] ?? null,
-            'customerSays' => $productData['customer_says'] ?? null,
-            'features' => $productData['features'] ?? null,
-            'variants' => $variants,
-            'details' => $productDetails ?? null,
-            'scrappingUrl' => $productData['url'] ?? null,
-            'isAvailable' => $productData['is_available'] ?? null,
-        ]);
+        $category = $categoryRepository->find($data['category']);
+        $subcategory = $subcategoryRepository->find($data['subCategory']);
 
-        return $response;
+        $product = new Product();
+        $product->setUid($productUid);
+        $product->setTitle($data['title'] ?? null);
+        $product->setDescription($data['description'] ?? null);
+        $product->setUsdPrice(isset($data['usdPrice']) ? (float) $data['usdPrice'] : null);
+        $product->setSeller($data['supplierInfo'] ?? null);
+        $product->setFullPrice(isset($data['retailPrice']) ? (float) $data['retailPrice'] : null);
+        $product->setScrappingUrl($data['scrappingUrl'] ?? null);
+        $product->setProductCondition($data['productCondition'] ?? null);
+        $product->setCategory($category);
+        $product->setSubcategory($subcategory);
+        $product->setBrand($data['brand'] ?? null);
+        $product->setUpdatedAt(new \DateTime());
+        $product->setLatestPrice(isset($data['latestPrice']) ? (float) $data['latestPrice'] : null);
+        $product->setReturnPolicy($data['returnPolicy'] ?? null);
+        $product->setAcceptReturn(isset($data['acceptReturn']) ? $data['acceptReturn'] == 'true' : false);
+        $product->setPrimeDelivery(isset($data['primeDelivery']) ? $data['primeDelivery'] == 'true' : false);
+        $product->setSellerChoice(isset($data['sellerChoice']) ? $data['sellerChoice'] == 'true' : false);
+        $product->setIsAvailable(isset($data['available']) ? $data['available'] == 'true' : false);
+        $product->setCustomerSays($data['customerSays'] ?? null);
+        $product->setOverallRating(isset($data['overallRating']) ? (float) $data['overallRating'] : null);
+        $product->setOverallRatingsCounts(isset($data['overallRatingCount']) ? (int) $data['overallRatingCount'] : null);
+        $product->setDetails(json_decode($data['details'] ?? null, true));
+        $product->setFeatures(json_decode($data['features'] ?? null, true));
+        $product->setVariants($variants);
+        $product->setSlug($slugger->slug($product->getTitle())->lower() . '-' . uniqid());
+
+        $entityManager->persist($product);
+        $entityManager->flush();
+
+        if (!empty($images)) {
+            foreach ($images as $image) {
+                $file = $gcsUploaderService->upload($image);
+                $photoService->createPhotoForProduct($product, $file);
+            }
+        }
+        $normalizedProduct = $normalizer->normalize($product, null, ['groups' => 'product:read']);
+
+        return new JsonResponse($normalizedProduct, 201);
     }
+
 }

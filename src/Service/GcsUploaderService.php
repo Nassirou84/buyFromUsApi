@@ -45,4 +45,40 @@ class GcsUploaderService
 
         return sprintf('https://storage.googleapis.com/%s/%s', $this->storageBucket->name(), $fileName);
     }
+
+    private const MIME_EXTENSIONS = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+        'image/gif' => 'gif',
+    ];
+
+    /**
+     * Uploads a base64 data URI (e.g. "data:image/jpeg;base64,...") and returns its public URL.
+     */
+    public function uploadDataUri(string $dataUri, string $baseName = 'image'): string
+    {
+        if (!preg_match('#^data:(image/[a-z0-9.+-]+);base64,(.+)$#is', $dataUri, $matches)) {
+            throw new \InvalidArgumentException('Invalid image data URI.');
+        }
+
+        $mimeType = strtolower($matches[1]);
+        $content = base64_decode($matches[2], true);
+        if ($content === false) {
+            throw new \InvalidArgumentException('Invalid base64 image content.');
+        }
+
+        $extension = self::MIME_EXTENSIONS[$mimeType] ?? 'png';
+        $safeName = $this->sluggerInterface->slug($baseName);
+        $fileName = sprintf('%s-%s.%s', $safeName, uniqid(), $extension);
+
+        $this->storageBucket->upload($content, [
+            'name' => $fileName,
+            'metadata' => [
+                'contentType' => $mimeType,
+            ],
+        ]);
+
+        return sprintf('https://storage.googleapis.com/%s/%s', $this->storageBucket->name(), $fileName);
+    }
 }

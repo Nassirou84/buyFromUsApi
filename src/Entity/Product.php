@@ -17,12 +17,19 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ApiResource(
     operations: [
+        new GetCollection(
+            uriTemplate: '/products/get-one-product',
+            paginationEnabled: false,
+            normalizationContext: ['groups' => ['product:read', 'product:read:details']],
+            filters: ['products.search_filter'],
+        ),
         new \ApiPlatform\Metadata\Get(),
         new GetCollection(
-            normalizationContext: ['groups' => ['product:read', 'product:read:details']],
+            normalizationContext: ['groups' => ['product:read']],
             paginationItemsPerPage: 12,
             filters: ['products.search_filter', 'products.order_filter', 'products.range_filter'],
         ),
@@ -33,13 +40,6 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new \ApiPlatform\Metadata\Put(
             security: "is_granted('ROLE_ADMIN')",
         ),
-        new GetCollection(
-            security: "is_granted('ROLE_ADMIN')",
-            routeName: 'app_product_scrape',
-            name: 'app_product_scrape',
-            paginationEnabled: false,
-            normalizationContext: ['groups' => ['product:read', 'product:read:details']],
-        ),
         new Patch(
             security: "is_granted('ROLE_ADMIN')",
         ),
@@ -48,12 +48,15 @@ use Symfony\Component\Serializer\Attribute\Groups;
         ),
     ],
     normalizationContext: ['groups' => ['product:read', 'product:read:details', 'order:read', 'wishlist:read', 'basket:read']],
-    filters: ['products.search_filter', 'products.order_filter'],
 )]
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
 class Product
 {
     public const SALES_TAX_RATES = 0.18;
+
+    public const PRODUCT_CONDITION_NEW = 'new';
+    public const PRODUCT_CONDITION_USED = 'used';
+    public const PRODUCT_CONDITION_REFURBISHED = 'refurbished';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -64,6 +67,8 @@ class Product
 
     #[ORM\Column(length: 255)]
     #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read'])]
+    #[Assert\NotBlank]
+    #[Assert\Length(max: 255)]
     private ?string $title = null;
 
     #[ORM\Column]
@@ -79,22 +84,30 @@ class Product
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     #[Groups(['product:read'])]
+    #[Assert\Url]
     private ?string $scrappingUrl = null;
 
     #[ORM\Column(length: 255)]
     #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read'])]
+    #[Assert\NotBlank]
+    #[Assert\Length(max: 255)]
     private ?string $seller = null;
 
     #[ORM\Column(length: 255)]
     #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read'])]
+    #[Assert\NotBlank]
+    #[Assert\Length(max: 255)]
     private ?string $brand = null;
 
     #[ORM\Column]
     #[Groups(['product:read'])]
+    #[Assert\NotNull]
+    #[Assert\PositiveOrZero]
     private ?float $usdPrice = null;
 
     #[ORM\Column]
     #[Groups(['product:read', 'wishlist:read', 'basket:read'])]
+    #[Assert\NotNull]
     private ?bool $isAvailable = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
@@ -108,6 +121,7 @@ class Product
     #[ORM\ManyToOne(inversedBy: 'products')]
     #[ORM\JoinColumn(nullable: false)]
     #[Groups(['product:read:details'])]
+    #[Assert\NotNull]
     private ?Category $category = null;
 
     #[ORM\Column(nullable: true)]
@@ -128,6 +142,9 @@ class Product
 
     #[ORM\Column(length: 255, nullable: true)]
     #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read'])]
+    #[Assert\NotBlank]
+    #[Assert\Length(max: 255)]
+    #[Assert\Regex(pattern: '/^[a-z0-9]+(?:-[a-z0-9]+)*$/', message: 'The slug may only contain lowercase letters, digits and hyphens.')]
     private ?string $slug = null;
 
     #[ORM\ManyToOne(inversedBy: 'products')]
@@ -135,6 +152,7 @@ class Product
     private ?Subcategory $subcategory = null;
 
     #[ORM\Column(length: 10)]
+    #[Assert\Length(max: 10)]
     #[Groups(['product:read:details'])]
     private ?string $uid = null;
 
@@ -142,16 +160,58 @@ class Product
     private ?\DateTime $updatedAt = null;
 
     #[ORM\Column(nullable: true)]
+    #[Assert\PositiveOrZero]
+    #[Groups(['product:read:details', 'product:read'])]
     private ?float $latestPrice = null;
 
     #[ORM\Column]
+    #[Assert\NotNull]
+    #[Assert\PositiveOrZero]
+    #[Groups(['product:read:details', 'product:read'])]
     private ?float $fullPrice = null;
+
+    #[ORM\Column(nullable: true)]
+    #[Assert\Range(min: 0, max: 5)]
+    #[Groups(['product:read:details', 'product:read'])]
+    private ?float $overallRating = null;
+
+    #[ORM\Column(nullable: true)]
+    #[Assert\PositiveOrZero]
+    #[Groups(['product:read:details', 'product:read'])]
+    private ?int $overallRatingsCounts = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Assert\Length(max: 255)]
+    private ?string $returnPolicy = null;
+
+    #[ORM\Column(length: 255)]
+    #[Assert\NotBlank]
+    #[Assert\Choice(choices: [self::PRODUCT_CONDITION_NEW, self::PRODUCT_CONDITION_USED, self::PRODUCT_CONDITION_REFURBISHED])]
+    #[Groups(['product:read:details', 'product:read'])]
+    private ?string $productCondition = null;
+
+    #[ORM\Column(nullable: true)]
+    #[Groups(['product:read:details', 'product:read'])]
+    private ?bool $acceptReturn = null;
+
+    #[ORM\Column(nullable: true)]
+    #[Groups(['product:read:details', 'product:read'])]
+    private ?bool $primeDelivery = null;
+
+    #[ORM\Column(nullable: true)]
+    #[Groups(['product:read:details', 'product:read'])]
+    private ?bool $sellerChoice = null;
 
     public function __construct(
     ) {
         $this->createdAt = new DateTime();
         $this->photos = new ArrayCollection();
         $this->lastScrappingAt = null;
+        $this->updatedAt = new DateTime();
+        $this->latestPrice = null;
+        $this->acceptReturn = false;
+        $this->primeDelivery = false;
+        $this->sellerChoice = false;
     }
 
     public function getId(): ?int
@@ -431,6 +491,93 @@ class Product
     public function setFullPrice(float $fullPrice): static
     {
         $this->fullPrice = $fullPrice;
+
+        return $this;
+    }
+
+    public function getOverallRating(): ?float
+    {
+        return $this->overallRating;
+    }
+
+    public function setOverallRating(?float $overallRating): static
+    {
+        $this->overallRating = $overallRating;
+
+        return $this;
+    }
+
+    public function getOverallRatingsCounts(): ?int
+    {
+        return $this->overallRatingsCounts;
+    }
+
+    public function setOverallRatingsCounts(?int $overallRatingsCounts): static
+    {
+        $this->overallRatingsCounts = $overallRatingsCounts;
+
+        return $this;
+    }
+
+    public function getReturnPolicy(): ?string
+    {
+        return $this->returnPolicy;
+    }
+
+    public function setReturnPolicy(?string $returnPolicy): static
+    {
+        $this->returnPolicy = $returnPolicy;
+
+        return $this;
+    }
+
+    public function getProductCondition(): ?string
+    {
+        return $this->productCondition;
+    }
+
+    public function setProductCondition(string $productCondition): static
+    {
+        $this->productCondition = $productCondition;
+
+        return $this;
+    }
+
+    public function isAcceptReturn(): ?bool
+    {
+        return $this->acceptReturn;
+    }
+
+    public function setAcceptReturn(?bool $acceptReturn): static
+    {
+        $this->acceptReturn = $acceptReturn;
+
+        return $this;
+    }
+
+    #[Groups(['product:read:details', 'product:read'])]
+    public function isPrimeDelivery(): ?bool
+    {
+        return $this->primeDelivery;
+    }
+
+    public function setPrimeDelivery(?bool $primeDelivery): static
+    {
+        $this->primeDelivery = $primeDelivery;
+
+        return $this;
+    }
+
+
+    #[Groups(['product:read:details', 'product:read'])]
+    public function isSellerChoice(): ?bool
+    {
+        return $this->sellerChoice;
+    }
+
+    public function setSellerChoice(?bool $sellerChoice): static
+    {
+        $this->sellerChoice = $sellerChoice;
 
         return $this;
     }
