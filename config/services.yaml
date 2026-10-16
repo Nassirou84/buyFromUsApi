@@ -204,6 +204,10 @@ services:
         arguments:
             $welcomeEmailTemplateId: '%env(WELCOME_EMAIL_TEMPLATE_ID)%'
 
+    App\MessageHandler\NewProductAddedMessageHandler:
+        arguments:
+            $adminEmail: '%env(ADMIN_EMAIL)%'
+
     App\Service\EmailQueueService:
         arguments:
             $frontendURL: '%env(FRONTEND_URL)%'

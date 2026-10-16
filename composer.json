@@ -26,6 +26,8 @@
         "scheb/2fa-bundle": "^8.6.1",
         "scheb/2fa-totp": "^8.6.1",
         "stichoza/google-translate-php": "^5.3.4",
+        "symfony/ai-bundle": "^0.14.1",
+        "symfony/ai-gemini-platform": "^0.14.0",
         "symfony/asset": "8.1.*",
         "symfony/brevo-mailer": "8.1.*",
         "symfony/console": "8.1.*",

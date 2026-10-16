@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Entity\Product;
-use App\Service\TranslatorService;
 use App\Service\GcsUploaderService;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
+use Symfony\Component\Messenger\MessageBusInterface;
+use App\Message\NewProductAddedMessage;
 use App\Service\PhotoService;
 use App\Service\UniqUidGenerator;
 use App\Repository\CategoryRepository;
@@ -25,7 +26,6 @@ final class ProductController extends AbstractController
     #[Route('/publish-product', name: 'app_product_scrape', methods: ['POST'])]
     public function publishProduct(
         Request $request,
-        TranslatorService $translatorService,
         EntityManagerInterface $entityManager,
         GcsUploaderService $gcsUploaderService,
         UniqUidGenerator $uniqUidGenerator,
@@ -34,6 +34,7 @@ final class ProductController extends AbstractController
         PhotoService $photoService,
         NormalizerInterface $normalizer,
         SluggerInterface $slugger,
+        MessageBusInterface $messageBus,
     ): JsonResponse {
         // Implementation goes here
         $user = $this->getUser();
@@ -106,6 +107,11 @@ final class ProductController extends AbstractController
             }
         }
         $normalizedProduct = $normalizer->normalize($product, null, ['groups' => 'product:read']);
+
+        if ($product->getScrappingUrl()) {
+            $newProductAddedMessage = new NewProductAddedMessage($product->getUid());
+            $messageBus->dispatch($newProductAddedMessage);
+        }
 
         return new JsonResponse($normalizedProduct, 201);
     }

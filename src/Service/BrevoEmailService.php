@@ -64,6 +64,23 @@ class BrevoEmailService
         $this->mailer->send($email);
     }
 
+    public function sendTextEmail(string $to, string $subject, string $content): void
+    {
+        $response = $this->client->request('POST', self::BASE_URL . '/smtp/email', [
+            'json' => [
+                'sender' => ['email' => $this->sender->getAddress(), 'name' => $this->sender->getName()],
+                'to' => $this->formatRecipients($to),
+                'subject' => $subject,
+                'textContent' => $content,
+            ],
+        ]);
+
+        // toArray() throws on non-2xx, so the messenger handler can retry/fail properly
+        $this->logger?->info('Text email sent', [
+            'message_id' => $response->toArray()['messageId'] ?? null,
+        ]);
+    }
+
     public function sendTemplateEmail(int $templateId, array $to, array $params = []): bool
     {
         $payload = [
