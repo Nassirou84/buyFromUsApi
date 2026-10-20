@@ -23,6 +23,8 @@ framework:
             # 'App\Message\YourMessage': async
             'App\Message\TwoFactorCodeMessage': async_priority_high
             'App\Message\ResetEmailMessage': async_priority_high
+            'App\Message\NewAdminCreatedMessage': async_priority_high
+            'App\Message\AdminResetLinkMessage': async_priority_high
             'App\Message\OrderConfirmationMessage': async_priority_high
             'App\Message\WelcomeMessage': async_default
             'App\Message\NewProductAddedMessage': async_priority_high

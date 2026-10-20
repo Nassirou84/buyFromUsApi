@@ -8,15 +8,16 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Patch;
+use App\Filter\ProductKeywordFilter;
 use App\Repository\ProductRepository;
 use App\Service\PriceCalculator;
 use App\State\ProductStateProcessor;
-use DateTime;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Serializer\Attribute\SerializedName;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ApiResource(
@@ -31,7 +32,13 @@ use Symfony\Component\Validator\Constraints as Assert;
         new GetCollection(
             normalizationContext: ['groups' => ['product:read']],
             paginationItemsPerPage: 12,
-            filters: ['products.search_filter', 'products.order_filter', 'products.range_filter'],
+            filters: ['products.search_filter', 'products.order_filter', 'products.date_filter', ProductKeywordFilter::class],
+        ),
+        new GetCollection(
+            uriTemplate: '/admin/get-products',
+            normalizationContext: ['groups' => ['product:read', 'product:read:admin', 'product:read:details']],
+            paginationItemsPerPage: 9,
+            filters: ['products.search_filter', 'products.order_filter', 'products.date_filter', ProductKeywordFilter::class],
         ),
         new \ApiPlatform\Metadata\Post(
             processor: ProductStateProcessor::class,
@@ -73,7 +80,7 @@ class Product
 
     #[ORM\Column]
     #[Groups(['product:read', 'wishlist:read', 'basket:read'])]
-    private ?DateTime $createdAt = null;
+    private ?\DateTime $createdAt = null;
 
     /**
      * @var Collection<int, Photo>
@@ -83,7 +90,7 @@ class Product
     private Collection $photos;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
-    #[Groups(['product:read'])]
+    #[Groups(['product:read:admin'])]
     #[Assert\Url]
     private ?string $scrappingUrl = null;
 
@@ -100,13 +107,12 @@ class Product
     private ?string $brand = null;
 
     #[ORM\Column]
-    #[Groups(['product:read'])]
     #[Assert\NotNull]
     #[Assert\PositiveOrZero]
+    #[Groups(['product:read:admin'])]
     private ?float $usdPrice = null;
 
     #[ORM\Column]
-    #[Groups(['product:read', 'wishlist:read', 'basket:read'])]
     #[Assert\NotNull]
     private ?bool $isAvailable = null;
 
@@ -133,8 +139,8 @@ class Product
     private ?array $variants = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['product:read'])]
-    private ?DateTime $lastScrappingAt = null;
+    #[Groups(['product:read:admin'])]
+    private ?\DateTime $lastScrappingAt = null;
 
     #[ORM\Column(nullable: true)]
     #[Groups(['product:read:details'])]
@@ -157,6 +163,7 @@ class Product
     private ?string $uid = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['product:read:admin'])]
     private ?\DateTime $updatedAt = null;
 
     #[ORM\Column(nullable: true)]
@@ -182,6 +189,7 @@ class Product
 
     #[ORM\Column(length: 255, nullable: true)]
     #[Assert\Length(max: 255)]
+    #[Groups(['product:read:admin'])]
     private ?string $returnPolicy = null;
 
     #[ORM\Column(length: 255)]
@@ -204,10 +212,10 @@ class Product
 
     public function __construct(
     ) {
-        $this->createdAt = new DateTime();
+        $this->createdAt = new \DateTime();
         $this->photos = new ArrayCollection();
         $this->lastScrappingAt = null;
-        $this->updatedAt = new DateTime();
+        $this->updatedAt = new \DateTime();
         $this->latestPrice = null;
         $this->acceptReturn = false;
         $this->primeDelivery = false;
@@ -231,12 +239,12 @@ class Product
         return $this;
     }
 
-    public function getCreatedAt(): ?DateTime
+    public function getCreatedAt(): ?\DateTime
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(DateTime $createdAt): static
+    public function setCreatedAt(\DateTime $createdAt): static
     {
         $this->createdAt = $createdAt;
 
@@ -321,6 +329,8 @@ class Product
         return $this;
     }
 
+    #[Groups(['product:read:admin'])]
+    #[SerializedName('isAvailable')]
     public function isAvailable(): ?bool
     {
         return $this->isAvailable;
@@ -393,12 +403,12 @@ class Product
         return $this;
     }
 
-    public function getLastScrappingAt(): ?DateTime
+    public function getLastScrappingAt(): ?\DateTime
     {
         return $this->lastScrappingAt;
     }
 
-    public function setLastScrappingAt(?DateTime $lastScrappingAt): static
+    public function setLastScrappingAt(?\DateTime $lastScrappingAt): static
     {
         $this->lastScrappingAt = $lastScrappingAt;
 

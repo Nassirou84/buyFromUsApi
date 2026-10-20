@@ -92,7 +92,8 @@
         ],
         "post-update-cmd": [
             "@auto-scripts"
-        ]
+        ],
+        "phpstan": "phpstan analyse --memory-limit=1G"
     },
     "conflict": {
         "symfony/symfony": "*"

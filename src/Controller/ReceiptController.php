@@ -8,6 +8,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+use App\Entity\User;
 use App\Repository\OrderRepository;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use App\Service\ReceiptService;
@@ -47,7 +48,7 @@ final class ReceiptController extends AbstractController
                 $hasAccess = $order->getCustomer() === $user;
             } elseif ($accessToken === 'admin') {
                 $user = $token->getUser();
-                $hasAccess = $user && in_array('ROLE_ADMIN', $user->getRoles());
+                $hasAccess = $user && in_array(User::ROLE_ADMIN, $user->getRoles());
             }
         }
 

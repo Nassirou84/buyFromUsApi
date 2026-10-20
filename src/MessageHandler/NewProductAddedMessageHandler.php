@@ -37,7 +37,7 @@ class NewProductAddedMessageHandler
 
     $this->rabbitMqMessengerService->setupExchangeAndQueue($exchangeName, 'direct', $queueName, $routingKey);
 
-    $normalizedProduct = $this->normalizerInterface->normalize($product, null, ['groups' => ['product:read', 'product:read:details']]);
+    $normalizedProduct = $this->normalizerInterface->normalize($product, null, ['groups' => ['product:read', 'product:read:details', 'product:read:admin']]);
 
     $this->rabbitMqMessengerService->publishMessage($exchangeName, $routingKey, $normalizedProduct);
 

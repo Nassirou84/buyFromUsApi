@@ -7,11 +7,10 @@ namespace App\Service;
 use Exception;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
-use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\HttpClient\HttpClient;
-use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Address;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Twig\Environment;
 
 use function is_array;
 use function is_string;
@@ -25,10 +24,10 @@ class BrevoEmailService
     private HttpClientInterface $client;
     private ?LoggerInterface $logger;
     private Address $sender;
-    private MailerInterface $mailer;
+    private Environment $twig;
 
     public function __construct(
-        MailerInterface $mailer,
+        Environment $twig,
         string $apiKey,
         string $fromEmail,
         string $fromName = 'No Reply',
@@ -45,7 +44,7 @@ class BrevoEmailService
         ]);
         $this->logger = $logger;
         $this->sender = new Address($fromEmail, $fromName);
-        $this->mailer = $mailer;
+        $this->twig = $twig;
     }
 
     public function sendLocalTemplateEmail(
@@ -54,14 +53,22 @@ class BrevoEmailService
         string $templatePath,
         array $templateData = [],
     ): void {
-        $email = (new TemplatedEmail())
-            ->from($this->sender)
-            ->to($to)
-            ->subject($subject)
-            ->htmlTemplate($templatePath)
-            ->context($templateData);
+        // Sent through the Brevo API (same key as the other methods) rather than Symfony Mailer,
+        // so it doesn't depend on MAILER_DSN.
+        $response = $this->client->request('POST', self::BASE_URL . '/smtp/email', [
+            'json' => [
+                'sender' => ['email' => $this->sender->getAddress(), 'name' => $this->sender->getName()],
+                'to' => $this->formatRecipients($to),
+                'subject' => $subject,
+                'htmlContent' => $this->twig->render($templatePath, $templateData),
+            ],
+        ]);
 
-        $this->mailer->send($email);
+        // toArray() throws on non-2xx, so the messenger handler can retry/fail properly
+        $this->logger?->info('Local template email sent', [
+            'template' => $templatePath,
+            'message_id' => $response->toArray()['messageId'] ?? null,
+        ]);
     }
 
     public function sendTextEmail(string $to, string $subject, string $content): void

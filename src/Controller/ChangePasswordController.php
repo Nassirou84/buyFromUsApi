@@ -8,13 +8,15 @@ use App\Entity\User;
 use App\Message\ResetEmailMessage;
 use App\Repository\UserRepository;
 use App\Service\UserService;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
+
+use function is_array;
+use function is_string;
 
 use const ENT_QUOTES;
 use const FILTER_VALIDATE_EMAIL;
@@ -114,5 +116,41 @@ final class ChangePasswordController extends AbstractController
         $userService->updateUserPassword($user, $newPassword);
 
         return $this->json(['success' => true, 'message' => 'Mot de passe mis à jour avec succès.'], 200);
+    }
+
+    #[Route('/admin/update', name: 'app_change_password_admin_update', methods: ['POST'])]
+    public function updateAdminPassword(
+        UserService $userService,
+        UserPasswordHasherInterface $passwordHasher,
+        Request $request,
+    ): JsonResponse {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return $this->json(['success' => false, 'error' => 'user_not_authenticated'], 401);
+        }
+
+        if (!$this->isGranted(User::ROLE_ADMIN)) {
+            return $this->json(['success' => false, 'error' => 'access_denied'], 403);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $currentPassword = is_array($data) ? ($data['currentPassword'] ?? null) : null;
+        $newPassword = is_array($data) ? ($data['newPassword'] ?? null) : null;
+
+        if (!is_string($currentPassword) || !is_string($newPassword) || '' === $currentPassword || '' === $newPassword) {
+            return $this->json(['success' => false, 'error' => 'current_password_and_new_password_are_required'], 400);
+        }
+
+        if (!$passwordHasher->isPasswordValid($user, $currentPassword)) {
+            return $this->json(['success' => false, 'error' => 'current_password_is_incorrect'], 400);
+        }
+
+        if ($currentPassword === $newPassword) {
+            return $this->json(['success' => false, 'error' => 'new_password_must_be_different_from_current_password'], 400);
+        }
+
+        $userService->updateUserPassword($user, $newPassword);
+
+        return $this->json(['success' => true, 'message' => 'password_updated_successfully'], 200);
     }
 }

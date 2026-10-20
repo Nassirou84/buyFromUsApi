@@ -10,10 +10,11 @@ use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Serializer\Attribute\SerializedName;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ApiResource(
-    normalizationContext: ['groups' => ['photo:read']],
+    normalizationContext: ['groups' => ['photo:read', 'product:read', 'product:read:details']],
     types: ['https://schema.org/MediaObject'],
     operations: [
         new \ApiPlatform\Metadata\Get(),
@@ -25,7 +26,7 @@ use Symfony\Component\Validator\Constraints as Assert;
                 'multipart' => ['multipart/form-data'],
             ],
         ),
-    ],
+    ]
 )]
 #[ORM\Entity(repositoryClass: PhotoRepository::class)]
 class Photo
@@ -41,7 +42,7 @@ class Photo
     private ?DateTimeImmutable $createdAt = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['photo:read'])]
+    #[Groups(['photo:read', 'product:read', 'product:read:details'])]
     private ?string $url = null;
 
     #[ORM\ManyToOne(inversedBy: 'photos')]
@@ -59,9 +60,14 @@ class Photo
     )]
     public ?UploadedFile $file = null;
 
+    #[ORM\Column(nullable: true)]
+    #[Groups(['photo:read', 'product:read', 'product:read:details'])]
+    private ?bool $isCover = null;
+
     public function __construct()
     {
         $this->createdAt = new DateTimeImmutable();
+        $this->isCover = false;
     }
 
     public function getId(): ?int
@@ -101,6 +107,20 @@ class Photo
     public function setProduct(?Product $product): static
     {
         $this->product = $product;
+
+        return $this;
+    }
+
+    #[Groups(['photo:read', 'product:read', 'product:read:details'])]
+    #[SerializedName('isCover')]
+    public function isCover(): ?bool
+    {
+        return $this->isCover;
+    }
+
+    public function setIsCover(?bool $isCover): static
+    {
+        $this->isCover = $isCover;
 
         return $this;
     }

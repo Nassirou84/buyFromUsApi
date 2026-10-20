@@ -17,9 +17,22 @@ class PhotoService
   public function createPhotoForProduct(Product $product, string $url): void
   {
     $photo = new Photo();
-    $photo->setProduct($product);
+    // The first photo added to a product without a cover becomes its cover.
+    $photo->setIsCover(!$this->hasCover($product));
+    $product->addPhoto($photo);
     $photo->setUrl($url);
     $this->entityManagerInterface->persist($photo);
     $this->entityManagerInterface->flush();
+  }
+
+  private function hasCover(Product $product): bool
+  {
+    foreach ($product->getPhotos() as $photo) {
+      if ($photo->isCover()) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }

@@ -73,6 +73,14 @@ use Symfony\Component\Serializer\Attribute\Groups;
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_EMAIL', fields: ['email'])]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
+
+    const ROLE_SUPER_ADMIN = 'ROLE_SUPER_ADMIN';
+    const ROLE_ADMIN = 'ROLE_ADMIN';
+    const ROLE_USER = 'ROLE_USER';
+    const ROLE_MARKETING = 'ROLE_MARKETING';
+    const ROLE_COURRIER = 'ROLE_COURRIER';
+    const ROLE_ACCOUNTING = 'ROLE_ACCOUNTING';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -198,6 +206,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      */
     #[ORM\OneToMany(targetEntity: PromoCode::class, mappedBy: 'user')]
     private Collection $promoCodes;
+
+    #[ORM\Column(nullable: true)]
+    private ?bool $isGrantedAccess = null;
 
     public function __construct()
     {
@@ -679,6 +690,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
                 $promoCode->setUser(null);
             }
         }
+
+        return $this;
+    }
+
+    public function isGrantedAccess(): ?bool
+    {
+        return $this->isGrantedAccess;
+    }
+
+    public function setIsGrantedAccess(?bool $isGrantedAccess): static
+    {
+        $this->isGrantedAccess = $isGrantedAccess;
 
         return $this;
     }

@@ -2,9 +2,31 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\GetCollection;
+use Symfony\Component\Serializer\Attribute\Groups;
 use App\Repository\SettingRepository;
 use Doctrine\ORM\Mapping as ORM;
 
+#[ApiResource(
+    operations: [
+        new \ApiPlatform\Metadata\Get(
+            security: "is_granted('ROLE_ADMIN')"
+        ),
+        new \ApiPlatform\Metadata\Post(
+            security: "is_granted('ROLE_SUPER_ADMIN')"
+        ),
+        new GetCollection(
+            paginationEnabled: false,
+            security: "is_granted('ROLE_ADMIN')"
+        ),
+        new \ApiPlatform\Metadata\Patch(
+            security: "is_granted('ROLE_SUPER_ADMIN')"
+        )
+    ],
+    denormalizationContext: ['groups' => ['setting:write']],
+    normalizationContext: ['groups' => ['setting:read']],
+)]
 #[ORM\Entity(repositoryClass: SettingRepository::class)]
 #[ORM\UniqueConstraint(name: 'UNIQ_SETTING_NAME', fields: ['name'])]
 class Setting
@@ -26,16 +48,20 @@ class Setting
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['setting:read'])]
     /** @phpstan-ignore-next-line */
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['setting:read', 'setting:write'])]
     private ?string $name = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['setting:read', 'setting:write'])]
     private ?string $value = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['setting:read', 'setting:write'])]
     private ?string $scope = null;
 
     public function getId(): ?int
