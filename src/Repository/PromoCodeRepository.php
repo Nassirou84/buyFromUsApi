@@ -22,9 +22,15 @@ class PromoCodeRepository extends ServiceEntityRepository
     {
         return $this->createQueryBuilder('p')
             ->andWhere('p.terms = :val')
-            ->andWhere('p.expiresAt > :now')
+            ->andWhere('p.expiresAt IS NULL OR p.expiresAt > :now')
+            ->andWhere('p.startsAt IS NULL OR p.startsAt <= :now')
+            ->andWhere('p.isActive = true')
+            ->andWhere('p.type = :type')
             ->setParameter('val', PromoCode::APPLY_ALL_USERS)
+            ->setParameter('type', PromoCode::TYPE_PERCENTAGE)
             ->setParameter('now', new \DateTime())
+            ->orderBy('p.id', 'DESC')
+            ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult()
         ;

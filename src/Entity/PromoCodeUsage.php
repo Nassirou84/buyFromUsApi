@@ -22,7 +22,7 @@ class PromoCodeUsage
     #[ORM\JoinColumn(nullable: false)]
     private ?User $user = null;
 
-    #[ORM\ManyToOne]
+    #[ORM\ManyToOne(inversedBy: 'usages')]
     #[ORM\JoinColumn(nullable: false)]
     private ?PromoCode $promoCode = null;
 

@@ -48,8 +48,21 @@ class PromoCodeService
     if (!$promoCodeEntity) {
       throw new \Exception('promo_code_not_found');
     }
-    if ($promoCodeEntity->getExpiresAt() < new \DateTime()) {
+    if (!$promoCodeEntity->isActive()) {
+      throw new \Exception('promo_code_inactive');
+    }
+    $now = new \DateTime();
+    if ($promoCodeEntity->getStartsAt() && $promoCodeEntity->getStartsAt() > $now) {
+      throw new \Exception('promo_code_not_started');
+    }
+    if ($promoCodeEntity->getExpiresAt() && $promoCodeEntity->getExpiresAt() < $now) {
       throw new \Exception('promo_code_expired');
+    }
+    if ($promoCodeEntity->getMaxClaims() !== null && $promoCodeEntity->getCurrentClaims() >= $promoCodeEntity->getMaxClaims()) {
+      throw new \Exception('promo_code_limit_reached');
+    }
+    if ($promoCodeEntity->getMinSpend() !== null && $basket->getTotalAmount() < $promoCodeEntity->getMinSpend()) {
+      throw new \Exception('promo_code_minimum_spend_not_reached');
     }
     if ($this->promoCodeUsageRepository->hasUserUsedPromoCode($basket->getUser(), $promoCodeEntity)) {
       throw new \Exception('promo_code_already_used');
@@ -105,10 +118,12 @@ class PromoCodeService
     if (!$promoCodeEntity) {
       return 0.0;
     }
-    $discount = $promoCodeEntity->getDiscount();
+    $discount = (float) $promoCodeEntity->getDiscount();
     $totalAmount = $basket->getTotalAmount();
-    $discountedAmount = $totalAmount * ($discount / 100);
-    return $discountedAmount;
+    if ($promoCodeEntity->getType() === PromoCode::TYPE_FIXED) {
+      return min($discount, $totalAmount);
+    }
+    return $totalAmount * ($discount / 100);
   }
 
   public function specificUsersApplicable($promoCodeEntity, Basket $basket): bool

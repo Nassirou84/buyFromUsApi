@@ -11,12 +11,16 @@ use ApiPlatform\Metadata\Post;
 use ApiPlatform\OpenApi\Model\Operation;
 use App\Controller\CurrentlyLoginController;
 use App\Controller\EditCurrentUserController;
+use App\DataProvider\NonAdminUsersProvider;
+use App\Filter\UserKeywordFilter;
 use App\Repository\UserRepository;
 use App\State\RegisterStateProcessor;
 use DateTime;
 use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\Common\Collections\Criteria;
+use Doctrine\Common\Collections\Selectable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
@@ -30,7 +34,10 @@ use Symfony\Component\Serializer\Attribute\Groups;
             denormalizationContext: ['groups' => ['user:create']],
         ),
         new GetCollection(
-            security: "is_granted('ROLE_ADMIN')",
+            // security: "is_granted('ROLE_ADMIN')",
+            filters: [UserKeywordFilter::class, 'user.order_filter'],
+            provider: NonAdminUsersProvider::class,
+            denormalizationContext: ['groups' => ['user:admin:read']],
         ),
         new Get(
             security: "is_granted('ROLE_ADMIN') or object == user",
@@ -84,12 +91,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['user:read'])]
+    #[Groups(['user:read', 'user:admin:read'])]
     /** @phpstan-ignore-next-line */
     private ?int $id = null;
 
     #[ORM\Column(length: 180)]
-    #[Groups(['user:create', 'user:login:read'])]
+    #[Groups(['user:create', 'user:login:read', 'user:admin:read'])]
     private ?string $email = null;
 
     /**
@@ -113,18 +120,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?DateTime $registrationTokenCreatedAt = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['user:create', 'user:read'])]
+    #[Groups(['user:create', 'user:read', 'user:admin:read'])]
     private ?string $firstName = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['user:create', 'user:read'])]
+    #[Groups(['user:create', 'user:read', 'user:admin:read'])]
     private ?string $lastName = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['user:read'])]
+    #[Groups(['user:read', 'user:admin:read'])]
     private ?DateTimeImmutable $createdAt = null;
 
-    #[Groups(['user:read', 'user:edit'])]
+    #[Groups(['user:read', 'user:edit', 'user:admin:read'])]
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $phone = null;
 
@@ -153,7 +160,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?DateTime $lastLoginAt = null;
 
     /**
-     * @var Collection<int, Order>
+     * @var Collection<int, Order>&Selectable<int, Order>
      */
     #[ORM\OneToMany(targetEntity: Order::class, mappedBy: 'customer')]
     private Collection $orders;
@@ -183,7 +190,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?Basket $basket = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['user:login:read', 'user:edit'])]
+    #[Groups(['user:login:read', 'user:edit', 'user:admin:read'])]
     private ?array $addresses = [];
 
     #[ORM\Column(nullable: true)]
@@ -471,6 +478,27 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         }
 
         return $this;
+    }
+
+    /**
+     * Total number of orders placed by this user.
+     */
+    #[Groups(['user:admin:read', 'user:read'])]
+    public function getOrdersCount(): int
+    {
+        return $this->orders->matching(Criteria::create())->count();
+    }
+
+    /**
+     * Number of orders placed by this user during the last 7 days.
+     */
+    #[Groups(['user:admin:read', 'user:read'])]
+    public function getLastSevenDaysOrdersCount(): int
+    {
+        $criteria = Criteria::create()
+            ->where(Criteria::expr()->gte('createdAt', new DateTime('-7 days')));
+
+        return $this->orders->matching($criteria)->count();
     }
 
     public function getGoogleId(): ?string

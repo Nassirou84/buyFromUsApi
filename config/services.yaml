@@ -191,6 +191,12 @@ services:
       arguments: [{uid: 'exact'}]
       tags:
           - { name: api_platform.filter }
+
+    user.order_filter:
+        parent: 'api_platform.doctrine.orm.order_filter'
+        arguments: [{createdAt: 'asc'}]
+        tags:
+          - { name: api_platform.filter }
     ###< Filters 
 
     App\MessageHandler\SendTwoFactorCodeMessageHandler:

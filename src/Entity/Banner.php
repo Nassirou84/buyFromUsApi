@@ -2,10 +2,26 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
 use App\Repository\BannerRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Serializer\Attribute\SerializedName;
 
+#[ApiResource(
+    operations: [
+        new \ApiPlatform\Metadata\Get(),
+        new \ApiPlatform\Metadata\GetCollection(
+            order: ['createdAt' => 'asc']
+        ),
+        new \ApiPlatform\Metadata\Post(security: "is_granted('ROLE_ADMIN')"),
+        new \ApiPlatform\Metadata\Patch(security: "is_granted('ROLE_ADMIN')"),
+        new \ApiPlatform\Metadata\Delete(security: "is_granted('ROLE_ADMIN')")
+    ],
+    denormalizationContext: ['groups' => ['banner:write']],
+    normalizationContext: ['groups' => ['banner:read']]
+)]
 #[ORM\Entity(repositoryClass: BannerRepository::class)]
 #[ORM\UniqueConstraint(name: 'UNIQ_BANNER_NAME', fields: ['name'])]
 class Banner
@@ -16,31 +32,40 @@ class Banner
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['banner:read'])]
     /** @phpstan-ignore-next-line */
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['banner:read', 'banner:write'])]
     private ?string $title = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['banner:read', 'banner:write'])]
     private ?string $name = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[Groups(['banner:read', 'banner:write'])]
     private ?string $content = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['banner:read', 'banner:write'])]
     private ?string $imageUrl = null;
 
     #[ORM\Column]
+    #[Groups(['banner:read'])]
     private ?\DateTimeImmutable $createdAt = null;
 
     #[ORM\Column]
+    #[Groups(['banner:read'])]
     private ?\DateTime $updatedAt = null;
 
     #[ORM\Column]
+    #[Groups(['banner:write'])]
     private ?bool $isActive = null;
 
     #[ORM\ManyToOne]
+    #[Groups(['banner:read'])]
     private ?User $updatedBy = null;
 
     public function __construct()
@@ -127,6 +152,8 @@ class Banner
         return $this;
     }
 
+    #[Groups(['banner:read'])]
+    #[SerializedName('isActive')]
     public function isActive(): ?bool
     {
         return $this->isActive;

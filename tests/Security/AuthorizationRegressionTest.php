@@ -75,4 +75,33 @@ final class AuthorizationRegressionTest extends WebTestCase
 
         self::assertResponseStatusCodeSame(401);
     }
+
+    public function testAnonymousCannotReadOrWriteAdminFaq(): void
+    {
+        $this->json('GET', '/api/admin/faq', []);
+        self::assertResponseStatusCodeSame(401);
+
+        $this->json('PUT', '/api/admin/faq', ['categories' => []]);
+        self::assertResponseStatusCodeSame(401);
+
+        $this->json('POST', '/api/admin/faq/categories', ['title' => 'x', 'slug' => 'x']);
+        self::assertResponseStatusCodeSame(401);
+
+        $this->json('PATCH', '/api/admin/faq/categories/1', ['title' => 'x']);
+        self::assertResponseStatusCodeSame(401);
+    }
+
+    public function testAnonymousCannotUploadBannerImage(): void
+    {
+        $this->client->request('POST', '/api/admin/banner/upload-image');
+
+        self::assertResponseStatusCodeSame(401);
+    }
+
+    public function testPublicFaqIsReadableWithoutLogin(): void
+    {
+        $this->json('GET', '/api/faq', []);
+
+        self::assertResponseIsSuccessful();
+    }
 }
