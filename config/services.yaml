@@ -128,7 +128,7 @@ services:
 
     App\Service\BrevoEmailService:
         arguments:
-            $mailer: '@Symfony\Component\Mailer\MailerInterface'
+            $twig: '@twig'
             $fromEmail: '%env(MAILER_FROM)%'
             $fromName: '%env(MAILER_FROM_NAME)%'
             $apiKey: '%env(BREVO_API_KEY)%'
@@ -158,13 +158,19 @@ services:
 
     products.search_filter:
       parent: 'api_platform.doctrine.orm.search_filter'
-      arguments: [{title: 'partial', slug: 'exact', isAvailable: 'exact', category.title: 'exact', subcategory.title: 'exact'}]
+      arguments: [{title: 'partial', slug: 'exact', isAvailable: 'exact', category.title: 'exact', subcategory.title: 'exact', seller: 'exact'}]
       tags:
           - { name: api_platform.filter }
 
     products.order_filter:
         parent: 'api_platform.doctrine.orm.order_filter'
         arguments: [{createdAt: 'asc', usdPrice: 'asc'}]
+        tags:
+            - { name: api_platform.filter }
+
+    products.date_filter:
+        parent: 'api_platform.doctrine.orm.date_filter'
+        arguments: [{updatedAt: ~}]
         tags:
             - { name: api_platform.filter }
 
@@ -185,6 +191,12 @@ services:
       arguments: [{uid: 'exact'}]
       tags:
           - { name: api_platform.filter }
+
+    user.order_filter:
+        parent: 'api_platform.doctrine.orm.order_filter'
+        arguments: [{createdAt: 'asc'}]
+        tags:
+          - { name: api_platform.filter }
     ###< Filters 
 
     App\MessageHandler\SendTwoFactorCodeMessageHandler:
@@ -196,6 +208,15 @@ services:
             $resetPasswordPagePath: '%env(PASSWORD_RESET_URL)%'
             $passwordResetTemplateId: '%env(PASSWORD_RESET_TEMPLATE_ID)%'
 
+    App\MessageHandler\NewAdminCreatedMessageHandler:
+        arguments:
+            $resetPasswordPagePath: '%env(PASSWORD_RESET_URL)%'
+
+    App\MessageHandler\AdminResetLinkMessageHandler:
+        arguments:
+            $adminFrontendURL: '%env(ADMIN_FRONTEND_URL)%'
+            $resetPasswordPagePath: '%env(PASSWORD_RESET_URL)%'
+
     App\MessageHandler\SendOrderConfirmationMessageHandler:
         arguments:
             $orderConfirmationTemplateId: '%env(ORDER_CONFIRMATION_TEMPLATE_ID)%'
@@ -203,6 +224,10 @@ services:
     App\MessageHandler\WelcomeMessageHandler:
         arguments:
             $welcomeEmailTemplateId: '%env(WELCOME_EMAIL_TEMPLATE_ID)%'
+
+    App\MessageHandler\NewProductAddedMessageHandler:
+        arguments:
+            $adminEmail: '%env(ADMIN_EMAIL)%'
 
     App\Service\EmailQueueService:
         arguments:

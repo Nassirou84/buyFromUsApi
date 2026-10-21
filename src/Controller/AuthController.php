@@ -187,7 +187,11 @@ class AuthController extends AbstractController
 
     $roles = $user->getRoles();
 
-    if (!in_array('ROLE_ADMIN', $roles, true)) {
+    if (!in_array(User::ROLE_ADMIN, $roles, true)) {
+      return $this->json(['message' => 'Access denied. Admins only.'], 403);
+    }
+    $isGrantedAccess = $user->isGrantedAccess();
+    if (!$isGrantedAccess) {
       return $this->json(['message' => 'Access denied. Admins only.'], 403);
     }
 

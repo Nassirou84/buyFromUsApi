@@ -31,7 +31,7 @@ final class OrderSummaryController extends AbstractController
         return new JsonResponse([
             'totalOrders' => $totalOrders,
             'activeOrders' => $activeOrders,
-            'totalSpent' => ceil($totalSpent),
+            'totalSpent' => ceil($totalSpent ?? 0),
         ]);
     }
 }

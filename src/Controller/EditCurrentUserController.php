@@ -61,7 +61,7 @@ final class EditCurrentUserController extends AbstractController
             $user->setTwoFactor($data['twoFactor']);
         }
         if (isset($data['twoFactorContactMethod'])) {
-            if (!in_array($data['twoFactorContactMethod'], ['email', 'sms'], true)) {
+            if (!in_array($data['twoFactorContactMethod'], ['email', 'text'], true)) {
                 return $this->json(['error' => 'Invalid twoFactorContactMethod'], 400);
             }
             $user->setTwoFactorContactMethod($data['twoFactorContactMethod']);

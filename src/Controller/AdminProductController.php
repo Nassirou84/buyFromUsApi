@@ -7,6 +7,7 @@ namespace App\Controller;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
+use App\Entity\User;
 use App\Repository\ProductRepository;
 use App\Repository\SubcategoryRepository;
 use Symfony\Contracts\Cache\CacheInterface;
@@ -23,7 +24,7 @@ final class AdminProductController extends AbstractController
             return false;
         }
 
-        if (!in_array('ROLE_ADMIN', $user->getRoles(), true)) {
+        if (!in_array(User::ROLE_ADMIN, $user->getRoles(), true)) {
             return false;
         }
         return true;

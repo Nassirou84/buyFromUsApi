@@ -6,6 +6,7 @@ namespace App\Repository;
 
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
@@ -35,6 +36,36 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         $user->setPassword($newHashedPassword);
         $this->getEntityManager()->persist($user);
         $this->getEntityManager()->flush();
+    }
+
+    /**
+     * Roles that mark a user as staff. ROLE_USER is left out: it is the implicit baseline.
+     */
+    private const STAFF_ROLES = [
+        User::ROLE_SUPER_ADMIN,
+        User::ROLE_ADMIN,
+        User::ROLE_MARKETING,
+        User::ROLE_COURRIER,
+        User::ROLE_ACCOUNTING,
+    ];
+
+    /**
+     * Users that hold none of the staff roles.
+     *
+     * `roles` is stored as JSON, so each role name is matched as a quoted string.
+     */
+    public function createNonAdminQueryBuilder(string $alias = 'u'): QueryBuilder
+    {
+        $queryBuilder = $this->createQueryBuilder($alias)
+            ->orderBy(sprintf('%s.id', $alias), 'DESC');
+
+        foreach (self::STAFF_ROLES as $index => $role) {
+            $queryBuilder
+                ->andWhere(sprintf('%s.roles NOT LIKE :role%d', $alias, $index))
+                ->setParameter('role' . $index, '%"' . $role . '"%');
+        }
+
+        return $queryBuilder;
     }
 
     //    /**

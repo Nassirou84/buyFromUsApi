@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use Google\Cloud\Core\Exception\NotFoundException;
 use Google\Cloud\Storage\StorageClient;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\String\Slugger\SluggerInterface;
 
 use function sprintf;
+use function strlen;
 
 use const PATHINFO_FILENAME;
 
@@ -42,6 +44,67 @@ class GcsUploaderService
                 ],
             ],
         );
+
+        return sprintf('https://storage.googleapis.com/%s/%s', $this->storageBucket->name(), $fileName);
+    }
+
+    /**
+     * Deletes the object behind a public bucket URL. URLs that do not belong to this
+     * bucket (e.g. external images) are left alone. Returns whether an object was deleted.
+     */
+    public function deleteByUrl(string $url): bool
+    {
+        $prefix = sprintf('https://storage.googleapis.com/%s/', $this->storageBucket->name());
+        if (!str_starts_with($url, $prefix)) {
+            return false;
+        }
+
+        $objectName = urldecode(strtok(substr($url, strlen($prefix)), '?#'));
+        if ('' === $objectName) {
+            return false;
+        }
+
+        try {
+            $this->storageBucket->object($objectName)->delete();
+        } catch (NotFoundException) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private const MIME_EXTENSIONS = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+        'image/gif' => 'gif',
+    ];
+
+    /**
+     * Uploads a base64 data URI (e.g. "data:image/jpeg;base64,...") and returns its public URL.
+     */
+    public function uploadDataUri(string $dataUri, string $baseName = 'image'): string
+    {
+        if (!preg_match('#^data:(image/[a-z0-9.+-]+);base64,(.+)$#is', $dataUri, $matches)) {
+            throw new \InvalidArgumentException('Invalid image data URI.');
+        }
+
+        $mimeType = strtolower($matches[1]);
+        $content = base64_decode($matches[2], true);
+        if ($content === false) {
+            throw new \InvalidArgumentException('Invalid base64 image content.');
+        }
+
+        $extension = self::MIME_EXTENSIONS[$mimeType] ?? 'png';
+        $safeName = $this->sluggerInterface->slug($baseName);
+        $fileName = sprintf('%s-%s.%s', $safeName, uniqid(), $extension);
+
+        $this->storageBucket->upload($content, [
+            'name' => $fileName,
+            'metadata' => [
+                'contentType' => $mimeType,
+            ],
+        ]);
 
         return sprintf('https://storage.googleapis.com/%s/%s', $this->storageBucket->name(), $fileName);
     }
