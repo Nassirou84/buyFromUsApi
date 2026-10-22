@@ -7,6 +7,9 @@ namespace App\Tests\Security;
 use ApiPlatform\Metadata\HttpOperation;
 use ApiPlatform\Metadata\Resource\Factory\ResourceMetadataCollectionFactoryInterface;
 use App\Entity\Product;
+use App\Entity\Setting;
+use App\Service\CurrencyProvider;
+use App\Service\SettingService;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -103,5 +106,68 @@ final class AuthorizationRegressionTest extends WebTestCase
         $this->json('GET', '/api/faq', []);
 
         self::assertResponseIsSuccessful();
+    }
+
+    public function testPublicSettingsExposeOnlyGlobalAndFrontEndScopes(): void
+    {
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        foreach ([
+            ['a_global', Setting::SCOPE_GLOBAL],
+            ['b_front', Setting::SCOPE_FRONT_END],
+            ['c_user', Setting::SCOPE_USER],
+            ['d_admin', Setting::SCOPE_ADMIN],
+        ] as [$name, $scope]) {
+            $em->persist((new Setting())->setName($name)->setValue('v')->setScope($scope));
+        }
+        $em->flush();
+
+        $this->json('GET', '/api/public-settings', []);
+
+        self::assertResponseIsSuccessful();
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        self::assertSame(['global' => ['a_global' => 'v'], 'front_end' => ['b_front' => 'v']], $data);
+    }
+
+    public function testAnonymousCannotReadUserScopedSettings(): void
+    {
+        $this->json('GET', '/api/user-settings', []);
+
+        self::assertResponseStatusCodeSame(401);
+    }
+
+    public function testSettingsCacheIsInvalidatedWhenASettingChanges(): void
+    {
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $service = static::getContainer()->get(SettingService::class);
+
+        $setting = (new Setting())->setName('theme')->setValue('light')->setScope(Setting::SCOPE_FRONT_END);
+        $em->persist($setting);
+        $em->flush();
+        self::assertSame(['front_end' => ['theme' => 'light']], $service->getByScopes([Setting::SCOPE_FRONT_END]));
+
+        $setting->setValue('dark');
+        $em->flush();
+        self::assertSame(['front_end' => ['theme' => 'dark']], $service->getByScopes([Setting::SCOPE_FRONT_END]));
+        self::assertSame('dark', $service->getSetting('theme'));
+
+        $em->remove($setting);
+        $em->flush();
+        self::assertSame(['front_end' => []], $service->getByScopes([Setting::SCOPE_FRONT_END]));
+    }
+
+    public function testCurrencyProviderFollowsSettingChangesThroughTheCache(): void
+    {
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $provider = static::getContainer()->get(CurrencyProvider::class);
+
+        $currency = (new Setting())->setName(Setting::BASE_CURRENCY)->setValue('usd')->setScope(Setting::SCOPE_GLOBAL);
+        $em->persist($currency);
+        $em->flush();
+        self::assertSame('usd', $provider->getCurrency());
+
+        $currency->setValue('gnf');
+        $em->flush();
+        $provider->reset();
+        self::assertSame('gnf', $provider->getCurrency());
     }
 }

@@ -31,7 +31,7 @@ final class OrderService
         private UserRepository $userRepository,
         private int $expressShippingCost,
         private string $expressShippingDuration,
-        private float $taxRate,
+        private CurrencyProvider $currencyProvider,
     ) {
     }
 
@@ -85,7 +85,7 @@ final class OrderService
         $basketTotal = $basket->getTotalAmount();
         $totalAmount = $basketTotal;
         $discountAmount = 0;
-        $taxAmount = ceil($totalAmount * $this->taxRate);
+        $taxAmount = ceil($totalAmount * $this->currencyProvider->getTaxRate());
         $promoCodeApplicable = $promoCode && $this->promoCodeService->checkPromoCode($promoCode, $basket);
         if ($promoCodeApplicable) {
             $totalAmount = $this->promoCodeService->amountAfterDiscount($promoCode, $basket);

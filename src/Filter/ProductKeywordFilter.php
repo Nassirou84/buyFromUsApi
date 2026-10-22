@@ -9,6 +9,9 @@ use ApiPlatform\Doctrine\Orm\Util\QueryNameGeneratorInterface;
 use ApiPlatform\Metadata\Operation;
 use Doctrine\ORM\QueryBuilder;
 
+use function is_string;
+use function sprintf;
+
 final class ProductKeywordFilter implements FilterInterface
 {
     private const PARAMETER_NAME = 'keyword';
@@ -19,7 +22,7 @@ final class ProductKeywordFilter implements FilterInterface
     {
         $keyword = $context['filters'][self::PARAMETER_NAME] ?? null;
 
-        if (!\is_string($keyword) || '' === ($keyword = trim($keyword))) {
+        if (!is_string($keyword) || '' === ($keyword = trim($keyword))) {
             return;
         }
 
@@ -28,7 +31,7 @@ final class ProductKeywordFilter implements FilterInterface
 
         $conditions = $queryBuilder->expr()->orX();
         foreach (self::SEARCHED_PROPERTIES as $property) {
-            $conditions->add($queryBuilder->expr()->like(\sprintf('LOWER(%s.%s)', $alias, $property), ':' . $parameterName));
+            $conditions->add($queryBuilder->expr()->like(sprintf('LOWER(%s.%s)', $alias, $property), ':' . $parameterName));
         }
 
         $queryBuilder
@@ -43,7 +46,7 @@ final class ProductKeywordFilter implements FilterInterface
                 'property' => implode(', ', self::SEARCHED_PROPERTIES),
                 'type' => 'string',
                 'required' => false,
-                'description' => \sprintf('Partial, case-insensitive search on: %s.', implode(', ', self::SEARCHED_PROPERTIES)),
+                'description' => sprintf('Partial, case-insensitive search on: %s.', implode(', ', self::SEARCHED_PROPERTIES)),
             ],
         ];
     }

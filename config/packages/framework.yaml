@@ -8,6 +8,14 @@ framework:
     #esi: true
     #fragments: true
 
+when@dev:
+    framework:
+        http_client:
+            default_options:
+                # The local scrapper runs behind the Symfony CLI's self-signed certificate.
+                verify_peer: false
+                verify_host: false
+
 when@test:
     framework:
         test: true

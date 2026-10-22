@@ -19,3 +19,13 @@ framework:
             auth_codes.cache:
                 adapter: cache.adapter.filesystem
                 default_lifetime: 300 # 5 minutes default TTL
+            settings.cache:
+                adapter: cache.adapter.filesystem
+                default_lifetime: 3600 # safety net; writes through Doctrine invalidate it immediately
+
+when@test:
+    framework:
+        cache:
+            pools:
+                settings.cache:
+                    adapter: cache.adapter.array
