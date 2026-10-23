@@ -77,7 +77,7 @@ class WelcomeMessageHandler extends MessageHandlerParentClass
       'subject' => 'Bienvenue à la boutique Flot',
     ];
 
-    $this->brevoMailer->sendEmail(
+    $this->sendTemplatedEmail(
       $emailData
     );
   }

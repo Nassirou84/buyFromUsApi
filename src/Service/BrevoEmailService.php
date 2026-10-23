@@ -9,6 +9,7 @@ use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Component\Mime\Address;
+use Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Twig\Environment;
 
@@ -183,9 +184,20 @@ class BrevoEmailService
                 'messageId' => $response->toArray()['messageId'] ?? null,
             ];
         } catch (Exception $e) {
+            // Keep Brevo's own explanation (e.g. unauthorised IP, unverified sender), not just the status line
+            $error = $e->getMessage();
+            if ($e instanceof HttpExceptionInterface) {
+                $error .= ' ' . $e->getResponse()->getContent(false);
+            }
+
+            $this->logger?->error('Email send failed', [
+                'template_id' => $data['templateId'],
+                'error' => $error,
+            ]);
+
             return [
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => $error,
             ];
         }
     }

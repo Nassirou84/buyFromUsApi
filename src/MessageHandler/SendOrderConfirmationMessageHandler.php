@@ -82,6 +82,6 @@ class SendOrderConfirmationMessageHandler extends MessageHandlerParentClass
       'subject' => 'Confirmation de votre commande',
     ];
 
-    return $this->brevoMailer->sendEmail($emailData);
+    return $this->sendTemplatedEmail($emailData);
   }
 }
