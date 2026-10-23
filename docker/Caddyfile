@@ -1,0 +1,6 @@
+# Local HTTPS in front of the app. `tls internal` uses Caddy's own local CA
+# (persisted in the caddy_data volume); trust its root cert once, see README note in compose.
+https://localhost, https://127.0.0.1 {
+	tls internal
+	reverse_proxy buyfromus-api:80
+}

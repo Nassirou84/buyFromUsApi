@@ -17,6 +17,7 @@ use App\Service\ProductService;
 use App\Service\UniqUidGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -56,8 +57,14 @@ final class ProductController extends AbstractController
         $images = $request->files->get('images');
 
         $variants = json_decode($data['variants'] ?? '[]', true) ?: [];
-        foreach ($variants as &$variant) {
-            if (!empty($variant['image']) && str_starts_with($variant['image'], 'data:')) {
+        // Variant image files picked in the admin arrive as variantImages[<variant index>].
+        $variantImages = $request->files->get('variantImages');
+        $variantImages = is_array($variantImages) ? $variantImages : [];
+        foreach ($variants as $index => &$variant) {
+            $variantImage = $variantImages[$index] ?? null;
+            if ($variantImage instanceof UploadedFile && $variantImage->isValid()) {
+                $variant['image'] = $gcsUploaderService->upload($variantImage);
+            } elseif (!empty($variant['image']) && str_starts_with($variant['image'], 'data:')) {
                 try {
                     $variant['image'] = $gcsUploaderService->uploadDataUri(
                         $variant['image'],

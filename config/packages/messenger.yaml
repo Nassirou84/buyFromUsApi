@@ -3,18 +3,21 @@ framework:
         failure_transport: failed
 
         transports:
+            # Redis streams (MESSENGER_TRANSPORT_DSN=redis://host:6379); one stream per priority.
+            # Keep the DSN free of a path: a "/path" in the DSN overrides the `stream` option below.
+            # Run one worker per consumer name: set a unique `consumer` option if you scale workers out.
             async_priority_high:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
                 options:
-                    queue_name: high
+                    stream: high
             async_default:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
                 options:
-                    queue_name: default
+                    stream: default
             async_priority_low:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
                 options:
-                    queue_name: low
+                    stream: low
 
             failed: 'doctrine://default?queue_name=failed'
 

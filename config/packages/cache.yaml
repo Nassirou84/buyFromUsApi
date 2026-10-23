@@ -3,19 +3,26 @@ framework:
         # Unique name of your app: used to compute stable namespaces for cache keys.
         #prefix_seed: your_vendor_name/app_name
 
-        # The "app" cache stores to the filesystem by default.
-        # The data in this cache should persist between deploys.
-        # Other options include:
-
-        # Redis
-        #app: cache.adapter.redis
-        #default_redis_provider: redis://localhost
-
-        # APCu (not recommended with heavy random-write workloads as memory fragmentation can cause perf issues)
-        app: cache.adapter.filesystem
+        # The "app" cache and every pool below are stored in Redis (REDIS_URL), shared by the API and the workers.
+        app: cache.adapter.redis
+        default_redis_provider: '%env(REDIS_URL)%'
 
         # Namespaced pools use the above "app" backend by default
         pools:
             auth_codes.cache:
-                adapter: cache.adapter.filesystem
+                adapter: cache.adapter.redis
                 default_lifetime: 300 # 5 minutes default TTL
+            settings.cache:
+                adapter: cache.adapter.redis
+                default_lifetime: 3600 # safety net; writes through Doctrine invalidate it immediately
+
+when@test:
+    framework:
+        cache:
+            # Tests never need a Redis server; tests/Redis covers the real one when it is reachable.
+            app: cache.adapter.array
+            pools:
+                auth_codes.cache:
+                    adapter: cache.adapter.array
+                settings.cache:
+                    adapter: cache.adapter.array

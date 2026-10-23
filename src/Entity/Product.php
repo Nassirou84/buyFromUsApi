@@ -9,6 +9,8 @@ use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Patch;
 use App\Filter\ProductKeywordFilter;
+use App\Filter\ProductNewArrivalsFilter;
+use App\Filter\ProductPriceRangeFilter;
 use App\Repository\ProductRepository;
 use App\Service\PriceCalculator;
 use App\State\ProductStateProcessor;
@@ -32,13 +34,13 @@ use Symfony\Component\Validator\Constraints as Assert;
         new GetCollection(
             normalizationContext: ['groups' => ['product:read']],
             paginationItemsPerPage: 12,
-            filters: ['products.search_filter', 'products.order_filter', 'products.date_filter', ProductKeywordFilter::class],
+            filters: ['products.search_filter', 'products.boolean_filter', 'products.order_filter', 'products.date_filter', ProductKeywordFilter::class, ProductPriceRangeFilter::class, ProductNewArrivalsFilter::class],
         ),
         new GetCollection(
             uriTemplate: '/admin/get-products',
             normalizationContext: ['groups' => ['product:read', 'product:read:admin', 'product:read:details']],
             paginationItemsPerPage: 9,
-            filters: ['products.search_filter', 'products.order_filter', 'products.date_filter', ProductKeywordFilter::class],
+            filters: ['products.search_filter', 'products.boolean_filter', 'products.order_filter', 'products.date_filter', ProductKeywordFilter::class, ProductPriceRangeFilter::class, ProductNewArrivalsFilter::class],
         ),
         new \ApiPlatform\Metadata\Post(
             processor: ProductStateProcessor::class,
@@ -443,6 +445,48 @@ class Product
     public function getActualPrice(): ?float
     {
         return PriceCalculator::calculate($this->usdPrice);
+    }
+
+    /**
+     * Variants with their retail "price" converted with the same effective multiplier as the product's own
+     * retail price (getActualPrice() / fullPrice), so a variant priced at fullPrice shows exactly getActualPrice()
+     * and no extra margin or tax is stacked on top. Falls back to the getActualPrice() formula when fullPrice is unusable.
+     * Kept separate from "variants" so the raw values can be edited and saved back untouched.
+     *
+     * @return array<int, array<string, mixed>>|null
+     */
+    #[Groups(['product:read:details'])]
+    public function getActualVariants(): ?array
+    {
+        if (null === $this->variants) {
+            return null;
+        }
+
+        $actualPrice = $this->getActualPrice();
+        $multiplier = null !== $this->fullPrice && $this->fullPrice > 0 && null !== $this->usdPrice
+            ? $actualPrice / $this->fullPrice
+            : null;
+
+        return array_map(static function (mixed $variant) use ($multiplier): mixed {
+            if (!is_array($variant)) {
+                return $variant;
+            }
+
+            $price = $variant['price'] ?? null;
+            if (is_string($price)) {
+                // Take the first amount only ("$1,299.99", "USD 19.99 - 29.99"), never glue several numbers together.
+                $price = preg_match('/\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?|\.\d+/', $price, $matches) ? str_replace(',', '', $matches[0]) : null;
+            }
+            if (!is_numeric($price) || (float) $price <= 0) {
+                $variant['actualPrice'] = null;
+            } else {
+                $variant['actualPrice'] = null !== $multiplier
+                    ? round((float) $price * $multiplier)
+                    : PriceCalculator::calculate((float) $price);
+            }
+
+            return $variant;
+        }, $this->variants);
     }
 
     public function getSubcategory(): ?Subcategory

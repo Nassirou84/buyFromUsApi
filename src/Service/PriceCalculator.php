@@ -6,49 +6,43 @@ namespace App\Service;
 
 class PriceCalculator
 {
-    public const CURRENCY_RATE_FILE = __DIR__ . '/../../public/data/currency_rate.json';
     public const TAX_RATE = 0.18; // 18% tax rate
 
-    public static function calculate(float $basePrice): float
-    {
-        $currency = getenv('currency') ?: 'fcfa';
-        $currency = strtolower($currency);
-        $taxRate = false !== getenv('taxe_rate') ? (float) getenv('taxe_rate') : self::TAX_RATE;
-        $rate = file_get_contents(self::CURRENCY_RATE_FILE);
-        $rate = $rate ? json_decode($rate, true)[$currency] : null;
+    /**
+     * Markup tiers as [exclusive upper bound in USD, margin]; prices above the last bound get TOP_TIER_MARGIN.
+     * Shared with the price range filter so listing filters match the displayed price.
+     */
+    public const MARGIN_TIERS = [
+        [50.0, 0.17], // 17% markup for products under $50
+        [250.0, 0.15], // 15% markup for products between $50 and $250
+        [750.0, 0.13], // 13% markup for products between $250 and $750
+    ];
+    public const TOP_TIER_MARGIN = 0.10; // 10% markup for products over $750
 
-        if (null === $rate) {
-            switch (strtolower($currency)) {
-                case 'fcfa':
-                    $rate = 600;
-                    break;
-                case 'gnf':
-                    $rate = 9500;
-                    break;
-                default:
-                    $rate = 1;
+    private static ?CurrencyProvider $currencyProvider = null;
+
+    public static function useCurrencyProvider(CurrencyProvider $currencyProvider): void
+    {
+        self::$currencyProvider = $currencyProvider;
+    }
+
+    public static function marginFor(float $basePrice): float
+    {
+        foreach (self::MARGIN_TIERS as [$upperBound, $margin]) {
+            if ($basePrice < $upperBound) {
+                return $margin;
             }
         }
 
-        $benefitMargin = 0;
+        return self::TOP_TIER_MARGIN;
+    }
 
-        switch ($basePrice) {
-            case $basePrice < 50:
-                $benefitMargin = 0.17; // 17% markup for products under $50
-                break;
-            case $basePrice >= 50 && $basePrice < 250:
-                $benefitMargin = 0.15; // 15% markup for products between $50 and $250
-                break;
-            case $basePrice >= 250 && $basePrice < 750:
-                $benefitMargin = 0.13; // 13% markup for products over $250
-                break;
-            case $basePrice >= 750:
-                $benefitMargin = 0.10; // 10% markup for products over $750
-                break;
-            default:
-                $benefitMargin = 0.2; // Default markup if none of the above conditions are met
-                break;
-        }
+    public static function calculate(float $basePrice): float
+    {
+        $taxRate = self::$currencyProvider?->getTaxRate() ?? self::TAX_RATE;
+        $rate = self::$currencyProvider?->getRate() ?? 600;
+
+        $benefitMargin = self::marginFor($basePrice);
 
         $margin = $basePrice * $benefitMargin;
         $taxes = ($basePrice + $margin) * $taxRate;

@@ -1,6 +1,102 @@
-version: '3.8'
+# `docker compose up -d`               -> RabbitMQ + Redis (use with `symfony server:start`)
+# `docker compose --profile app up -d` -> RabbitMQ + Redis + MySQL + API (https://localhost:8000) + Messenger worker
+
+x-app: &app
+  build:
+    context: .
+    target: runtime
+    args:
+      PHP_IMAGE: php:8.4.27-apache
+  image: buyfromus-api
+  profiles: [ app ]
+  env_file:
+    - path: .env.docker # optional, git-ignored: put real secrets/keys here
+      required: false
+  environment: &app-env
+    APP_ENV: prod
+    APP_DEBUG: "0"
+    DATABASE_URL: mysql://buyfromus:buyfromus@db:3306/buyfromus?serverVersion=8.0&charset=utf8mb4
+    MESSENGER_TRANSPORT_DSN: redis://redis:6379
+    REDIS_URL: redis://redis:6379
+    RABBITMQ_HOST: rabbitmq
+    RABBITMQ_PORT: "5672"
+    RABBITMQ_USER: reitos
+    RABBITMQ_PASSWORD: reitos
+    RABBITMQ_VHOST: /
+    SYMFONY_TRUSTED_PROXIES: private_ranges # app sits behind the Caddy TLS proxy
+  volumes:
+    - ./config/jwt:/var/www/html/config/jwt:ro
+    - ./config/secrets:/var/www/html/config/secrets:ro
+  depends_on:
+    db:
+      condition: service_healthy
+    rabbitmq:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
 
 services:
+  app:
+    <<: *app
+    container_name: app_api
+    networks:
+      default:
+        aliases: [ buyfromus-api ] # unique upstream name for the proxy
+    environment:
+      <<: *app-env
+      RUN_SCHEMA_UPDATE: "1" # same as the prod deploy step; set to 0 to disable
+    healthcheck:
+      # any HTTP response means Apache is up (the schema update ran before it started)
+      test: [ "CMD-SHELL", "curl -s -o /dev/null http://127.0.0.1/ || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  proxy:
+    image: caddy:2-alpine
+    container_name: app_proxy
+    profiles: [ app ]
+    ports:
+      - "8000:443" # https://localhost:8000
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      app:
+        condition: service_healthy
+
+  worker:
+    <<: *app
+    container_name: app_worker
+    command: >
+      php bin/console messenger:consume
+      async_priority_high async_default async_priority_low
+      --time-limit=3600 --memory-limit=256M -vv
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy # schema (incl. messenger_messages) is created by the app container
+
+  db:
+    image: mysql:8.0
+    container_name: app_db
+    profiles: [ app ]
+    environment:
+      MYSQL_DATABASE: buyfromus
+      MYSQL_USER: buyfromus
+      MYSQL_PASSWORD: buyfromus
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     container_name: app_rabbitmq
@@ -19,5 +115,22 @@ services:
       timeout: 5s
       retries: 3
 
+  redis:
+    image: redis:7-alpine
+    container_name: app_redis
+    command: [ "redis-server", "--appendonly", "yes" ] # AOF so queued messages survive a restart
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
 volumes:
   rabbitmq_data:
+  redis_data:
+  db_data:
+  caddy_data:

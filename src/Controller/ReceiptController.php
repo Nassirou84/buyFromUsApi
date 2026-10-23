@@ -11,6 +11,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use App\Entity\User;
 use App\Repository\OrderRepository;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use App\Service\CurrencyProvider;
 use App\Service\ReceiptService;
 
 final class ReceiptController extends AbstractController
@@ -22,6 +23,7 @@ final class ReceiptController extends AbstractController
         OrderRepository $orderRepository,
         ReceiptService $receiptService,
         TokenStorageInterface $tokenStorage,
+        CurrencyProvider $currencyProvider,
     ): JsonResponse {
         $order = $orderRepository->findOneBy(['uid' => $id]);
         $accessToken = $request->query->get('accessToken');
@@ -59,8 +61,8 @@ final class ReceiptController extends AbstractController
         $items = [];
         $subtotal = 0;
 
-        $taxesRate = $this->getParameter('taxe_rate');
-        $currency = $this->getParameter('currency');
+        $taxesRate = $currencyProvider->getTaxRate();
+        $currency = strtoupper($currencyProvider->getCurrency());
 
         $allItems = $order->getProducts();
         foreach ($allItems as $item) {

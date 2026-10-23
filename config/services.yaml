@@ -102,6 +102,13 @@ services:
             $batchSize: '%env(int:EMAIL_QUEUE_BATCH_SIZE)%'
 
 
+    App\Command\CreateFirstAdminCommand:
+        arguments:
+            $defaultEmail: '%env(default::FIRST_ADMIN_EMAIL)%'
+            $defaultPassword: '%env(default::FIRST_ADMIN_PASSWORD)%'
+            $defaultFirstName: '%env(default::FIRST_ADMIN_FIRST_NAME)%'
+            $defaultLastName: '%env(default::FIRST_ADMIN_LAST_NAME)%'
+
     App\Service\BrightDataAmazonScraper:
         arguments:
             $brightDataApiKey: '%env(BRIGHT_DATA_API_KEY)%'
@@ -138,7 +145,6 @@ services:
         arguments:
             $expressShippingCost: '%env(EXPRESS_SHIPPING_COST)%'
             $expressShippingDuration: '%env(EXPRESS_SHIPPING_DURATION)%'
-            $taxRate: '%env(TAXE_RATE)%'
 
     gesdinet.jwtrefreshtoken:
         class: Gesdinet\JWTRefreshTokenBundle\Service\RefreshToken
@@ -158,7 +164,13 @@ services:
 
     products.search_filter:
       parent: 'api_platform.doctrine.orm.search_filter'
-      arguments: [{title: 'partial', slug: 'exact', isAvailable: 'exact', category.title: 'exact', subcategory.title: 'exact', seller: 'exact'}]
+      arguments: [{title: 'partial', slug: 'exact', isAvailable: 'exact', category.title: 'exact', subcategory.title: 'exact', seller: 'exact', 'productCondition': 'exact'}]
+      tags:
+          - { name: api_platform.filter }
+
+    products.boolean_filter:
+      parent: 'api_platform.doctrine.orm.boolean_filter'
+      arguments: [{sellerChoice: ~, primeDelivery: ~}]
       tags:
           - { name: api_platform.filter }
 
@@ -244,3 +256,13 @@ services:
             $user: '%env(RABBITMQ_USER)%'
             $password: '%env(RABBITMQ_PASSWORD)%'
             $vhost: '%env(RABBITMQ_VHOST)%'
+
+    App\Service\ScrapperService:
+        arguments:
+            $scrapperServiceUrl: '%env(SCRAPPER_SERVICE_URL)%'
+            $scrapperPasskey: '%env(SCRAPPER_PASSKEY)%'
+
+    App\Service\CurrencyProvider:
+        arguments:
+            $defaultCurrency: '%env(TARGET_CURRENCY)%'
+            $defaultTaxRate: '%env(TAXE_RATE)%'

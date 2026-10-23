@@ -44,6 +44,8 @@ class Setting
 
     /* Settings Titles */
     const WELCOME_PROMO_CODE = 'welcome_promo_code';
+    const BASE_CURRENCY = 'base_currency';
+    const TAX_RATE = 'tax_rate';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
