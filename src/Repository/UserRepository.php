@@ -68,6 +68,16 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         return $queryBuilder;
     }
 
+    public function hasSuperAdmin(): bool
+    {
+        return (int) $this->createQueryBuilder('u')
+            ->select('COUNT(u.id)')
+            ->andWhere('u.roles LIKE :role')
+            ->setParameter('role', '%"' . User::ROLE_SUPER_ADMIN . '"%')
+            ->getQuery()
+            ->getSingleScalarResult() > 0;
+    }
+
     //    /**
     //     * @return User[] Returns an array of User objects
     //     */

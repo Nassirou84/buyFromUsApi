@@ -102,6 +102,13 @@ services:
             $batchSize: '%env(int:EMAIL_QUEUE_BATCH_SIZE)%'
 
 
+    App\Command\CreateFirstAdminCommand:
+        arguments:
+            $defaultEmail: '%env(default::FIRST_ADMIN_EMAIL)%'
+            $defaultPassword: '%env(default::FIRST_ADMIN_PASSWORD)%'
+            $defaultFirstName: '%env(default::FIRST_ADMIN_FIRST_NAME)%'
+            $defaultLastName: '%env(default::FIRST_ADMIN_LAST_NAME)%'
+
     App\Service\BrightDataAmazonScraper:
         arguments:
             $brightDataApiKey: '%env(BRIGHT_DATA_API_KEY)%'
