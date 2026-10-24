@@ -1,8 +1,35 @@
+# Shared by every site block below.
+# /database-adminer (Adminer, see public/database-adminer) is gated by HTTP basic auth here,
+# before the request reaches Apache; Adminer's own MySQL login is a second layer.
+# Credentials come from the proxy's environment (ADMINER_BASIC_AUTH_USER / ADMINER_BASIC_AUTH_HASH,
+# generate the hash with `docker run --rm caddy:2-alpine caddy hash-password`).
+# When unset, the default hash belongs to a discarded random password, so the route stays locked.
+(app_upstream) {
+	@adminer path /database-adminer /database-adminer/*
+	handle @adminer {
+		# Apache would redirect with its own ServerName (localhost); do it here instead.
+		redir /database-adminer /database-adminer/ 308
+		basic_auth {
+			{$ADMINER_BASIC_AUTH_USER:adminer} {$ADMINER_BASIC_AUTH_HASH:$2a$12$0K12E6LwXzrJtTXZz7B1EevZtp/8LfdjO8hMG81H6H/fO1iJ93Z5m}
+		}
+		reverse_proxy buyfromus-api:80
+	}
+	handle {
+		reverse_proxy buyfromus-api:80
+	}
+}
+
 # Local HTTPS in front of the app. `tls internal` uses Caddy's own local CA
 # (persisted in the caddy_data volume); trust its root cert once, see README note in compose.
 https://localhost, https://127.0.0.1 {
 	tls internal
-	reverse_proxy buyfromus-api:80
+	import app_upstream
+}
+
+# Production: Caddy obtains a Let's Encrypt certificate automatically.
+# Needs DNS A record -> this server's IP and ports 80/443 reachable.
+core.flotboutique.com {
+	import app_upstream
 }
 
 # Production: Caddy obtains a Let's Encrypt certificate automatically.

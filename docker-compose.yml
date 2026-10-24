@@ -61,6 +61,11 @@ services:
       - "80:80" # ACME HTTP challenge + redirect to HTTPS
       - "443:443" # https://core.flotboutique.com
       - "8000:443" # https://localhost:8000
+    environment:
+      # Pass-through from the host shell / compose .env; when unset, /database-adminer stays locked.
+      # Single-quote the hash in .env (it contains `$`).
+      - ADMINER_BASIC_AUTH_USER
+      - ADMINER_BASIC_AUTH_HASH
     volumes:
       - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
