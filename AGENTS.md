@@ -87,5 +87,6 @@ Scrapper side (from `~/Desktop/scrapper`): `php bin/console app:new-products:con
 - `.env` is tracked in git and must contain **no real secrets** (currently all empty). Put real values in `.env.local` (ignored). Never commit GCP key files, JWT `.pem` files, or API keys.
 - README mentions PostgreSQL in one place and MySQL elsewhere; production is MySQL. `docker-compose.yml` here starts only RabbitMQ.
 - Stray duplicate files (`src/Controller/ProductController 2.php`, `src/Service/OrderService 2.php`, `src/Service/UserService 2.php`) look like accidental Finder copies. Don't edit or depend on them; ask before deleting.
+- **Adminer** (`public/database-adminer/index.php`, vendored single file, v6.2.0) serves `/database-adminer`. It is outside the Symfony kernel, so `security.yaml` does not protect it: the Caddy proxy gates it with basic auth (`ADMINER_BASIC_AUTH_USER` / `ADMINER_BASIC_AUTH_HASH`, locked when unset; see `docker/Caddyfile`). Any other deployment (e.g. the Hostinger one, no Caddy) has only Adminer's own MySQL login in front of it. Upgrade by replacing the file, never edit it.
 - Messenger handlers run in a separate worker process: after changing handler code, restart `messenger:consume`.
 - The scrapper has no tests and no README, and its `.env` defaults are blank — check `RABBITMQ_*` and `DATABASE_URL` before debugging "nothing consumed".
