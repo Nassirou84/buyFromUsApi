@@ -4,3 +4,9 @@ https://localhost, https://127.0.0.1 {
 	tls internal
 	reverse_proxy buyfromus-api:80
 }
+
+# Production: Caddy obtains a Let's Encrypt certificate automatically.
+# Needs DNS A record -> this server's IP and ports 80/443 reachable.
+core.flotboutique.com {
+	reverse_proxy buyfromus-api:80
+}
