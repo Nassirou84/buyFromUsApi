@@ -58,6 +58,8 @@ services:
     container_name: app_proxy
     profiles: [ app ]
     ports:
+      - "80:80" # ACME HTTP challenge + redirect to HTTPS
+      - "443:443" # https://core.flotboutique.com
       - "8000:443" # https://localhost:8000
     volumes:
       - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
