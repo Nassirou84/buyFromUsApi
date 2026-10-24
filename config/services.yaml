@@ -102,6 +102,10 @@ services:
             $batchSize: '%env(int:EMAIL_QUEUE_BATCH_SIZE)%'
 
 
+    App\Command\SeedCategoriesCommand:
+        arguments:
+            $dataFile: '%kernel.project_dir%/config/data/categories.json'
+
     App\Command\CreateFirstAdminCommand:
         arguments:
             $defaultEmail: '%env(default::FIRST_ADMIN_EMAIL)%'

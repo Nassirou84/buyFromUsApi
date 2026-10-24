@@ -1,0 +1,339 @@
+[
+    {
+        "title": "Electronique",
+        "icon": "hugeicons:smart-phone-02",
+        "description": null,
+        "subcategories": [
+            {
+                "title": "Smartphones & Appareils mobiles",
+                "markup": 38,
+                "isActive": true,
+                "description": "Appareils de communication portables, tablettes, montres connectées et accessoires mobiles essentiels (ex. téléphones portables, tablettes, bracelets connectés, chargeurs, coques)."
+            },
+            {
+                "title": "Composants électroniques",
+                "markup": 42,
+                "isActive": true,
+                "description": "Pièces électroniques de base, cartes de développement et outils utilisés pour le prototypage, la réparation et la conception de circuits personnalisés (ex. microcontrôleurs, résistances, fers à souder, plaques d'essai, capteurs)."
+            },
+            {
+                "title": "Tablettes",
+                "markup": 38,
+                "isActive": true,
+                "description": "Achetez les dernières tablettes, iPads et accessoires. Hautes performances, écrans éclatants et longue autonomie pour le travail, les jeux et le divertissement."
+            },
+            {
+                "title": "Audio & Systèmes sonores",
+                "markup": 42,
+                "isActive": true,
+                "description": "Équipements pour enregistrer, mixer ou écouter de la musique, des podcasts et des divertissements sonores haute fidélité (ex. écouteurs sans fil, enceintes Bluetooth, barres de son, microphones, systèmes home cinéma)."
+            },
+            {
+                "title": "Appareils photo & Photographie",
+                "markup": 42,
+                "isActive": true,
+                "description": "Matériel d'imagerie utilisé par les amateurs et les professionnels pour capturer des photos haute résolution et des vidéos cinématographiques (ex. appareils reflex/DSLR, appareils hybrides, caméras d'action, objectifs, drones)."
+            },
+            {
+                "title": "Téléviseurs",
+                "markup": 42,
+                "isActive": true,
+                "description": "Écrans grands formats et appareils de streaming multimédia constituant le cœur d'un salon de divertissement (ex. téléviseurs Smart 4K, écrans OLED, clés de streaming, projecteurs, lecteurs multimédias)."
+            }
+        ]
+    },
+    {
+        "title": "Ordinateur",
+        "icon": "ic:baseline-laptop",
+        "description": null,
+        "subcategories": [
+            {
+                "title": "Ordinateurs de bureau & Stations",
+                "markup": 42,
+                "isActive": true,
+                "description": "Systèmes informatiques fixes conçus pour le domicile, le bureau, les tâches de haute performance ou le jeu vidéo (ex. PC tour, PC tout-en-un, mini PC, PC gamer)."
+            },
+            {
+                "title": "PC & Ultrabooks",
+                "markup": 42,
+                "isActive": true,
+                "description": "Ordinateurs personnels portables intégrant un écran et un clavier, conçus pour la mobilité (ex. ultrabooks, PC portables 2-en-1 convertibles, Chromebooks, PC portables gamer)."
+            },
+            {
+                "title": "Composants informatique",
+                "markup": 42,
+                "isActive": true,
+                "description": "Modules matériels internes utilisés pour assembler, mettre à niveau ou réparer un système informatique (ex. processeurs/CPU, cartes graphiques/GPU, cartes mères, mémoire RAM, blocs d'alimentation)."
+            },
+            {
+                "title": "Stockage de données",
+                "markup": 42,
+                "isActive": true,
+                "description": "Dispositifs et supports utilisés pour la sauvegarde, le stockage à long terme et le transfert rapide de données (ex. SSD internes/externes, disques durs/HDD, clés USB, serveurs NAS)."
+            },
+            {
+                "title": "Périphériques informatiques",
+                "markup": 42,
+                "isActive": true,
+                "description": "Matériels externes d'entrée et de sortie connectés à un ordinateur pour étendre ses fonctionnalités ou son confort d'utilisation (ex. claviers, souris, webcams, stations d'accueil, housses pour ordinateur)."
+            },
+            {
+                "title": "Écrans & Moniteurs",
+                "markup": 42,
+                "isActive": true,
+                "description": "Écrans d'affichage visuel conçus pour la bureautique, l'étalonnage des couleurs, le jeu vidéo ou la productivité multi-écran (ex. moniteurs 4K, écrans incurvés, écrans gamer à rafraîchissement élevé, moniteurs portables)."
+            },
+            {
+                "title": "Réseaux & Connectivité",
+                "markup": 42,
+                "isActive": true,
+                "description": "Équipements nécessaires pour établir, étendre ou sécuriser des réseaux internet ou locaux, filaires et sans fil (ex. routeurs Wi-Fi, systèmes mesh, switchs réseau, modems, câbles ethernet)."
+            },
+            {
+                "title": "Imprimantes, Scanners",
+                "markup": 42,
+                "isActive": true,
+                "description": "Appareils de traitement de documents et d'images utilisés pour la paperasse personnelle, créative ou professionnelle (ex. imprimantes laser, imprimantes à jet d'encre, imprimantes 3D, lecteurs de codes-barres, destructeurs de documents)."
+            },
+            {
+                "title": "Logiciels & Systèmes d'exploitation",
+                "markup": 42,
+                "isActive": true,
+                "description": "Programmes numériques, applications et systèmes d'exploitation sous licence pour gérer le matériel et effectuer des tâches spécifiques (ex. licences Windows/macOS, antivirus/sécurité, suites bureautiques, logiciels de création)."
+            }
+        ]
+    },
+    {
+        "title": "Jeux & Consoles",
+        "icon": "codicon:game",
+        "description": null,
+        "subcategories": [
+            {
+                "title": "Consoles de Jeux",
+                "markup": 42,
+                "isActive": true,
+                "description": "Consoles de salon, consoles portables et éditeurs de machines rétrogaming."
+            },
+            {
+                "title": "Jeux Vidéo",
+                "markup": 42,
+                "isActive": true,
+                "description": "Titres sous format physique (cartouches, disques) ou dématérialisé (clés d'activation, codes de téléchargement) classés par plateforme (PC, PlayStation, Xbox, Nintendo Switch) et par genre (Action, RPG, Stratégie, Aventure, Simulation)."
+            },
+            {
+                "title": "Accessoires Gaming",
+                "markup": 42,
+                "isActive": true,
+                "description": "Manettes, casques audio gaming, claviers mécaniques, souris haute précision, sièges gamer, lunettes VR et volants de course."
+            },
+            {
+                "title": "Jeux de Société & Cartes",
+                "markup": 42,
+                "isActive": true,
+                "description": "Jeux de plateau, jeux de cartes à collectionner (TCG), jeux de rôle (RPG papier) et puzzles."
+            }
+        ]
+    },
+    {
+        "title": "Automobile",
+        "icon": "boxicons:car",
+        "description": null,
+        "subcategories": [
+            {
+                "title": "Pièces détachées",
+                "markup": 42,
+                "isActive": true,
+                "description": "Pièces de rechange mécaniques, électriques et structurelles essentielles pour réparer ou entretenir un véhicule (ex. plaquettes de frein, filtres à huile, bougies d'allumage, alternateurs, systèmes de suspension)."
+            },
+            {
+                "title": "Pneus & Jantes",
+                "markup": 42,
+                "isActive": true,
+                "description": "Pneus en caoutchouc pour différentes saisons et terrains, ainsi que jantes en acier ou en alliage et accessoires (ex. pneus quatre saisons, pneus hiver, jantes personnalisées, capteurs de pression des pneus)."
+            },
+            {
+                "title": "Système audio embarqué",
+                "markup": 42,
+                "isActive": true,
+                "description": "Appareils et systèmes électroniques conçus pour améliorer la navigation, le divertissement, la sécurité et la connectivité (ex. caméras embarquées/dashcams, GPS, systèmes audio, caméras de recul, détecteurs de radar)."
+            },
+            {
+                "title": "Entretien & Esthétique automobile",
+                "markup": 42,
+                "isActive": true,
+                "description": "Produits chimiques et outils utilisés pour nettoyer, lustrer, protéger et entretenir l'apparence intérieure et extérieure d'un véhicule (ex. shampooing auto, traitements céramiques, chiffons microfibres, cire)."
+            },
+            {
+                "title": "Accessoires intérieurs & extérieurs",
+                "markup": 42,
+                "isActive": true,
+                "description": "Équipements complémentaires permettant de personaliser, d'organiser ou de protéger un véhicule sans en modifier la mécanique (ex. tapis de sol, housses de siège, barres de toit, bâches de protection, couvre-volants)."
+            },
+            {
+                "title": "Outillage & Équipement de garage",
+                "markup": 42,
+                "isActive": true,
+                "description": "Matériel et outils pour professionnels ou bricoleurs utilisés pour la maintenance, le diagnostic et la réparation (ex. valises de diagnostic OBD2, crics hydrauliques, jeux de douilles, chargeurs de batterie, compresseurs d'air)."
+            },
+            {
+                "title": "Huiles, Liquides & Produits chimiques",
+                "markup": 42,
+                "isActive": true,
+                "description": "Liquides fonctionnels essentiels assurant le bon fonctionnement du moteur, du refroidissement, du freinage et du véhicule en général (ex. huile moteur, liquide de refroidissement, liquide de frein, huile de boîte, additifs carburant)."
+            }
+        ]
+    },
+    {
+        "title": "Mode",
+        "icon": "reicon:tshirt",
+        "description": null,
+        "subcategories": [
+            {
+                "title": "Vêtements Femme",
+                "markup": 42,
+                "isActive": true,
+                "description": "Vêtements du quotidien, tenues de soirée, vêtements de saison et de sport conçus spécifiquement pour les femmes (ex. robes, blouses, jupes, manteaux, jeans, maillots de bain)."
+            },
+            {
+                "title": "Vêtements Homme",
+                "markup": 42,
+                "isActive": true,
+                "description": "Tenues décontractées, professionnelles, habillées et sportives adaptées aux hommes (ex. costumes, chemises, tee-shirts, pantalons, vestes, sweats à capuche)."
+            },
+            {
+                "title": "Vêtements Enfant & Bébé",
+                "markup": 42,
+                "isActive": true,
+                "description": "Vêtements, pyjamas et tenues d'occasion dimensionnés pour les nourrissons, tout-petits et enfants (ex. bodies, barboteuses, uniformes scolaires, vêtements d'extérieur)."
+            },
+            {
+                "title": "Chaussures",
+                "markup": 42,
+                "isActive": true,
+                "description": "Chaussures décontractées, habillées, sportives et spécialisées pour tous les âges et tous les genres (ex. baskets, bottes, chaussures de ville, sandales, talons, chaussons)."
+            },
+            {
+                "title": "Sacs, Bagages & Maroquinerie",
+                "markup": 42,
+                "isActive": true,
+                "description": "Accessoires de transport conçus pour l'usage quotidien, les voyages ou le style (ex. sacs à main, sacs à dos, valises, porte-monnaie/portefeuilles, pochettes, sacs de voyage)."
+            },
+            {
+                "title": "Accessoires de mode",
+                "markup": 42,
+                "isActive": true,
+                "description": "Articles décoratifs et fonctionnels utilisés pour compléter une tenue (ex. ceintures, écharpes, chapeaux, casquettes, gants, lunettes de soleil, cravates)."
+            },
+            {
+                "title": "Bijoux & Horlogerie",
+                "markup": 42,
+                "isActive": true,
+                "description": "Bijoux précieux ou fantaisie et montres utilisés pour le style, la parure ou la mesure du temps (ex. colliers, bagues, bracelets, boucles d'oreilles, montres analogiques/numériques)."
+            },
+            {
+                "title": "Lingerie, Sous-vêtements",
+                "markup": 42,
+                "isActive": true,
+                "description": "Vêtements de première couche, sous-vêtements intimes et tenues d'intérieur portés à même la peau (ex. soutiens-gorge, slips, boxeurs, pyjamas, peignoirs, gaines sculptantes)."
+            }
+        ]
+    },
+    {
+        "title": "Soin et Beaute",
+        "icon": "reicon:cosmetic",
+        "description": null,
+        "subcategories": [
+            {
+                "title": "Soins de la peau",
+                "markup": 42,
+                "isActive": true,
+                "description": "Produits conçus pour nettoyer, hydrater, protéger et améliorer l'apparence de la peau du visage et du corps (ex. nettoyants, hydratants, sérums, crèmes solaires)."
+            },
+            {
+                "title": "Maquillage & Cosmétiques",
+                "markup": 42,
+                "isActive": true,
+                "description": "Produits cosmétiques utilisés pour sublimer ou modifier les traits du visage et le teint (ex. fond de teint, rouge à lèvres, mascara, fard à paupières)."
+            },
+            {
+                "title": "Soins capillaires & Coiffage",
+                "markup": 42,
+                "isActive": true,
+                "description": "Articles destinés à nettoyer, revitaliser, traiter et coiffer les cheveux, ainsi qu'à prendre soin du cuir chevelu (ex. shampooings, après-shampooings, masques, pommades)"
+            },
+            {
+                "title": "Parfumerie & Fragrances",
+                "markup": 42,
+                "isActive": true,
+                "description": "Produits parfumés formulés pour apporter une odeur agréable au corps ou à l'espace de vie (ex. eau de parfum, eau de toilette, brumes corporelles, huiles essentielles)."
+            },
+            {
+                "title": "Soins personnels & Hygiène",
+                "markup": 42,
+                "isActive": true,
+                "description": "Produits essentiels du quotidien utilisés pour la propreté et l'hygiène personnelle (ex. savons, gels douche, déodorants, soins bucco-dentaires, hygiène féminine)."
+            },
+            {
+                "title": "Bien-être & Compléments alimentaires",
+                "markup": 42,
+                "isActive": true,
+                "description": "Produits nutritionnels pris par voie orale pour soutenir la santé globale, la vitalité, l'immunité et certaines fonctions de l'organisme (ex. vitamines, minéraux, protéines en poudre, extraits de plantes)."
+            },
+            {
+                "title": "Appareils de santé & beauté",
+                "markup": 42,
+                "isActive": true,
+                "description": "Outils et appareils électriques pour le suivi de la santé personnelle et la mise en beauté (ex. sèche-cheveux, brosses à dents électriques, tensiomètres, appareils de thérapie LED)."
+            },
+            {
+                "title": "Bain & Soins du corps",
+                "markup": 42,
+                "isActive": true,
+                "description": "Produits dédiés à la relaxation, à l'exfoliation et à l'hydratation ciblée de la peau sur l'ensemble du corps (ex. sels de bain, gommages, lotions, huiles corporelles)."
+            }
+        ]
+    },
+    {
+        "title": "Électroménager",
+        "icon": "streamline-plump:refrigerator",
+        "description": null,
+        "subcategories": [
+            {
+                "title": "Gros électroménager",
+                "markup": 48,
+                "isActive": true,
+                "description": "Principaux appareils ménagers utilisés pour les tâches quotidiennes telles que la cuisine, la conservation des aliments et le lavage du linge (ex. réfrigérateurs, lave-linge, lave-vaisselle, fours, sèche-linge)."
+            },
+            {
+                "title": "Petits appareils de cuisine",
+                "markup": 42,
+                "isActive": true,
+                "description": "Appareils électriques compacts de plan de travail conçus pour faciliter la préparation des aliments et des boissons (ex. blender, micro-ondes, friteuse sans huile, cafetière, grille-pain)."
+            },
+            {
+                "title": "Climatisation & Traitement de l'air",
+                "markup": 48,
+                "isActive": true,
+                "description": "Appareils conçus pour réguler la température intérieure, le flux d'air, l'humidité et la pureté de l'air (ex. climatiseurs, radiateurs d'appoint, purificateurs d'air, déshumidificateurs, ventilateurs)."
+            },
+            {
+                "title": "Entretien des sols & Nettoyage",
+                "markup": 46,
+                "isActive": true,
+                "description": "Équipements électriques utilisés pour dépoussiérer et nettoyer les sols, tapis et tissus d'ameublement (ex. aspirateurs robots, aspirateurs balais sans fil, nettoyeurs vapeur, shampouineuses)."
+            },
+            {
+                "title": "Maison connectée & Domotique",
+                "markup": 42,
+                "isActive": true,
+                "description": "Appareils connectés au réseau permettant de surveiller, d'automatiser et de contrôler à distance les fonctions de la maison (ex. hubs domotiques, prises connectées, interphones vidéo, thermostats intelligents, caméras de sécurité)."
+            },
+            {
+                "title": "Éclairage & Matériel électrique",
+                "markup": 42,
+                "isActive": true,
+                "description": "Équipements et luminaires utilisés pour éclairer les espaces intérieurs/extérieurs et gérer l'alimentation électrique en toute sécurité (ex. ampoules LED connectées, multiprises survolteurs, rallonges, réglettes, luminaires)."
+            }
+        ]
+    }
+]
