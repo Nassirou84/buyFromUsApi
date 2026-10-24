@@ -67,6 +67,6 @@ class SendTwoFactorCodeMessageHandler extends MessageHandlerParentClass
             'subject' => 'Votre code de vérification à deux facteurs',
         ];
 
-        return $this->brevoMailer->sendEmail($emailData);
+        return $this->sendTemplatedEmail($emailData);
     }
 }

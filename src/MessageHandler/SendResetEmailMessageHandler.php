@@ -65,6 +65,6 @@ class SendResetEmailMessageHandler extends MessageHandlerParentClass
             'subject' => 'Réinitialisation de votre mot de passe',
         ];
 
-        return $this->brevoMailer->sendEmail($emailData);
+        return $this->sendTemplatedEmail($emailData);
     }
 }
