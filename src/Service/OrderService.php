@@ -207,15 +207,15 @@ final class OrderService
             $orderItem->setCurrentOrder($order);
             $orderItem->setProduct($product);
             $orderItem->setQuantity($item->getQuantity());
-            $orderItem->setUnitPrice($product->getActualPrice());
-            $orderItem->setVariant($item->getVariant());
+            $orderItem->setUnitPrice($item->getUnitPrice());
+            $orderItem->setVariant($item->getVariantLabel());
             $orderItem->setStatus(OrderItem::STATUS_PENDING);
             $this->entityManager->persist($orderItem);
             $orderItems[] = [
                 'NAME' => $product->getTitle(),
-                'VARIANT' => $item->getVariant(),
+                'VARIANT' => $item->getVariantLabel(),
                 'QUANTITY' => $item->getQuantity(),
-                'PRICE' => $product->getActualPrice(),
+                'PRICE' => $item->getUnitPrice(),
                 'SKU' => 'PR-' . $product->getId(),
             ];
         }

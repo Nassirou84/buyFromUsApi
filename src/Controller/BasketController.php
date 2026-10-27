@@ -37,19 +37,29 @@ final class BasketController extends AbstractController
         if (!$product) {
             return $this->json(['success' => false, 'error' => 'Produit non trouvé.'], 404);
         }
-        $variantId = $params['variant'] ?? null;
+        $variant = $params['variant'] ?? null;
+        if ('' === $variant || [] === $variant) {
+            $variant = null;
+        }
+        if (null !== $variant) {
+            // Store the product's own variant object, never the client-supplied one.
+            $variant = is_array($variant) ? $product->findVariant($variant) : null;
+            if (null === $variant) {
+                return $this->json(['success' => false, 'error' => 'Variante invalide.'], 400);
+            }
+        }
         $quantity = $params['quantity'] ?? 1;
         if (!$user instanceof \App\Entity\User) {
             $guestBasketUid = $request->cookies->get('guest_basket_uid')
                 ?? null;
-            $basketItem = $guestBasketService->addToBasket($product, $guestBasketUid, $quantity, $variantId);
-            return $this->json(['success' => true, 'message' => 'Ajouté au panier', 'basketItem' => $basketItem], 200);
+            $basketItem = $guestBasketService->addToBasket($product, $guestBasketUid, $quantity, $variant);
+            return $this->json(['success' => true, 'message' => 'Ajouté au panier', 'basketItem' => $basketItem], 200, [], ['groups' => ['basket:read']]);
 
         }
 
-        $basketItem = $basketService->addToBasket($user, $product, $quantity, $variantId);
+        $basketItem = $basketService->addToBasket($user, $product, $quantity, $variant);
 
-        return $this->json(['success' => true, 'message' => 'Ajouté au panier', 'basketItem' => $basketItem], 200);
+        return $this->json(['success' => true, 'message' => 'Ajouté au panier', 'basketItem' => $basketItem], 200, [], ['groups' => ['basket:read']]);
     }
 
     #[Route('/merge-guest-basket', name: 'app_merge_guest_basket', methods: ['POST'])]

@@ -42,7 +42,7 @@ class Photo
     private ?DateTimeImmutable $createdAt = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['photo:read', 'product:read', 'product:read:details'])]
+    #[Groups(['photo:read', 'product:read', 'product:read:details', 'basket:read'])]
     private ?string $url = null;
 
     #[ORM\ManyToOne(inversedBy: 'photos')]
@@ -61,7 +61,7 @@ class Photo
     public ?UploadedFile $file = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['photo:read', 'product:read', 'product:read:details'])]
+    #[Groups(['photo:read', 'product:read', 'product:read:details', 'basket:read'])]
     private ?bool $isCover = null;
 
     public function __construct()
@@ -111,7 +111,7 @@ class Photo
         return $this;
     }
 
-    #[Groups(['photo:read', 'product:read', 'product:read:details'])]
+    #[Groups(['photo:read', 'product:read', 'product:read:details', 'basket:read'])]
     #[SerializedName('isCover')]
     public function isCover(): ?bool
     {
