@@ -10,6 +10,7 @@ use App\Entity\User;
 use App\Repository\BasketItemRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
+use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 class BasketService
 {
@@ -17,7 +18,21 @@ class BasketService
         private EntityManagerInterface $entityManager,
         private UniqUidGenerator $uniqUidGenerator,
         private BasketItemRepository $basketItemRepository,
+        private NormalizerInterface $normalizer,
     ) {
+    }
+
+    /**
+     * The "basket:read" representation of a basket (user or guest) plus its current "total".
+     *
+     * @return array<string, mixed>
+     */
+    public function normalizeWithTotal(Basket $basket): array
+    {
+        $normalized = $this->normalizer->normalize($basket, null, ['groups' => ['basket:read']]);
+        $normalized['total'] = $basket->getTotalAmount();
+
+        return $normalized;
     }
 
     public function createBasketForUser(User $user): Basket
@@ -31,20 +46,25 @@ class BasketService
         return $basket;
     }
 
-    public function addToBasket(User $user, $product, int $quantity = 1, $variant = null): BasketItem
+    /**
+     * @param array<string, mixed>|null $variant
+     */
+    public function addToBasket(User $user, $product, int $quantity = 1, ?array $variant = null): BasketItem
     {
         $basket = $user->getBasket();
         if (!$basket) {
             $basket = $this->createBasketForUser($user);
         }
 
-        $existingItem = $this->basketItemRepository->findOneBy([
-            'basket' => $basket,
-            'product' => $product,
-        ]);
+        $existingItem = null;
+        foreach ($this->basketItemRepository->findBy(['basket' => $basket, 'product' => $product]) as $candidate) {
+            if ($candidate->isSameVariant($variant)) {
+                $existingItem = $candidate;
+                break;
+            }
+        }
 
         if ($existingItem) {
-            $existingItem->setVariant($variant);
             $existingItem->setQuantity($existingItem->getQuantity() + $quantity);
             $this->entityManager->persist($existingItem);
             $this->entityManager->flush();
@@ -55,7 +75,7 @@ class BasketService
         $basketItem = new BasketItem();
         $basketItem->setProduct($product);
         $basketItem->setVariant($variant);
-        $basketItem->setPriceAtAdd($product->getActualPrice());
+        $basketItem->setPriceAtAdd($product->getActualPriceForVariant($variant));
         $basketItem->setBasket($basket);
         $basketItem->setQuantity($quantity);
         $this->entityManager->persist($basketItem);

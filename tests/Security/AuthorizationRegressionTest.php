@@ -6,8 +6,10 @@ namespace App\Tests\Security;
 
 use ApiPlatform\Metadata\HttpOperation;
 use ApiPlatform\Metadata\Resource\Factory\ResourceMetadataCollectionFactoryInterface;
+use App\Entity\Basket;
 use App\Entity\Product;
 use App\Entity\Setting;
+use App\Entity\User;
 use App\Service\CurrencyProvider;
 use App\Service\SettingService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -169,5 +171,64 @@ final class AuthorizationRegressionTest extends WebTestCase
         $em->flush();
         $provider->reset();
         self::assertSame('gnf', $provider->getCurrency());
+    }
+
+    private function createUser(string $email): User
+    {
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $user = (new User())->setEmail($email)->setPassword('x')->setFirstName('a')->setLastName('b');
+        $em->persist($user);
+        $em->flush();
+
+        return $user;
+    }
+
+    public function testCustomerBasketRequiresLoginAndOwnership(): void
+    {
+        $owner = $this->createUser('owner@test.com');
+        $other = $this->createUser('other@test.com');
+        $basket = (new Basket())->setUid('owner-basket');
+        $basket->setUser($owner);
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $em->persist($basket);
+        $em->flush();
+
+        $this->json('GET', '/api/customer/'.$owner->getId().'/baskets', []);
+        self::assertResponseStatusCodeSame(401);
+
+        $this->client->loginUser($other);
+        $this->json('GET', '/api/customer/'.$owner->getId().'/baskets', []);
+        self::assertResponseStatusCodeSame(403);
+
+        $this->client->loginUser($owner);
+        $this->json('GET', '/api/customer/'.$owner->getId().'/baskets', []);
+        self::assertResponseIsSuccessful();
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        self::assertSame('owner-basket', $data[0]['uid']);
+        self::assertSame(0.0, (float) $data[0]['total']);
+    }
+
+    public function testBasketByUidIsPublicOnlyForGuestBaskets(): void
+    {
+        $owner = $this->createUser('owner@test.com');
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $userBasket = (new Basket())->setUid('user-basket');
+        $userBasket->setUser($owner);
+        $em->persist($userBasket);
+        $em->persist((new Basket())->setUid('guest-basket'));
+        $em->flush();
+
+        $this->json('GET', '/api/basket/guest-basket', []);
+        self::assertResponseIsSuccessful();
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        self::assertSame('guest-basket', $data[0]['uid']);
+        self::assertArrayHasKey('total', $data[0]);
+
+        $this->json('GET', '/api/basket/user-basket', []);
+        self::assertResponseStatusCodeSame(401);
+
+        $this->client->loginUser($this->createUser('other@test.com'));
+        $this->json('GET', '/api/basket/user-basket', []);
+        self::assertResponseStatusCodeSame(403);
     }
 }

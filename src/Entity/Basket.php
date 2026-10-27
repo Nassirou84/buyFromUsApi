@@ -27,6 +27,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
             ],
             paginationEnabled: false,
             security: "is_granted('ROLE_USER')",
+            routeName: 'app_get_customer_basket',
         ),
         new GetCollection(
             uriTemplate: '/basket/{uid}',
@@ -36,6 +37,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
                     fromProperty: 'uid',
                 ),
             ],
+            routeName: 'app_get_basket_by_uid',
         ),
         new Post(
             security: "is_granted('ROLE_USER')",
@@ -179,8 +181,7 @@ class Basket
     {
         $total = 0.0;
         foreach ($this->basketItems as $basketItem) {
-            $product = $basketItem->getProduct();
-            $total += $product->getActualPrice() * $basketItem->getQuantity();
+            $total += $basketItem->getUnitPrice() * $basketItem->getQuantity();
         }
         return $total;
     }

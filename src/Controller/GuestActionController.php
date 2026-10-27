@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Service\BasketService;
 use App\Service\GuestBasketService;
-use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -20,7 +20,7 @@ final class GuestActionController extends AbstractController
     public function createOrRetrieve(
         Request $request,
         GuestBasketService $guestBasketService,
-        NormalizerInterface $objectNormalizer,
+        BasketService $basketService,
     ): Response {
         if ($request->isMethod('OPTIONS')) {
             return new JsonResponse(null, Response::HTTP_NO_CONTENT);
@@ -32,11 +32,7 @@ final class GuestActionController extends AbstractController
 
         $cookie = $this->createGuestBasketCookie($basket->getUid());
 
-        $normalizedBasket = $objectNormalizer->normalize($basket, null, [
-            'groups' => ['basket:read']
-        ]);
-
-        $response = new JsonResponse($normalizedBasket);
+        $response = new JsonResponse($basketService->normalizeWithTotal($basket));
 
         $response->headers->setCookie($cookie);
         return $response;

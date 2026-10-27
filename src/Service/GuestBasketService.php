@@ -53,17 +53,22 @@ class GuestBasketService
   }
 
 
-  public function addToBasket(Product $product, ?string $basketUid, int $quantity = 1, ?string $variant = null): BasketItem
+  /**
+   * @param array<string, mixed>|null $variant
+   */
+  public function addToBasket(Product $product, ?string $basketUid, int $quantity = 1, ?array $variant = null): BasketItem
   {
     $basket = $this->retrieveBasket($basketUid);
 
-    $existingItem = $this->basketItemRepository->findOneBy([
-      'basket' => $basket,
-      'product' => $product,
-    ]);
+    $existingItem = null;
+    foreach ($this->basketItemRepository->findBy(['basket' => $basket, 'product' => $product]) as $candidate) {
+      if ($candidate->isSameVariant($variant)) {
+        $existingItem = $candidate;
+        break;
+      }
+    }
 
     if ($existingItem) {
-      $existingItem->setVariant($variant);
       $existingItem->setQuantity($existingItem->getQuantity() + $quantity);
       $this->entityManager->persist($existingItem);
       $this->entityManager->flush();
@@ -74,7 +79,7 @@ class GuestBasketService
     $basketItem = new BasketItem();
     $basketItem->setProduct($product);
     $basketItem->setVariant($variant);
-    $basketItem->setPriceAtAdd($product->getActualPrice());
+    $basketItem->setPriceAtAdd($product->getActualPriceForVariant($variant));
     $basketItem->setBasket($basket);
     $basketItem->setQuantity($quantity);
     $this->entityManager->persist($basketItem);

@@ -37,6 +37,10 @@ use Symfony\Component\Validator\Constraints as Assert;
             filters: ['products.search_filter', 'products.boolean_filter', 'products.order_filter', 'products.date_filter', ProductKeywordFilter::class, ProductPriceRangeFilter::class, ProductNewArrivalsFilter::class],
         ),
         new GetCollection(
+            routeName: 'app_product_search_suggestions',
+            paginationEnabled: false
+        ),
+        new GetCollection(
             uriTemplate: '/admin/get-products',
             normalizationContext: ['groups' => ['product:read', 'product:read:admin', 'product:read:details']],
             paginationItemsPerPage: 9,
@@ -59,6 +63,8 @@ use Symfony\Component\Validator\Constraints as Assert;
     normalizationContext: ['groups' => ['product:read', 'product:read:details', 'order:read', 'wishlist:read', 'basket:read']],
 )]
 #[ORM\Entity(repositoryClass: ProductRepository::class)]
+#[ORM\Index(name: 'idx_product_uid', columns: ['uid'])]
+#[ORM\Index(name: 'idx_product_slug', columns: ['slug'])]
 class Product
 {
     public const SALES_TAX_RATES = 0.18;
@@ -487,6 +493,63 @@ class Product
 
             return $variant;
         }, $this->variants);
+    }
+
+    /**
+     * Title/name identifying a variant object, or null when it has none.
+     *
+     * @param array<string, mixed>|null $variant
+     */
+    public static function getVariantLabel(?array $variant): ?string
+    {
+        $label = $variant['title'] ?? $variant['name'] ?? null;
+
+        return is_string($label) && '' !== trim($label) ? trim($label) : null;
+    }
+
+    /**
+     * The stored variant (raw, as saved by the admin) matching the given one by title/name, or null when unknown.
+     *
+     * @param array<string, mixed>|null $variant
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findVariant(?array $variant): ?array
+    {
+        $needle = self::getVariantLabel($variant);
+        if (null === $needle) {
+            return null;
+        }
+
+        foreach ($this->variants ?? [] as $candidate) {
+            $label = is_array($candidate) ? self::getVariantLabel($candidate) : null;
+            if (null !== $label && mb_strtolower($label) === mb_strtolower($needle)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Retail price of the given variant (matched by title/name), falling back to getActualPrice()
+     * when no variant is given, it is unknown, or it has no usable price.
+     *
+     * @param array<string, mixed>|null $variant
+     */
+    public function getActualPriceForVariant(?array $variant): ?float
+    {
+        $needle = self::getVariantLabel($variant);
+        if (null !== $needle) {
+            foreach ($this->getActualVariants() ?? [] as $candidate) {
+                $label = self::getVariantLabel($candidate);
+                if (null !== $label && mb_strtolower($label) === mb_strtolower($needle) && isset($candidate['actualPrice'])) {
+                    return (float) $candidate['actualPrice'];
+                }
+            }
+        }
+
+        return $this->getActualPrice();
     }
 
     public function getSubcategory(): ?Subcategory

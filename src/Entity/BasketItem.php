@@ -6,6 +6,7 @@ namespace App\Entity;
 
 use App\Repository\BasketItemRepository;
 use DateTime;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 
@@ -24,8 +25,13 @@ class BasketItem implements \JsonSerializable
     #[ORM\Column]
     private ?float $priceAtAdd = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $variant = null;
+    /**
+     * The whole selected variant object (title, image, price, ...), as stored on the product.
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $variant = null;
 
     #[ORM\Column(nullable: true)]
     private ?DateTime $priceDropNotifiedAt = null;
@@ -84,16 +90,42 @@ class BasketItem implements \JsonSerializable
         return $this;
     }
 
-    public function getVariant(): ?string
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getVariant(): ?array
     {
         return $this->variant;
     }
 
-    public function setVariant(?string $variant): static
+    /**
+     * @param array<string, mixed>|null $variant
+     */
+    public function setVariant(?array $variant): static
     {
         $this->variant = $variant;
 
         return $this;
+    }
+
+    public function getVariantLabel(): ?string
+    {
+        return Product::getVariantLabel($this->variant);
+    }
+
+    /**
+     * Whether this item holds the given variant (matched by title/name, both null meaning "no variant").
+     *
+     * @param array<string, mixed>|null $variant
+     */
+    public function isSameVariant(?array $variant): bool
+    {
+        $label = $this->getVariantLabel();
+        $other = Product::getVariantLabel($variant);
+
+        return null === $label || null === $other
+            ? $label === $other
+            : mb_strtolower($label) === mb_strtolower($other);
     }
 
     public function getPriceDropNotifiedAt(): ?DateTime
@@ -130,6 +162,14 @@ class BasketItem implements \JsonSerializable
         $this->basket = $basket;
 
         return $this;
+    }
+
+    /**
+     * Current retail price of one unit, honouring the selected variant (same source as the price saved at add time).
+     */
+    public function getUnitPrice(): float
+    {
+        return (float) $this->product?->getActualPriceForVariant($this->variant);
     }
 
     public function getQuantity(): ?int

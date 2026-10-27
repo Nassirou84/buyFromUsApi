@@ -15,6 +15,9 @@ framework:
             settings.cache:
                 adapter: cache.adapter.redis
                 default_lifetime: 3600 # safety net; writes through Doctrine invalidate it immediately
+            product_search.cache:
+                adapter: cache.adapter.redis
+                default_lifetime: 600 # search-as-you-type suggestions; new products show up within 10 minutes
 
 when@test:
     framework:
@@ -25,4 +28,6 @@ when@test:
                 auth_codes.cache:
                     adapter: cache.adapter.array
                 settings.cache:
+                    adapter: cache.adapter.array
+                product_search.cache:
                     adapter: cache.adapter.array
