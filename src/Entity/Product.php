@@ -37,6 +37,10 @@ use Symfony\Component\Validator\Constraints as Assert;
             filters: ['products.search_filter', 'products.boolean_filter', 'products.order_filter', 'products.date_filter', ProductKeywordFilter::class, ProductPriceRangeFilter::class, ProductNewArrivalsFilter::class],
         ),
         new GetCollection(
+            routeName: 'app_product_search_suggestions',
+            paginationEnabled: false
+        ),
+        new GetCollection(
             uriTemplate: '/admin/get-products',
             normalizationContext: ['groups' => ['product:read', 'product:read:admin', 'product:read:details']],
             paginationItemsPerPage: 9,
