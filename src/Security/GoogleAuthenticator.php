@@ -30,6 +30,8 @@ use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPasspor
 use Symfony\Component\Security\Http\EntryPoint\AuthenticationEntryPointInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
+use function in_array;
+
 class GoogleAuthenticator extends AbstractAuthenticator implements AuthenticationEntryPointInterface
 {
     private Client $googleClient;
@@ -52,7 +54,7 @@ class GoogleAuthenticator extends AbstractAuthenticator implements Authenticatio
 
     public function supports(Request $request): ?bool
     {
-        return 'api_google_login' === $request->attributes->get('_route');
+        return in_array($request->attributes->get('_route'), ['api_google_login', 'api_mobile_auth_google'], true);
     }
 
     public function authenticate(Request $request): Passport
@@ -194,17 +196,13 @@ class GoogleAuthenticator extends AbstractAuthenticator implements Authenticatio
         $normalizedUser = $this->objectNormalizer->normalize($user, null, ['groups' => ['user:read', 'user:login:read']]);
 
         // Prepare response with both tokens
-        $response = new JsonResponse([
+        return $this->refreshTokenCookieFactory->respond($request, [
             'success' => true,
             'access_token' => $accessToken,
             'token_type' => 'Bearer',
             'expires_in' => 3600, // 1 hour in seconds
             'user' => $normalizedUser,
-        ]);
-
-        $response->headers->setCookie($this->refreshTokenCookieFactory->createCookie($refreshTokenString));
-
-        return $response;
+        ], $refreshTokenString);
     }
 
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): ?Response

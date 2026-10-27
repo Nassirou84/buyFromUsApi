@@ -148,16 +148,12 @@ class AuthController extends AbstractController
     $refreshTokenString = $this->refreshTokenCookieFactory->createForUser($user);
     $normalizedUser = $this->objectNormalizer->normalize($user, null, ['groups' => ['user:read', 'user:login:read']]);
 
-    $response = new JsonResponse([
+    return $this->refreshTokenCookieFactory->respond($request, [
       'success' => true,
       'message' => 'Authentication successful',
       'access_token' => $accessToken,
       'user' => $normalizedUser,
-    ]);
-
-    $response->headers->setCookie($this->refreshTokenCookieFactory->createCookie($refreshTokenString));
-
-    return $response;
+    ], $refreshTokenString);
   }
 
   #[Route('/api/admin_login', name: 'api_admin_login', methods: ['POST', 'OPTIONS'])]
@@ -262,15 +258,11 @@ class AuthController extends AbstractController
     $refreshTokenString = $this->refreshTokenCookieFactory->createForUser($user);
     $normalizedUser = $this->objectNormalizer->normalize($user, null, ['groups' => ['user:read', 'user:login:read']]);
 
-    $response = new JsonResponse([
+    return $this->refreshTokenCookieFactory->respond($request, [
       'success' => true,
       'access_token' => $accessToken,
       'user' => $normalizedUser,
-    ]);
-
-    $response->headers->setCookie($this->refreshTokenCookieFactory->createCookie($refreshTokenString));
-
-    return $response;
+    ], $refreshTokenString);
   }
 
   #[Route('/api/token/refresh', name: 'app_refresh_token', methods: ['POST', 'OPTIONS'])]
@@ -284,8 +276,7 @@ class AuthController extends AbstractController
       return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
 
-    $refreshTokenString = $request->cookies->get('refresh_token')
-      ?? json_decode($request->getContent(), true)['refresh_token'] ?? null;
+    $refreshTokenString = $this->refreshTokenCookieFactory->extractRefreshToken($request);
 
     if (!$refreshTokenString) {
       return new JsonResponse(['error' => 'Refresh token missing'], Response::HTTP_UNAUTHORIZED);
@@ -313,16 +304,12 @@ class AuthController extends AbstractController
       ->setParameter('oldToken', $oldTokenString)
       ->execute();
 
-    $response = new JsonResponse([
+    return $this->refreshTokenCookieFactory->respond($request, [
       'success' => true,
       'access_token' => $newAccessToken,
       'user' => $this->objectNormalizer->normalize($user, null, ['groups' => ['user:read', 'user:login:read']]),
       'message' => 'Token refreshed successfully',
-    ]);
-
-    $response->headers->setCookie($this->refreshTokenCookieFactory->createCookie($newRefreshTokenString));
-
-    return $response;
+    ], $newRefreshTokenString);
   }
 
   #[Route('/api/auth/logout', name: 'app_logout', methods: ['POST', 'OPTIONS'])]
@@ -331,8 +318,7 @@ class AuthController extends AbstractController
     if ($request->isMethod('OPTIONS')) {
       return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
-    $refreshTokenString = $request->cookies->get('refresh_token')
-      ?? json_decode($request->getContent(), true)['refresh_token'] ?? null;
+    $refreshTokenString = $this->refreshTokenCookieFactory->extractRefreshToken($request);
 
     if ($refreshTokenString) {
       $refreshToken = $this->refreshTokenManager->get($refreshTokenString);
