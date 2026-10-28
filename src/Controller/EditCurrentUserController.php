@@ -36,6 +36,12 @@ final class EditCurrentUserController extends AbstractController
             }
             $user->setFirstName($data['firstName']);
         }
+        if (isset($data['deliveryPin'])) {
+            if (!is_string($data['deliveryPin']) || '' === trim($data['deliveryPin'])) {
+                return $this->json(['error' => 'Invalid deliveryPin'], 400);
+            }
+            $user->setDeliveryPin($data['deliveryPin']);
+        }
         if (isset($data['lastName'])) {
             if (!is_string($data['lastName']) || '' === trim($data['lastName'])) {
                 return $this->json(['error' => 'Invalid lastName'], 400);

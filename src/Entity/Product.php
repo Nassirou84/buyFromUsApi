@@ -42,6 +42,7 @@ use Symfony\Component\Validator\Constraints as Assert;
         ),
         new GetCollection(
             uriTemplate: '/admin/get-products',
+            security: "is_granted('ROLE_ADMIN')",
             normalizationContext: ['groups' => ['product:read', 'product:read:admin', 'product:read:details']],
             paginationItemsPerPage: 9,
             filters: ['products.search_filter', 'products.boolean_filter', 'products.order_filter', 'products.date_filter', ProductKeywordFilter::class, ProductPriceRangeFilter::class, ProductNewArrivalsFilter::class],
@@ -176,13 +177,13 @@ class Product
 
     #[ORM\Column(nullable: true)]
     #[Assert\PositiveOrZero]
-    #[Groups(['product:read:details', 'product:read'])]
+    #[Groups(['product:read:admin'])]
     private ?float $latestPrice = null;
 
     #[ORM\Column]
     #[Assert\NotNull]
     #[Assert\PositiveOrZero]
-    #[Groups(['product:read:details', 'product:read'])]
+    #[Groups(['product:read:admin'])]
     private ?float $fullPrice = null;
 
     #[ORM\Column(nullable: true)]
@@ -454,6 +455,38 @@ class Product
     }
 
     /**
+     * The previous ("was") price converted like getActualPrice(), so the front end can show the difference with it.
+     * latestPrice sits slightly above fullPrice, so it is scaled with the same multiplier as the variants
+     * (getActualPrice() / fullPrice): lastPrice exceeds getActualPrice() by the same ratio as latestPrice exceeds
+     * fullPrice, with no second margin or tax stacked on top. Falls back to the getActualPrice() formula when
+     * fullPrice is unusable. Null when there is no latestPrice.
+     */
+    #[Groups(['product:read', 'product:read:details'])]
+    public function getLastPrice(): ?float
+    {
+        if (null === $this->latestPrice || $this->latestPrice <= 0) {
+            return null;
+        }
+
+        $multiplier = $this->getRetailMultiplier();
+
+        return null !== $multiplier
+            ? round($this->latestPrice * $multiplier)
+            : PriceCalculator::calculate($this->latestPrice);
+    }
+
+    /**
+     * Factor turning a fullPrice-based amount into a displayed retail price (getActualPrice() / fullPrice),
+     * or null when fullPrice or usdPrice are unusable.
+     */
+    private function getRetailMultiplier(): ?float
+    {
+        return null !== $this->fullPrice && $this->fullPrice > 0 && null !== $this->usdPrice
+            ? $this->getActualPrice() / $this->fullPrice
+            : null;
+    }
+
+    /**
      * Variants with their retail "price" converted with the same effective multiplier as the product's own
      * retail price (getActualPrice() / fullPrice), so a variant priced at fullPrice shows exactly getActualPrice()
      * and no extra margin or tax is stacked on top. Falls back to the getActualPrice() formula when fullPrice is unusable.
@@ -468,10 +501,7 @@ class Product
             return null;
         }
 
-        $actualPrice = $this->getActualPrice();
-        $multiplier = null !== $this->fullPrice && $this->fullPrice > 0 && null !== $this->usdPrice
-            ? $actualPrice / $this->fullPrice
-            : null;
+        $multiplier = $this->getRetailMultiplier();
 
         return array_map(static function (mixed $variant) use ($multiplier): mixed {
             if (!is_array($variant)) {
@@ -697,5 +727,12 @@ class Product
         $this->sellerChoice = $sellerChoice;
 
         return $this;
+    }
+
+    #[Groups(['product:read', 'product:read:details'])]
+    #[SerializedName('amountSaved')]
+    public function getAmountSaved(): ?float
+    {
+        return $this->getLastPrice() - $this->getActualPrice();
     }
 }
