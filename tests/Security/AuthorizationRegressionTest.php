@@ -74,6 +74,39 @@ final class AuthorizationRegressionTest extends WebTestCase
         }
     }
 
+    public function testProductPurchasePricesAreNotExposedToTheStorefront(): void
+    {
+        $factory = static::getContainer()->get(ResourceMetadataCollectionFactoryInterface::class);
+        $resource = $factory->create(Product::class)[0];
+
+        $contexts = [['resource', $resource->getNormalizationContext()]];
+        foreach ($resource->getOperations() as $name => $operation) {
+            $contexts[] = [$name, $operation->getNormalizationContext()];
+        }
+
+        foreach ($contexts as [$name, $context]) {
+            $groups = $context['groups'] ?? [];
+            if (!in_array('product:read:admin', $groups, true)) {
+                continue;
+            }
+            $operation = $resource->getOperations()[$name] ?? null;
+            self::assertStringContainsString(
+                'ROLE_ADMIN',
+                (string) $operation?->getSecurity(),
+                sprintf('Operation "%s" exposes product:read:admin (usdPrice, fullPrice, latestPrice) and must require ROLE_ADMIN', $name),
+            );
+        }
+
+        $storefrontGroups = ['product:read', 'product:read:details', 'order:read', 'wishlist:read', 'basket:read'];
+        $product = (new Product())->setUsdPrice(100.0)->setFullPrice(130.0)->setLatestPrice(138.0);
+        $data = static::getContainer()->get('serializer')->normalize($product, null, ['groups' => $storefrontGroups]);
+
+        foreach (['usdPrice', 'fullPrice', 'latestPrice'] as $field) {
+            self::assertArrayNotHasKey($field, $data, sprintf('"%s" must not be readable from the storefront', $field));
+        }
+        self::assertArrayHasKey('lastPrice', $data);
+    }
+
     public function testAnonymousCannotCancelOrder(): void
     {
         $this->json('POST', '/api/orders/anything/cancel', []);

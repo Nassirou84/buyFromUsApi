@@ -217,6 +217,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(nullable: true)]
     private ?bool $isGrantedAccess = null;
 
+    #[ORM\Column(length: 6, nullable: true)]
+    #[Groups(['user:login:read', 'user:edit'])]
+    private ?string $deliveryPin = null;
+
     public function __construct()
     {
         $this->country = 'CIV';
@@ -730,6 +734,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setIsGrantedAccess(?bool $isGrantedAccess): static
     {
         $this->isGrantedAccess = $isGrantedAccess;
+
+        return $this;
+    }
+
+    public function getDeliveryPin(): ?string
+    {
+        return $this->deliveryPin;
+    }
+
+    public function setDeliveryPin(?string $deliveryPin): static
+    {
+        $this->deliveryPin = $deliveryPin;
 
         return $this;
     }
