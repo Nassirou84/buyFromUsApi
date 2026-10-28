@@ -181,7 +181,7 @@ class Basket
     {
         $total = 0.0;
         foreach ($this->basketItems as $basketItem) {
-            $total += $basketItem->getUnitPrice() * $basketItem->getQuantity();
+            $total += $basketItem->getPriceAtAdd() * $basketItem->getQuantity();
         }
         return $total;
     }
