@@ -14,7 +14,7 @@ use Symfony\Component\Serializer\Attribute\SerializedName;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ApiResource(
-    normalizationContext: ['groups' => ['photo:read', 'product:read', 'product:read:details']],
+    normalizationContext: ['groups' => ['photo:read', 'product:read', 'product:read:details', 'wishlist:read']],
     types: ['https://schema.org/MediaObject'],
     operations: [
         new \ApiPlatform\Metadata\Get(),
@@ -34,7 +34,7 @@ class Photo
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['photo:read'])]
+    #[Groups(['photo:read', 'wishlist:read'])]
     /** @phpstan-ignore-next-line */
     private ?int $id = null;
 
@@ -42,7 +42,7 @@ class Photo
     private ?DateTimeImmutable $createdAt = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['photo:read', 'product:read', 'product:read:details', 'basket:read'])]
+    #[Groups(['photo:read', 'product:read', 'product:read:details', 'basket:read', 'wishlist:read'])]
     private ?string $url = null;
 
     #[ORM\ManyToOne(inversedBy: 'photos')]
@@ -61,7 +61,7 @@ class Photo
     public ?UploadedFile $file = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['photo:read', 'product:read', 'product:read:details', 'basket:read'])]
+    #[Groups(['photo:read', 'product:read', 'product:read:details', 'basket:read', 'wishlist:read'])]
     private ?bool $isCover = null;
 
     public function __construct()
