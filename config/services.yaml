@@ -121,6 +121,9 @@ services:
         arguments:
             $exchangeRateApiKey: '%env(EXCHANGE_RATE_API_KEY)%'
 
+    App\MessageHandler\NewDriverMessageHandler:
+        arguments:
+            $driverInterfaceUrl: '%env(DRIVER_INTERFACE_URL)%'
 
     App\Entity\Product:
         arguments:
@@ -198,7 +201,7 @@ services:
 
     my_order.order_filter:
         parent: 'api_platform.doctrine.orm.order_filter'
-        arguments: [{createdAt: 'asc'}]
+        arguments: [{createdAt: 'asc', isPriority: ~}]
         tags:
           - { name: api_platform.filter }
 
@@ -211,6 +214,12 @@ services:
     user.order_filter:
         parent: 'api_platform.doctrine.orm.order_filter'
         arguments: [{createdAt: 'asc'}]
+        tags:
+          - { name: api_platform.filter }
+
+    user.date_filter:
+        parent: 'api_platform.doctrine.orm.date_filter'
+        arguments: [{createdAt: ~}]
         tags:
           - { name: api_platform.filter }
     ###< Filters 

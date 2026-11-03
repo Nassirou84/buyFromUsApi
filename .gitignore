@@ -34,3 +34,6 @@ phpstan.neon
 ###> Docker ###
 /.env.docker
 ###< Docker ###
+
+/vendor.nosync/
+/var.nosync/

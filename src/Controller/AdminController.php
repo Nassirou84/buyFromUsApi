@@ -37,6 +37,29 @@ final class AdminController extends AbstractController
         return new JsonResponse(['success' => true, 'user' => $user->getId()]);
     }
 
+    #[Route('/create-driver', name: 'app_admin_create_driver', methods: ['POST'])]
+
+    public function createDriver(
+        Request $request,
+        UserService $userService
+    ): Response {
+        $data = json_decode($request->getContent(), true);
+        if (!$data) {
+            return new JsonResponse(['error' => 'invalid_data'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+        $user = $this->getUser();
+        if (!$user) {
+            return new JsonResponse(['error' => 'not_authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+        if (in_array(User::ROLE_SUPER_ADMIN, $user->getRoles()) === false) {
+            return new JsonResponse(['error' => 'not_super_admin'], JsonResponse::HTTP_FORBIDDEN);
+        }
+
+        $driver = $userService->createDriverUser($data);
+
+        return new JsonResponse(['success' => true, 'user' => $driver->getId()]);
+    }
+
     #[Route('/{id}/toggle-access', name: 'app_admin_toggle_access', requirements: ['id' => '\d+'], methods: ['PATCH'])]
     public function toggleAccess(
         int $id,

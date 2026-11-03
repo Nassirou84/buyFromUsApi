@@ -6,6 +6,7 @@ namespace App\Entity;
 
 use App\Repository\OrderItemRepository;
 use DateTime;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 
@@ -41,17 +42,25 @@ class OrderItem
     private ?DateTime $createdAt = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['order:read'])]
     private ?string $status = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['order:read'])]
     private ?DateTime $updatedAt = null;
 
     #[ORM\ManyToOne(inversedBy: 'products')]
     #[ORM\JoinColumn(nullable: false)]
     private ?Order $currentOrder = null;
 
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $variant = null;
+    /**
+     * The whole selected variant object (title, image, price, ...), copied from the basket item at checkout.
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    #[Groups(['order:read'])]
+    private ?array $variant = null;
 
     public function __construct()
     {
@@ -149,15 +158,26 @@ class OrderItem
         return $this;
     }
 
-    public function getVariant(): ?string
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getVariant(): ?array
     {
         return $this->variant;
     }
 
-    public function setVariant(?string $variant): static
+    /**
+     * @param array<string, mixed>|null $variant
+     */
+    public function setVariant(?array $variant): static
     {
         $this->variant = $variant;
 
         return $this;
+    }
+
+    public function getVariantLabel(): ?string
+    {
+        return Product::getVariantLabel($this->variant);
     }
 }

@@ -6,6 +6,7 @@ namespace App\Entity;
 
 use App\Repository\PaymentRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: PaymentRepository::class)]
 #[ORM\UniqueConstraint(name: 'UNIQ_PAYMENT_TRANSACTION_ID', fields: ['transactionId'])]
@@ -25,6 +26,7 @@ class Payment
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['order:read:details'])]
     /** @phpstan-ignore-next-line */
     private ?int $id = null;
 
@@ -33,18 +35,22 @@ class Payment
     private ?Order $userOrder = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['order:read:details'])]
     private ?string $transactionId = null;
 
     #[ORM\Column]
+    #[Groups(['order:read:details'])]
     private ?float $amount = null;
 
     #[ORM\Column(length: 255)]
     private ?string $currency_code = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['order:read:details'])]
     private ?string $status = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['order:read:details'])]
     private ?string $paymentMethod = null;
 
     #[ORM\Column(length: 255, nullable: true)]
@@ -54,12 +60,15 @@ class Payment
     private ?string $mobileMoney = null;
 
     #[ORM\Column]
+    #[Groups(['order:read:details'])]
     private ?\DateTimeImmutable $createdAt = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['order:read:details'])]
     private ?\DateTime $updatedAt = null;
 
     #[ORM\Column]
+    #[Groups(['order:read:details'])]
     private ?float $taxedAmount = null;
 
     public function __construct()

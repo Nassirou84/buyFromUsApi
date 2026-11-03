@@ -34,13 +34,17 @@ use Symfony\Component\Serializer\Attribute\Groups;
             denormalizationContext: ['groups' => ['user:create']],
         ),
         new GetCollection(
-            // security: "is_granted('ROLE_ADMIN')",
-            filters: [UserKeywordFilter::class, 'user.order_filter'],
+            security: "is_granted('ROLE_ADMIN')",
+            filters: [UserKeywordFilter::class, 'user.order_filter', 'user.date_filter'],
             provider: NonAdminUsersProvider::class,
-            denormalizationContext: ['groups' => ['user:admin:read']],
+            normalizationContext: ['groups' => ['user:admin:read', 'user:read']],
+            denormalizationContext: ['groups' => ['user:admin:read', 'user:read']],
+            paginationEnabled: true,
+            paginationItemsPerPage: 10
         ),
         new Get(
             security: "is_granted('ROLE_ADMIN') or object == user",
+            normalizationContext: ['groups' => ['user:admin:read', 'user:read']],
         ),
         new GetCollection(
             controller: CurrentlyLoginController::class,
@@ -87,6 +91,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     const ROLE_MARKETING = 'ROLE_MARKETING';
     const ROLE_COURRIER = 'ROLE_COURRIER';
     const ROLE_ACCOUNTING = 'ROLE_ACCOUNTING';
+    const ROLE_OPERATOR = 'ROLE_OPERATOR';
+    const ROLE_DRIVER = 'ROLE_DRIVER';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]

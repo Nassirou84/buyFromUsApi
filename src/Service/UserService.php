@@ -8,6 +8,7 @@ use App\Entity\Setting;
 use App\Entity\User;
 use App\Message\AdminResetLinkMessage;
 use App\Message\NewAdminCreatedMessage;
+use App\Message\NewDriverMessage;
 use App\Message\WelcomeMessage;
 use App\Repository\UserRepository;
 use App\Service\PromoCodeService;
@@ -145,6 +146,37 @@ class UserService
         $this->invalidateAdminUsersCache();
 
         $this->sendNewAdminMessage($user);
+
+        return $user;
+    }
+
+    public function createDriverUser(array $data): User
+    {
+        $existingUser = $this->userRepository->findOneBy(['email' => $data['email']]);
+        if ($existingUser) {
+            throw new \InvalidArgumentException('User with this email already exists.');
+        }
+        // create a default driver password with a random value
+
+        $user = new User();
+        $user->setEmail($data['email']);
+        $user->setFirstName($data['firstName']);
+        $user->setLastName($data['lastName']);
+        $user->setRoles(array_unique([User::ROLE_USER, User::ROLE_DRIVER]));
+        $user->setIsGrantedAccess(false);
+        $defaultPassword = bin2hex(random_bytes(8));
+        $hashedPassword = $this->passwordHasher->hashPassword($user, $defaultPassword);
+        $user->setPassword($hashedPassword);
+        $this->entityManager->persist($user);
+        $this->entityManager->flush();
+
+        $this->messageBusInterface->dispatch(
+            new NewDriverMessage(
+                $user->getEmail(),
+                $defaultPassword,
+                $user->getFullName(),
+            ),
+        );
 
         return $user;
     }

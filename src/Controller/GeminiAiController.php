@@ -10,8 +10,10 @@ use App\Service\GeminiService;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[Route('api/gemini', name: 'app_gemini_ai')]
+#[IsGranted('ROLE_ADMIN')]
 final class GeminiAiController extends AbstractController
 {
     #[Route('/generate-product-content', name: 'app_gemini_generate_product_content', methods: ['POST'])]

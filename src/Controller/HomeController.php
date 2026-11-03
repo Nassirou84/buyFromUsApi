@@ -10,9 +10,14 @@ use App\Service\TranslatorService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
+// Both routes return hardcoded demo data and each triggers a paid Bright Data
+// scrape / translation. They are development scaffolding, so they are gated to
+// admins rather than left open to the public.
+#[IsGranted('ROLE_ADMIN')]
 final class HomeController extends AbstractController
 {
     #[Route('/api/home', name: 'app_home')]

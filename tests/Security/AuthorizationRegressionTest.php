@@ -136,6 +136,17 @@ final class AuthorizationRegressionTest extends WebTestCase
         self::assertResponseStatusCodeSame(401);
     }
 
+    public function testAnonymousCannotTriggerGeminiContentGeneration(): void
+    {
+        // These endpoints each trigger a paid Gemini AI call, so they must be
+        // ROLE_ADMIN only (admin product-publishing tooling), never public.
+        $this->json('POST', '/api/gemini/generate-product-content', ['title' => 'x']);
+        self::assertResponseStatusCodeSame(401);
+
+        $this->json('POST', '/api/gemini/generate-product-content-from-title', ['title' => 'x']);
+        self::assertResponseStatusCodeSame(401);
+    }
+
     public function testPublicFaqIsReadableWithoutLogin(): void
     {
         $this->json('GET', '/api/faq', []);
