@@ -8,6 +8,7 @@ use App\Entity\Setting;
 use App\Entity\User;
 use App\Message\AdminResetLinkMessage;
 use App\Message\NewAdminCreatedMessage;
+use App\Message\NewDriverMessage;
 use App\Message\WelcomeMessage;
 use App\Repository\UserRepository;
 use App\Service\PromoCodeService;
@@ -149,6 +150,37 @@ class UserService
         return $user;
     }
 
+    public function createDriverUser(array $data): User
+    {
+        $existingUser = $this->userRepository->findOneBy(['email' => $data['email']]);
+        if ($existingUser) {
+            throw new \InvalidArgumentException('User with this email already exists.');
+        }
+        // create a default driver password with a random value
+
+        $user = new User();
+        $user->setEmail($data['email']);
+        $user->setFirstName($data['firstName']);
+        $user->setLastName($data['lastName']);
+        $user->setRoles(array_unique([User::ROLE_USER, User::ROLE_DRIVER]));
+        $user->setIsGrantedAccess(false);
+        $defaultPassword = bin2hex(random_bytes(8));
+        $hashedPassword = $this->passwordHasher->hashPassword($user, $defaultPassword);
+        $user->setPassword($hashedPassword);
+        $this->entityManager->persist($user);
+        $this->entityManager->flush();
+
+        $this->messageBusInterface->dispatch(
+            new NewDriverMessage(
+                $user->getEmail(),
+                $defaultPassword,
+                $user->getFullName(),
+            ),
+        );
+
+        return $user;
+    }
+
     private function sendNewAdminMessage(User $user): void
     {
         $token = $this->generateChangePasswordToken($user, self::NEW_ADMIN_TOKEN_TTL);
@@ -258,6 +290,45 @@ class UserService
                 'roles' => $user->getRoles(),
                 'createdAt' => $user->getCreatedAt()?->format('Y-m-d H:i:s'),
                 'isGrantedAccess' => $user->isGrantedAccess(),
+            ], $users),
+            'all' => (int) $totalUsers,
+        ];
+    }
+
+    public function getDriverUsers(int $page = 1, string $name = ''): array
+    {
+        $qb = $this->userRepository->createQueryBuilder('u')
+            ->where('u.roles LIKE :role')
+            ->setParameter('role', '%' . User::ROLE_DRIVER . '%')
+            ->orderBy('u.createdAt', 'DESC');
+
+        if ('' !== $name) {
+            $qb
+                ->andWhere("CONCAT(u.firstName, ' ', u.lastName) LIKE :name OR CONCAT(u.lastName, ' ', u.firstName) LIKE :name")
+                ->setParameter('name', '%' . addcslashes(preg_replace('/\s+/', ' ', $name), '%_\\') . '%');
+        }
+
+        $totalUsers = (clone $qb)
+            ->select('COUNT(u.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $users = $qb
+            ->setFirstResult(($page - 1) * 10)
+            ->setMaxResults(10)
+            ->getQuery()
+            ->getResult();
+
+        return [
+            'drivers' => array_map(static fn(User $user): array => [
+                'id' => $user->getId(),
+                'email' => $user->getEmail(),
+                'firstName' => $user->getFirstName(),
+                'lastName' => $user->getLastName(),
+                'createdAt' => $user->getCreatedAt()?->format('Y-m-d H:i:s'),
+                'allAssignedDeliveries' => $user->countAssignDeliveries(),
+                'allPendingDeliveries' => $user->countPendingDeliveries(),
+                'allCompletedDeliveries' => $user->countCompletedDeliveries(),
             ], $users),
             'all' => (int) $totalUsers,
         ];

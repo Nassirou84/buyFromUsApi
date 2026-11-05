@@ -56,20 +56,31 @@ final class ProductController extends AbstractController
 
         $images = $request->files->get('images');
 
+        // Slug is computed up front so every image (product and variant) can be
+        // stored under "images/products/{slug}/" via uploadProductImage().
+        $slug = $slugger->slug($data['title'] ?? '')->lower() . '-' . uniqid();
+
         $variants = json_decode($data['variants'] ?? '[]', true) ?: [];
         // Variant image files picked in the admin arrive as variantImages[<variant index>].
         $variantImages = $request->files->get('variantImages');
         $variantImages = is_array($variantImages) ? $variantImages : [];
+        // Variants that share the same image are uploaded once; the resulting URL is
+        // reused for every variant with identical content (keyed by a content hash).
+        $uploadedByHash = [];
         foreach ($variants as $index => &$variant) {
             $variantImage = $variantImages[$index] ?? null;
             if ($variantImage instanceof UploadedFile && $variantImage->isValid()) {
-                $variant['image'] = $gcsUploaderService->upload($variantImage);
+                $hash = md5_file($variantImage->getPathname());
+                $variant['image'] = $uploadedByHash[$hash]
+                    ??= $gcsUploaderService->uploadProductImage($variantImage, $slug);
             } elseif (!empty($variant['image']) && str_starts_with($variant['image'], 'data:')) {
+                $hash = md5($variant['image']);
                 try {
-                    $variant['image'] = $gcsUploaderService->uploadDataUri(
-                        $variant['image'],
-                        $variant['title'] ?? 'variant'
-                    );
+                    $variant['image'] = $uploadedByHash[$hash]
+                        ??= $gcsUploaderService->uploadDataUri(
+                            $variant['image'],
+                            $variant['title'] ?? 'variant'
+                        );
                 } catch (\InvalidArgumentException $e) {
                     return new JsonResponse(['error' => $e->getMessage()], JsonResponse::HTTP_BAD_REQUEST);
                 }
@@ -107,7 +118,7 @@ final class ProductController extends AbstractController
         $product->setDetails(json_decode($data['details'] ?? null, true));
         $product->setFeatures(json_decode($data['features'] ?? null, true));
         $product->setVariants($variants);
-        $product->setSlug($slugger->slug($product->getTitle())->lower() . '-' . uniqid());
+        $product->setSlug($slug);
         $productService->updateLatestPrice($product);
 
         $entityManager->persist($product);
@@ -115,7 +126,7 @@ final class ProductController extends AbstractController
 
         if (!empty($images)) {
             foreach ($images as $image) {
-                $file = $gcsUploaderService->upload($image);
+                $file = $gcsUploaderService->uploadProductImage($image, $slug);
                 $photoService->createPhotoForProduct($product, $file);
             }
         }

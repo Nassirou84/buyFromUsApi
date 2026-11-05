@@ -18,16 +18,22 @@ use App\Repository\OrderRepository;
 use DateTime;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Serializer\Attribute\SerializedName;
 
 #[ApiResource(
     operations: [
         new Get(
             security: "is_granted('ROLE_ADMIN') or object.getCustomer() == user",
+            normalizationContext: ['groups' => ['order:read', 'order:read:details']],
         ),
         new GetCollection(
             security: "is_granted('ROLE_ADMIN')",
+            normalizationContext: ['groups' => ['order:read']],
+            paginationItemsPerPage: 10,
+            filters: ['my_order.search_filter', 'my_order.order_filter'],
         ),
         new Post(
             security: "is_granted('ROLE_USER')",
@@ -36,6 +42,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
         new GetCollection(
             uriTemplate: '/order/summary',
             controller: OrderSummaryController::class,
+            normalizationContext: ['groups' => []],
         ),
         new GetCollection(
             uriTemplate: '/customer/{customerId}/orders',
@@ -45,9 +52,11 @@ use Symfony\Component\Serializer\Attribute\Groups;
                     fromProperty: 'orders',
                 ),
             ],
+            filters: ['my_order.search_filter', 'my_order.order_filter'],
             paginationItemsPerPage: 10,
             order: ['createdAt' => 'desc'],
             security: "is_granted('ROLE_ADMIN') or user.getId() == customerId",
+            normalizationContext: ['groups' => ['order:read', 'order:read:details']],
         ),
         new Post(
             controller: PlaceOrderController::class,
@@ -66,8 +75,8 @@ use Symfony\Component\Serializer\Attribute\Groups;
             security: "is_granted('ROLE_ADMIN')",
         ),
     ],
-    denormalizationContext: ['groups' => ['order:write', 'order:edit']],
-    normalizationContext: ['groups' => ['order:read']],
+    denormalizationContext: ['groups' => ['order:write', 'order:edit', 'order:read:admin']],
+    normalizationContext: ['groups' => ['order:read', 'order:read:details', 'assignDelivery:read']],
     filters: ['my_order.search_filter', 'my_order.order_filter'],
 )]
 #[ORM\Entity(repositoryClass: OrderRepository::class)]
@@ -76,17 +85,47 @@ use Symfony\Component\Serializer\Attribute\Groups;
 class Order
 {
     public const STATUS_ORDER_PLACED = 'placed';
-    public const STATUS_PROCESSING = 'processing';
+    public const STATUS_PROCESSED = 'processed';
     public const STATUS_IN_TRANSIT = 'in_transit';
     public const STATUS_ARRIVED_IN_FACILITY = 'arrived_in_facility';
     public const STATUS_OUT_FOR_DELIVERY = 'out_for_delivery';
     public const STATUS_DELIVERED = 'delivered';
     public const STATUS_CANCELLED = 'cancelled';
 
+    /**
+     * The ordered tracking flow a (non-cancelled) order moves through. Drives
+     * the tracking history timeline exposed to the client.
+     *
+     * @var list<string>
+     */
+    public const TRACKING_FLOW = [
+        self::STATUS_ORDER_PLACED,
+        self::STATUS_PROCESSED,
+        self::STATUS_IN_TRANSIT,
+        self::STATUS_ARRIVED_IN_FACILITY,
+        self::STATUS_OUT_FOR_DELIVERY,
+        self::STATUS_DELIVERED,
+    ];
+
+    /**
+     * Human-readable labels for each status key.
+     *
+     * @var array<string, string>
+     */
+    public const STATUS_LABELS = [
+        self::STATUS_ORDER_PLACED => 'Order placed',
+        self::STATUS_PROCESSED => 'Processed',
+        self::STATUS_IN_TRANSIT => 'In transit',
+        self::STATUS_ARRIVED_IN_FACILITY => 'Arrived in facility',
+        self::STATUS_OUT_FOR_DELIVERY => 'Out for delivery',
+        self::STATUS_DELIVERED => 'Delivered',
+        self::STATUS_CANCELLED => 'Cancelled',
+    ];
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['order:read'])]
+    #[Groups(['order:read', 'assignDelivery:read'])]
     /** @phpstan-ignore-next-line */
     private ?int $id = null;
 
@@ -98,36 +137,36 @@ class Order
     private ?User $customer = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:write', 'order:read'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver'])]
     private ?string $fullName = null;
 
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:write', 'order:read'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver'])]
     private ?string $street = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:write', 'order:read'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver'])]
     private ?string $city = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:write', 'order:read'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver'])]
     private ?string $state = null;
 
     #[ORM\Column]
-    #[Groups(['order:write', 'order:read'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read'])]
     private ?DateTime $createdAt = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:read', 'order:edit'])]
+    #[Groups(['order:read', 'order:edit', 'assignDelivery:read', 'assignDelivery:driver'])]
     private ?string $status = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['order:read', 'order:edit'])]
+    #[Groups(['order:read', 'order:edit', 'assignDelivery:read'])]
     private ?DateTime $updatedAt = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:read'])]
+    #[Groups(['order:read', 'assignDelivery:read', 'assignDelivery:driver'])]
     private ?string $uid = null;
 
     /**
@@ -138,45 +177,68 @@ class Order
     private Collection $products;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['order:read'])]
+    #[Groups(['order:read', 'assignDelivery:read'])]
     private ?DateTime $estimatedDeliveryAt = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['order:read'])]
+    #[Groups(['order:read', 'assignDelivery:driver'])]
     private ?string $country = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['order:read', 'assignDelivery:driver'])]
     private ?string $suite = null;
 
     /**
      * @var Collection<int, Payment>
      */
     #[ORM\OneToMany(targetEntity: Payment::class, mappedBy: 'userOrder', orphanRemoval: true)]
+    #[Groups(['order:read:details'])]
     private Collection $payments;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $email = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['order:read', 'assignDelivery:read'])]
     private ?bool $isPriority = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['order:read'])]
     private ?float $discount = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['order:read'])]
     private ?float $taxes = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['order:read'])]
     private ?float $shippingFee = null;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['order:read', 'order:edit', 'assignDelivery:read', 'assignDelivery:driver'])]
     private ?string $phone = null;
 
     #[ORM\Column(length: 255)]
     private ?string $accessToken = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['order:read'])]
     private ?\DateTime $deliveredAt = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[Groups(['order:read:admin', 'assignDelivery:read'])]
+    private ?string $fulfillmentNote = null;
+
+    /**
+     * @var Collection<int, OrderProcessed>
+     */
+    #[ORM\OneToMany(targetEntity: OrderProcessed::class, mappedBy: 'currentOrder')]
+    #[Groups(['order:read:admin'])]
+    private Collection $orderProcesseds;
+
+    #[ORM\OneToOne(mappedBy: 'assignOrder', cascade: ['persist', 'remove'])]
+    #[Groups(['order:read'])]
+    private ?AssignDelivery $assignDelivery = null;
 
     public function __construct()
     {
@@ -185,6 +247,7 @@ class Order
         $this->status = self::STATUS_ORDER_PLACED;
         $this->products = new ArrayCollection();
         $this->payments = new ArrayCollection();
+        $this->orderProcesseds = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -279,6 +342,46 @@ class Order
     public function getStatus(): ?string
     {
         return $this->status;
+    }
+
+    /**
+     * The full tracking timeline: every state the order moves through, each
+     * flagged as already reached and whether it is the current one. Lets the
+     * client render the complete history rather than only the latest status.
+     *
+     * @return list<array{key: string, label: string, reached: bool, current: bool}>
+     */
+    #[Groups(['order:read:tracking'])]
+    public function getTrackingHistory(): array
+    {
+        $currentIndex = array_search($this->status, self::TRACKING_FLOW, true);
+
+        $history = [];
+        foreach (self::TRACKING_FLOW as $index => $state) {
+            $history[] = [
+                'key' => $state,
+                'label' => self::STATUS_LABELS[$state],
+                'reached' => false !== $currentIndex && $index <= $currentIndex,
+                'current' => $index === $currentIndex,
+            ];
+        }
+
+        return $history;
+    }
+
+    /**
+     * Call-to-action rendered under the tracking history. Inert for now: the
+     * client shows the label but no action is wired to it yet.
+     *
+     * @return array{label: string, action: null}
+     */
+    #[Groups(['order:read:tracking'])]
+    public function getNextStepButton(): array
+    {
+        return [
+            'label' => 'Proceed to next steps',
+            'action' => null,
+        ];
     }
 
     public function setStatus(string $status): static
@@ -420,6 +523,8 @@ class Order
         return $this;
     }
 
+    #[Groups(['order:read:admin', 'order:read'])]
+    #[SerializedName('isPriority')]
     public function isPriority(): ?bool
     {
         return $this->isPriority;
@@ -432,6 +537,7 @@ class Order
         return $this;
     }
 
+    #[Groups(['assignDelivery:driver'])]
     public function getFullAddress(): ?string
     {
         return $this->street
@@ -509,6 +615,65 @@ class Order
     public function setDeliveredAt(?\DateTime $deliveredAt): static
     {
         $this->deliveredAt = $deliveredAt;
+
+        return $this;
+    }
+
+    public function getFulfillmentNote(): ?string
+    {
+        return $this->fulfillmentNote;
+    }
+
+    public function setFulfillmentNote(?string $fulfillmentNote): static
+    {
+        $this->fulfillmentNote = $fulfillmentNote;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, OrderProcessed>
+     */
+    public function getOrderProcesseds(): Collection
+    {
+        return $this->orderProcesseds;
+    }
+
+    public function addOrderProcessed(OrderProcessed $orderProcessed): static
+    {
+        if (!$this->orderProcesseds->contains($orderProcessed)) {
+            $this->orderProcesseds->add($orderProcessed);
+            $orderProcessed->setCurrentOrder($this);
+        }
+
+        return $this;
+    }
+
+    public function removeOrderProcessed(OrderProcessed $orderProcessed): static
+    {
+        if ($this->orderProcesseds->removeElement($orderProcessed)) {
+            // set the owning side to null (unless already changed)
+            if ($orderProcessed->getCurrentOrder() === $this) {
+                $orderProcessed->setCurrentOrder(null);
+            }
+        }
+
+        return $this;
+    }
+
+    public function getAssignDelivery(): ?AssignDelivery
+    {
+        return $this->assignDelivery;
+    }
+
+    public function setAssignDelivery(AssignDelivery $assignDelivery): static
+    {
+        // set the owning side of the relation if necessary
+        if ($assignDelivery->getAssignOrder() !== $this) {
+            $assignDelivery->setAssignOrder($this);
+        }
+
+        $this->assignDelivery = $assignDelivery;
 
         return $this;
     }

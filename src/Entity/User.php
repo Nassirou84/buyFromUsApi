@@ -34,13 +34,17 @@ use Symfony\Component\Serializer\Attribute\Groups;
             denormalizationContext: ['groups' => ['user:create']],
         ),
         new GetCollection(
-            // security: "is_granted('ROLE_ADMIN')",
-            filters: [UserKeywordFilter::class, 'user.order_filter'],
+            security: "is_granted('ROLE_ADMIN')",
+            filters: [UserKeywordFilter::class, 'user.order_filter', 'user.date_filter'],
             provider: NonAdminUsersProvider::class,
-            denormalizationContext: ['groups' => ['user:admin:read']],
+            normalizationContext: ['groups' => ['user:admin:read', 'user:read']],
+            denormalizationContext: ['groups' => ['user:admin:read', 'user:read']],
+            paginationEnabled: true,
+            paginationItemsPerPage: 10
         ),
         new Get(
             security: "is_granted('ROLE_ADMIN') or object == user",
+            normalizationContext: ['groups' => ['user:admin:read', 'user:read']],
         ),
         new GetCollection(
             controller: CurrentlyLoginController::class,
@@ -74,7 +78,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
         )
     ],
     denormalizationContext: ['groups' => ['user:create', 'user:edit']],
-    normalizationContext: ['groups' => ['user:read', 'user:login:read']],
+    normalizationContext: ['groups' => ['user:read', 'user:login:read', 'order:read']],
 )]
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_EMAIL', fields: ['email'])]
@@ -87,11 +91,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     const ROLE_MARKETING = 'ROLE_MARKETING';
     const ROLE_COURRIER = 'ROLE_COURRIER';
     const ROLE_ACCOUNTING = 'ROLE_ACCOUNTING';
+    const ROLE_OPERATOR = 'ROLE_OPERATOR';
+    const ROLE_DRIVER = 'ROLE_DRIVER';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['user:read', 'user:admin:read'])]
+    #[Groups(['user:read', 'user:admin:read', 'order:read'])]
     /** @phpstan-ignore-next-line */
     private ?int $id = null;
 
@@ -120,18 +126,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?DateTime $registrationTokenCreatedAt = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['user:create', 'user:read', 'user:admin:read'])]
+    #[Groups(['user:create', 'user:read', 'user:admin:read', 'order:read'])]
     private ?string $firstName = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['user:create', 'user:read', 'user:admin:read'])]
+    #[Groups(['user:create', 'user:read', 'user:admin:read', 'order:read'])]
     private ?string $lastName = null;
 
     #[ORM\Column(nullable: true)]
     #[Groups(['user:read', 'user:admin:read'])]
     private ?DateTimeImmutable $createdAt = null;
 
-    #[Groups(['user:read', 'user:edit', 'user:admin:read'])]
+    #[Groups(['user:read', 'user:edit', 'user:admin:read', 'order:read'])]
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $phone = null;
 
@@ -217,9 +223,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(nullable: true)]
     private ?bool $isGrantedAccess = null;
 
-    #[ORM\Column(length: 6, nullable: true)]
-    #[Groups(['user:login:read', 'user:edit'])]
-    private ?string $deliveryPin = null;
+    /**
+     * @var Collection<int, AssignDelivery>
+     */
+    #[ORM\OneToMany(targetEntity: AssignDelivery::class, mappedBy: 'driver')]
+    private Collection $assignDeliveries;
 
     public function __construct()
     {
@@ -233,6 +241,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->twoFactorContactMethod = 'email';
         $this->trustedDevices = new ArrayCollection();
         $this->promoCodes = new ArrayCollection();
+        $this->assignDeliveries = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -624,6 +633,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    #[Groups(['user:read', 'user:admin:read', 'order:read'])]
     public function getFullName(): string
     {
         return trim($this->firstName . ' ' . $this->lastName);
@@ -738,15 +748,52 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    public function getDeliveryPin(): ?string
+    /**
+     * @return Collection<int, AssignDelivery>
+     */
+    public function getAssignDeliveries(): Collection
     {
-        return $this->deliveryPin;
+        return $this->assignDeliveries;
     }
 
-    public function setDeliveryPin(?string $deliveryPin): static
+    public function addAssignDelivery(AssignDelivery $assignDelivery): static
     {
-        $this->deliveryPin = $deliveryPin;
+        if (!$this->assignDeliveries->contains($assignDelivery)) {
+            $this->assignDeliveries->add($assignDelivery);
+            $assignDelivery->setDriver($this);
+        }
 
         return $this;
+    }
+
+    public function removeAssignDelivery(AssignDelivery $assignDelivery): static
+    {
+        if ($this->assignDeliveries->removeElement($assignDelivery)) {
+            // set the owning side to null (unless already changed)
+            if ($assignDelivery->getDriver() === $this) {
+                $assignDelivery->setDriver(null);
+            }
+        }
+
+        return $this;
+    }
+
+    public function countAssignDeliveries(): int
+    {
+        return $this->assignDeliveries->count();
+    }
+
+    public function countCompletedDeliveries(): int
+    {
+        return $this->assignDeliveries->filter(function (AssignDelivery $assignDelivery) {
+            return $assignDelivery->isCompleted();
+        })->count();
+    }
+
+    public function countPendingDeliveries(): int
+    {
+        return $this->assignDeliveries->filter(function (AssignDelivery $assignDelivery) {
+            return !$assignDelivery->isCompleted();
+        })->count();
     }
 }

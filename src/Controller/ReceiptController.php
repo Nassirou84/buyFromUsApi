@@ -71,7 +71,7 @@ final class ReceiptController extends AbstractController
                 'qty' => $item->getQuantity(),
                 'unit_price' => $item->getUnitPrice(),
                 'sku' => 'PR-' . $item->getProduct()->getId(),
-                'variant' => $item->getVariant(),
+                'variant' => $item->getVariantLabel(),
             ];
             $subtotal += $item->getUnitPrice() * $item->getQuantity();
         }

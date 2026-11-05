@@ -99,12 +99,12 @@ class Product
     private Collection $photos;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
-    #[Groups(['product:read:admin'])]
+    #[Groups(['product:read:admin', 'order:read:admin', 'order:read'])]
     #[Assert\Url]
     private ?string $scrappingUrl = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read'])]
+    #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read', 'order:read:admin'])]
     #[Assert\NotBlank]
     #[Assert\Length(max: 255)]
     private ?string $seller = null;
@@ -118,7 +118,7 @@ class Product
     #[ORM\Column]
     #[Assert\NotNull]
     #[Assert\PositiveOrZero]
-    #[Groups(['product:read:admin'])]
+    #[Groups(['product:read:admin', 'order:read:admin'])]
     private ?float $usdPrice = null;
 
     #[ORM\Column]
@@ -168,7 +168,7 @@ class Product
 
     #[ORM\Column(length: 10)]
     #[Assert\Length(max: 10)]
-    #[Groups(['product:read:details'])]
+    #[Groups(['product:read:details', 'order:read'])]
     private ?string $uid = null;
 
     #[ORM\Column(nullable: true)]
@@ -338,7 +338,7 @@ class Product
         return $this;
     }
 
-    #[Groups(['product:read:admin'])]
+    #[Groups(['product:read:admin', 'order:read:admin'])]
     #[SerializedName('isAvailable')]
     public function isAvailable(): ?bool
     {
@@ -734,5 +734,19 @@ class Product
     public function getAmountSaved(): ?float
     {
         return $this->getLastPrice() - $this->getActualPrice();
+    }
+
+    public function getCoverImage(): ?string
+    {
+        $photos = $this->photos;
+        if (count($photos) === 0) {
+            return null;
+        }
+        foreach ($photos as $photo) {
+            if ($photo->isCover()) {
+                return $photo->getUrl();
+            }
+        }
+        return $this->photos[0]?->getUrl();
     }
 }

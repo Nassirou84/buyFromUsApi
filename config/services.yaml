@@ -121,6 +121,9 @@ services:
         arguments:
             $exchangeRateApiKey: '%env(EXCHANGE_RATE_API_KEY)%'
 
+    App\MessageHandler\NewDriverMessageHandler:
+        arguments:
+            $driverInterfaceUrl: '%env(DRIVER_INTERFACE_URL)%'
 
     App\Entity\Product:
         arguments:
@@ -184,6 +187,18 @@ services:
         tags:
             - { name: api_platform.filter }
 
+    assign_deliveries.search_filter:
+        parent: 'api_platform.doctrine.orm.search_filter'
+        arguments: [{isCompleted: 'exact'}]
+        tags:
+            - { name: api_platform.filter }
+    
+    assign_deliveries.order_filter:
+        parent: 'api_platform.doctrine.orm.order_filter'
+        arguments: [{createdAt: ~, completedAt: ~}]
+        tags:
+            - { name: api_platform.filter }
+
     products.date_filter:
         parent: 'api_platform.doctrine.orm.date_filter'
         arguments: [{updatedAt: ~}]
@@ -198,7 +213,7 @@ services:
 
     my_order.order_filter:
         parent: 'api_platform.doctrine.orm.order_filter'
-        arguments: [{createdAt: 'asc'}]
+        arguments: [{createdAt: 'asc', isPriority: ~}]
         tags:
           - { name: api_platform.filter }
 
@@ -211,6 +226,12 @@ services:
     user.order_filter:
         parent: 'api_platform.doctrine.orm.order_filter'
         arguments: [{createdAt: 'asc'}]
+        tags:
+          - { name: api_platform.filter }
+
+    user.date_filter:
+        parent: 'api_platform.doctrine.orm.date_filter'
+        arguments: [{createdAt: ~}]
         tags:
           - { name: api_platform.filter }
     ###< Filters 

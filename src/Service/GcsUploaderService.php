@@ -49,6 +49,64 @@ class GcsUploaderService
     }
 
     /**
+     * Uploads an order-processing image under "images/orders/{orderUid}/" and returns its public URL.
+     */
+    public function uploadOrderProcessingImage(UploadedFile $file, string $orderUid): string
+    {
+        $originalFilename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $safeFilename = $this->sluggerInterface->slug($originalFilename);
+        $safeOrderUid = $this->sluggerInterface->slug($orderUid);
+        $fileName = sprintf(
+            'images/orders/%s/%s-%s.%s',
+            $safeOrderUid,
+            $safeFilename,
+            uniqid(),
+            $file->guessExtension() ?? 'png',
+        );
+
+        $this->storageBucket->upload(
+            fopen($file->getPathname(), 'r'),
+            [
+                'name' => $fileName,
+                'metadata' => [
+                    'contentType' => $file->getMimeType(),
+                ],
+            ],
+        );
+
+        return sprintf('https://storage.googleapis.com/%s/%s', $this->storageBucket->name(), $fileName);
+    }
+
+    /**
+     * Uploads a product image under "images/products/{slug}/" and returns its public URL.
+     */
+    public function uploadProductImage(UploadedFile $file, string $slug): string
+    {
+        $originalFilename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $safeFilename = $this->sluggerInterface->slug($originalFilename);
+        $safeSlug = $this->sluggerInterface->slug($slug);
+        $fileName = sprintf(
+            'images/products/%s/%s-%s.%s',
+            $safeSlug,
+            $safeFilename,
+            uniqid(),
+            $file->guessExtension() ?? 'png',
+        );
+
+        $this->storageBucket->upload(
+            fopen($file->getPathname(), 'r'),
+            [
+                'name' => $fileName,
+                'metadata' => [
+                    'contentType' => $file->getMimeType(),
+                ],
+            ],
+        );
+
+        return sprintf('https://storage.googleapis.com/%s/%s', $this->storageBucket->name(), $fileName);
+    }
+
+    /**
      * Deletes the object behind a public bucket URL. URLs that do not belong to this
      * bucket (e.g. external images) are left alone. Returns whether an object was deleted.
      */
