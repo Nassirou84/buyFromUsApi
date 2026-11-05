@@ -38,7 +38,6 @@ final class AdminController extends AbstractController
     }
 
     #[Route('/create-driver', name: 'app_admin_create_driver', methods: ['POST'])]
-
     public function createDriver(
         Request $request,
         UserService $userService
@@ -131,6 +130,32 @@ final class AdminController extends AbstractController
             'success' => true,
             'users' => $users['users'],
             'all' => $users['all']
+        ]);
+    }
+
+    #[Route('/drivers-list', name: 'app_admin_drivers_list', methods: ['GET'])]
+    public function driversList(
+        UserService $userService,
+        Request $request
+    ): Response {
+        $user = $this->getUser();
+        if (!$user) {
+            return new JsonResponse(['error' => 'not_authenticated'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+        if (in_array(User::ROLE_SUPER_ADMIN, $user->getRoles()) === false) {
+            return new JsonResponse(['error' => 'not_super_admin'], JsonResponse::HTTP_FORBIDDEN);
+        }
+
+        $page = (int) $request->query->get('page', 1);
+        $name = $request->query->get('name', '');
+
+        $drivers = $userService->getDriverUsers($page, $name);
+
+        return new JsonResponse([
+            'success' => true,
+            'page' => $page,
+            'drivers' => $drivers['drivers'],
+            'all' => $drivers['all']
         ]);
     }
 }

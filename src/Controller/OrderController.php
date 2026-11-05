@@ -2,15 +2,17 @@
 
 namespace App\Controller;
 
-use Symfony\Component\HttpFoundation\Request;
-use App\Repository\OrderRepository;
 use App\Entity\User;
 use App\Enumeration\OrderStatusEnum;
+use App\Repository\OrderRepository;
+use App\Repository\UserRepository;
 use App\Service\OrderService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Serializer\SerializerInterface;
 
 
 #[Route('/api/admin/')]
@@ -273,5 +275,54 @@ final class OrderController extends AbstractController
         $processed = $orderService->markAsOutForDelivery($order);
 
         return new JsonResponse(['message' => 'order_marked_as_out_for_delivery', 'status' => OrderStatusEnum::OUT_FOR_DELIVERY->value, 'processed' => $processed]);
+    }
+
+    #[Route('orders-awaiting-delivery', name: 'app_orders_pending_deliveries', methods: ['GET'])]
+    public function getOrdersAwaitingDelivery(
+        Request $request,
+        OrderRepository $orderRepository,
+        SerializerInterface $serializer
+    ): JsonResponse {
+        $page = max(1, (int) $request->query->get('page', 1));
+        $orders = $orderRepository->findAwaitingDelivery(10, ($page - 1) * 10);
+        $totalOrders = $orderRepository->countAwaitingDelivery();
+
+        $json = $serializer->serialize([
+            'orders' => $orders,
+            'page' => $page,
+            'total' => $totalOrders
+        ], 'json', ['groups' => ['order:read']]);
+
+        return JsonResponse::fromJsonString($json);
+    }
+
+    #[Route('batch-assign-delivery', name: 'app_batch_assign_delivery', methods: ['POST'])]
+    public function batchAssignDelivery(
+        Request $request,
+        OrderService $orderService,
+        UserRepository $userRepository
+    ): JsonResponse {
+        $user = $this->getUser();
+        if (!$user) {
+            return new JsonResponse(['error' => 'user_not_authenticated'], 401);
+        }
+        if (count(array_intersect([User::ROLE_SUPER_ADMIN, User::ROLE_OPERATOR], $user->getRoles())) === 0) {
+            return new JsonResponse(['error' => 'access_denied'], JsonResponse::HTTP_FORBIDDEN);
+        }
+        $requestData = json_decode($request->getContent(), true);
+        $driverId = $requestData['driver_id'] ?? null;
+        if (!$requestData['orders']) {
+            return new JsonResponse(['error' => 'no_orders_provided'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+        $driver = $userRepository->find($driverId);
+        if (!$driver) {
+            return new JsonResponse(['error' => 'driver_not_found'], JsonResponse::HTTP_NOT_FOUND);
+        }
+        if (!array_intersect([User::ROLE_DRIVER], $driver->getRoles())) {
+            return new JsonResponse(['error' => 'user_is_not_driver'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+        $processed = $orderService->batchAssignDelivery($requestData['orders'], $driver);
+
+        return new JsonResponse(['message' => 'batch_delivery_assigned', 'processed' => $processed]);
     }
 }

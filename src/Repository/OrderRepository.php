@@ -6,6 +6,7 @@ namespace App\Repository;
 
 use App\Entity\Order;
 use App\Entity\User;
+use App\Enumeration\OrderStatusEnum;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -42,6 +43,42 @@ class OrderRepository extends ServiceEntityRepository
             ->setParameter('user', $user)
             ->getQuery()
             ->getSingleScalarResult();
+    }
+
+    /**
+     * Orders that are out for delivery but not yet assigned to a driver.
+     *
+     * @return Order[]
+     */
+    public function findAwaitingDelivery(int $limit, int $offset): array
+    {
+        return $this->awaitingDeliveryQueryBuilder()
+            ->andWhere('o.status = :status')
+            ->setParameter('status', OrderStatusEnum::OUT_FOR_DELIVERY->value)
+            ->orderBy('o.createdAt', 'ASC')
+            ->setMaxResults($limit)
+            ->setFirstResult($offset)
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function countAwaitingDelivery(): int
+    {
+        return (int) $this->awaitingDeliveryQueryBuilder()
+            ->andWhere('o.status = :status')
+            ->setParameter('status', OrderStatusEnum::OUT_FOR_DELIVERY->value)
+            ->select('COUNT(o.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    private function awaitingDeliveryQueryBuilder(): \Doctrine\ORM\QueryBuilder
+    {
+        return $this->createQueryBuilder('o')
+            ->leftJoin('o.assignDelivery', 'ad')
+            ->andWhere('o.status = :status')
+            ->andWhere('ad.id IS NULL')
+            ->setParameter('status', OrderStatusEnum::OUT_FOR_DELIVERY->value);
     }
 
     //    /**

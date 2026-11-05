@@ -294,4 +294,43 @@ class UserService
             'all' => (int) $totalUsers,
         ];
     }
+
+    public function getDriverUsers(int $page = 1, string $name = ''): array
+    {
+        $qb = $this->userRepository->createQueryBuilder('u')
+            ->where('u.roles LIKE :role')
+            ->setParameter('role', '%' . User::ROLE_DRIVER . '%')
+            ->orderBy('u.createdAt', 'DESC');
+
+        if ('' !== $name) {
+            $qb
+                ->andWhere("CONCAT(u.firstName, ' ', u.lastName) LIKE :name OR CONCAT(u.lastName, ' ', u.firstName) LIKE :name")
+                ->setParameter('name', '%' . addcslashes(preg_replace('/\s+/', ' ', $name), '%_\\') . '%');
+        }
+
+        $totalUsers = (clone $qb)
+            ->select('COUNT(u.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $users = $qb
+            ->setFirstResult(($page - 1) * 10)
+            ->setMaxResults(10)
+            ->getQuery()
+            ->getResult();
+
+        return [
+            'drivers' => array_map(static fn(User $user): array => [
+                'id' => $user->getId(),
+                'email' => $user->getEmail(),
+                'firstName' => $user->getFirstName(),
+                'lastName' => $user->getLastName(),
+                'createdAt' => $user->getCreatedAt()?->format('Y-m-d H:i:s'),
+                'allAssignedDeliveries' => $user->countAssignDeliveries(),
+                'allPendingDeliveries' => $user->countPendingDeliveries(),
+                'allCompletedDeliveries' => $user->countCompletedDeliveries(),
+            ], $users),
+            'all' => (int) $totalUsers,
+        ];
+    }
 }

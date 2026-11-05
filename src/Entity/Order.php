@@ -42,6 +42,7 @@ use Symfony\Component\Serializer\Attribute\SerializedName;
         new GetCollection(
             uriTemplate: '/order/summary',
             controller: OrderSummaryController::class,
+            normalizationContext: ['groups' => []],
         ),
         new GetCollection(
             uriTemplate: '/customer/{customerId}/orders',
@@ -75,7 +76,7 @@ use Symfony\Component\Serializer\Attribute\SerializedName;
         ),
     ],
     denormalizationContext: ['groups' => ['order:write', 'order:edit', 'order:read:admin']],
-    normalizationContext: ['groups' => ['order:read']],
+    normalizationContext: ['groups' => ['order:read', 'order:read:details', 'assignDelivery:read']],
     filters: ['my_order.search_filter', 'my_order.order_filter'],
 )]
 #[ORM\Entity(repositoryClass: OrderRepository::class)]
@@ -124,7 +125,7 @@ class Order
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['order:read'])]
+    #[Groups(['order:read', 'assignDelivery:read'])]
     /** @phpstan-ignore-next-line */
     private ?int $id = null;
 
@@ -136,36 +137,36 @@ class Order
     private ?User $customer = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:write', 'order:read'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver'])]
     private ?string $fullName = null;
 
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:write', 'order:read'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver'])]
     private ?string $street = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:write', 'order:read'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver'])]
     private ?string $city = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:write', 'order:read'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver'])]
     private ?string $state = null;
 
     #[ORM\Column]
-    #[Groups(['order:write', 'order:read'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read'])]
     private ?DateTime $createdAt = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:read', 'order:edit'])]
+    #[Groups(['order:read', 'order:edit', 'assignDelivery:read', 'assignDelivery:driver'])]
     private ?string $status = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['order:read', 'order:edit'])]
+    #[Groups(['order:read', 'order:edit', 'assignDelivery:read'])]
     private ?DateTime $updatedAt = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:read'])]
+    #[Groups(['order:read', 'assignDelivery:read', 'assignDelivery:driver'])]
     private ?string $uid = null;
 
     /**
@@ -176,15 +177,15 @@ class Order
     private Collection $products;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['order:read'])]
+    #[Groups(['order:read', 'assignDelivery:read'])]
     private ?DateTime $estimatedDeliveryAt = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['order:read'])]
+    #[Groups(['order:read', 'assignDelivery:driver'])]
     private ?string $country = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['order:read'])]
+    #[Groups(['order:read', 'assignDelivery:driver'])]
     private ?string $suite = null;
 
     /**
@@ -198,7 +199,7 @@ class Order
     private ?string $email = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['order:read'])]
+    #[Groups(['order:read', 'assignDelivery:read'])]
     private ?bool $isPriority = null;
 
     #[ORM\Column(nullable: true)]
@@ -214,7 +215,7 @@ class Order
     private ?float $shippingFee = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['order:read', 'order:edit'])]
+    #[Groups(['order:read', 'order:edit', 'assignDelivery:read', 'assignDelivery:driver'])]
     private ?string $phone = null;
 
     #[ORM\Column(length: 255)]
@@ -225,7 +226,7 @@ class Order
     private ?\DateTime $deliveredAt = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
-    #[Groups(['order:read:admin'])]
+    #[Groups(['order:read:admin', 'assignDelivery:read'])]
     private ?string $fulfillmentNote = null;
 
     /**
@@ -234,6 +235,10 @@ class Order
     #[ORM\OneToMany(targetEntity: OrderProcessed::class, mappedBy: 'currentOrder')]
     #[Groups(['order:read:admin'])]
     private Collection $orderProcesseds;
+
+    #[ORM\OneToOne(mappedBy: 'assignOrder', cascade: ['persist', 'remove'])]
+    #[Groups(['order:read'])]
+    private ?AssignDelivery $assignDelivery = null;
 
     public function __construct()
     {
@@ -532,6 +537,7 @@ class Order
         return $this;
     }
 
+    #[Groups(['assignDelivery:driver'])]
     public function getFullAddress(): ?string
     {
         return $this->street
@@ -651,6 +657,23 @@ class Order
                 $orderProcessed->setCurrentOrder(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getAssignDelivery(): ?AssignDelivery
+    {
+        return $this->assignDelivery;
+    }
+
+    public function setAssignDelivery(AssignDelivery $assignDelivery): static
+    {
+        // set the owning side of the relation if necessary
+        if ($assignDelivery->getAssignOrder() !== $this) {
+            $assignDelivery->setAssignOrder($this);
+        }
+
+        $this->assignDelivery = $assignDelivery;
 
         return $this;
     }

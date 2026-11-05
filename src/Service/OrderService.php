@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Entity\AssignDelivery;
 use App\Entity\Basket;
 use App\Entity\Courrier;
 use App\Entity\Order;
@@ -643,5 +644,24 @@ final class OrderService
         });
 
         return ['yesterdayOrders' => $yesterdayOrdersCount, 'priorityOrdersAwaiting' => $priorityOrdersAwaitingCount, 'ordersInTransit' => $ordersInTransitCount, 'ordersAwaitingDelivery' => $ordersAwaitingDeliveryCount, 'lifetimeOrders' => $lifetimeOrders, 'dayBeforeYesterdayOrders' => $dayBeforeYesterdayOrdersCount, 'lifetimeDeliveredOrders' => $lifetimeDeliveredOrders, 'yesterdayDeliveredOrders' => $yesterdayDeliveredOrders, 'newPlacedOrders' => $newPlacedOrdersCount];
+    }
+
+    public function batchAssignDelivery(array $orders, User $deliveryPerson): int
+    {
+        $processed = 0;
+        foreach ($orders as $orderData) {
+            $order = $this->orderRepository->findOneBy(['uid' => $orderData['uid']]);
+            if ($order && $order->getStatus() === OrderStatusEnum::OUT_FOR_DELIVERY->value) {
+                $orderAssign = new AssignDelivery();
+                $orderAssign->setAssignOrder($order);
+                $orderAssign->setDriver($deliveryPerson);
+
+                $this->entityManager->persist($orderAssign);
+                $this->entityManager->persist($order);
+                $processed++;
+            }
+        }
+        $this->entityManager->flush();
+        return $processed;
     }
 }
