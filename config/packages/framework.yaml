@@ -1,6 +1,20 @@
 # see https://symfony.com/doc/current/reference/configuration/framework.html
+parameters:
+    # Trust the immediate upstream proxy by default (Caddy locally, the host's
+    # web server in production). REMOTE_ADDR means "whatever connected to us".
+    default_trusted_proxies: '127.0.0.1,REMOTE_ADDR'
+
 framework:
     secret: '%env(APP_SECRET)%'
+
+    # The app always sits behind a reverse proxy (Caddy in docker, the host's
+    # web server in production), so trust the immediate upstream to read the
+    # real client IP and scheme from the X-Forwarded-* headers. Without this,
+    # Request::getClientIp() returns the proxy IP and the per-IP rate limiter
+    # (see PostContactMessageController) buckets every visitor together.
+    # Override TRUSTED_PROXIES in .env.local to pin specific proxy IPs/CIDRs.
+    trusted_proxies: '%env(default:default_trusted_proxies:TRUSTED_PROXIES)%'
+    trusted_headers: ['x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-port']
 
     # Note that the session will be started ONLY if you read or write from it.
     session: true

@@ -34,6 +34,16 @@ services:
         arguments:
             $cacheInterface: '@auth_codes.cache'
 
+    # Custom throttles share the dedicated rate-limiter cache pool (see cache.yaml),
+    # so every rate limiter in the app leans on the same isolated cache store.
+    App\Service\RateLimiterService:
+        arguments:
+            $cacheInterface: '@rate_limiter.cache'
+
+    App\Service\RequestThrottleService:
+        arguments:
+            $cache: '@rate_limiter.cache'
+
     # shared arguments injected into every App\MessageHandler\MessageHandlerParentClass subclass
     _instanceof:
         App\MessageHandler\MessageHandlerParentClass:

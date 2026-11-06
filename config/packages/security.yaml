@@ -25,6 +25,15 @@ security:
                 password_path: password
                 success_handler: lexik_jwt_authentication.handler.authentication_success
                 failure_handler: lexik_jwt_authentication.handler.authentication_failure
+            # Brute-force protection for /api/login. Counts only FAILED logins
+            # (reset on success) and keys per-IP + per-username, so a legitimate
+            # user is not locked out by someone else hammering their account.
+            # A 429 is returned once the limit is hit; state lives in cache.rate_limiter.
+            login_throttling:
+                max_attempts: 5          # per username+IP
+                interval: '5 minutes'
+                cache_pool: rate_limiter.cache
+                lock_factory: null       # cache-only, consistent with framework.rate_limiter
 
         api:
             pattern: ^/api
