@@ -18,6 +18,12 @@ framework:
             product_search.cache:
                 adapter: cache.adapter.redis
                 default_lifetime: 600 # search-as-you-type suggestions; new products show up within 10 minutes
+            # Dedicated pool for every rate limiter / throttle (symfony/rate-limiter
+            # factories, login_throttling, and the custom throttle services). Isolated
+            # so counters can be flushed without touching the rest of the app cache.
+            # No per-entry default_lifetime: each limiter sets its own window TTL.
+            rate_limiter.cache:
+                adapter: cache.adapter.redis
 
 when@test:
     framework:
@@ -30,4 +36,6 @@ when@test:
                 settings.cache:
                     adapter: cache.adapter.array
                 product_search.cache:
+                    adapter: cache.adapter.array
+                rate_limiter.cache:
                     adapter: cache.adapter.array

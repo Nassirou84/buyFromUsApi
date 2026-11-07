@@ -20,7 +20,8 @@ abstract class MessageHandlerParentClass
     protected string $socialFacebook,
     protected string $socialTwitter,
     protected string $socialTikTok,
-    protected string $currency
+    protected string $currency,
+    protected string $supportUrl
   ) {
   }
 

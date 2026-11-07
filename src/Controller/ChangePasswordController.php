@@ -9,10 +9,12 @@ use App\Message\ResetEmailMessage;
 use App\Repository\UserRepository;
 use App\Service\UserService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
 use function is_array;
@@ -30,7 +32,22 @@ final class ChangePasswordController extends AbstractController
         UserRepository $userRepository,
         UserService $userService,
         MessageBusInterface $messageBusInterface,
+        Request $request,
+        #[Target('password_reset')]
+        RateLimiterFactoryInterface $passwordResetLimiter,
     ): JsonResponse {
+        // Throttle per client IP (anti-enumeration) and per target email
+        // (anti inbox-bombing). Both buckets are consumed on every attempt.
+        $ipAccepted = $passwordResetLimiter
+            ->create('ip:' . ($request->getClientIp() ?? 'unknown'))
+            ->consume(1)->isAccepted();
+        $emailAccepted = $passwordResetLimiter
+            ->create('email:' . $email)
+            ->consume(1)->isAccepted();
+        if (!$ipAccepted || !$emailAccepted) {
+            return $this->json(['success' => false, 'error' => 'too_many_requests'], 429);
+        }
+
         $email = htmlspecialchars($email, ENT_QUOTES, 'UTF-8');
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return $this->json(['success' => false, 'error' => 'Adresse e-mail invalide.'], 400);
@@ -49,7 +66,7 @@ final class ChangePasswordController extends AbstractController
                 $user->getEmail(),
                 $user->getFullName(),
                 $token,
-                15
+                15,
             ),
         );
 
@@ -60,7 +77,15 @@ final class ChangePasswordController extends AbstractController
     public function validate(
         string $token,
         UserService $userService,
+        Request $request,
+        #[Target('password_reset_token')]
+        RateLimiterFactoryInterface $passwordResetTokenLimiter,
     ): JsonResponse {
+        // Throttle token checks per client IP to blunt brute-forcing.
+        if (!$passwordResetTokenLimiter->create($request->getClientIp() ?? 'unknown')->consume(1)->isAccepted()) {
+            return $this->json(['success' => false, 'error' => 'too_many_requests'], 429);
+        }
+
         $isValid = $userService->validateChangePasswordToken($token);
         if (!$isValid) {
             return $this->json(['success' => false, 'error' => 'Token invalide ou expiré.'], 400);
@@ -74,7 +99,14 @@ final class ChangePasswordController extends AbstractController
         UserService $userService,
         UserRepository $userRepository,
         Request $request,
+        #[Target('password_reset_token')]
+        RateLimiterFactoryInterface $passwordResetTokenLimiter,
     ): JsonResponse {
+        // Throttle token submissions per client IP to blunt brute-forcing.
+        if (!$passwordResetTokenLimiter->create($request->getClientIp() ?? 'unknown')->consume(1)->isAccepted()) {
+            return $this->json(['success' => false, 'error' => 'too_many_requests'], 429);
+        }
+
         $data = json_decode($request->getContent(), true);
         $token = $data['token'] ?? null;
         $newPassword = $data['newPassword'] ?? null;

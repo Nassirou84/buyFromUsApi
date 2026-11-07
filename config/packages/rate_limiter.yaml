@@ -1,0 +1,45 @@
+framework:
+    rate_limiter:
+        # POST /api/contact/ — keyed by client IP (PostContactMessageController).
+        contact:
+            policy: 'sliding_window'
+            limit: 3
+            interval: '24 hours'
+            cache_pool: rate_limiter.cache
+            lock_factory: null       # cache-only; no Lock component, tiny race under burst is acceptable
+        # Registration (POST, RegisterStateProcessor) — keyed by client IP.
+        register:
+            policy: 'sliding_window'
+            limit: 3
+            interval: '5 minutes'
+            cache_pool: rate_limiter.cache
+            lock_factory: null
+        # Password-reset request (POST /api/change_password/{email}/request).
+        # Consumed twice: once per client IP (blunts account enumeration) and
+        # once per target email (stops bombing one inbox with reset emails).
+        password_reset:
+            policy: 'sliding_window'
+            limit: 5
+            interval: '15 minutes'
+            cache_pool: rate_limiter.cache
+            lock_factory: null
+        # Reset-token validate/submit (GET /{token}/validate, POST /change),
+        # keyed by client IP to blunt token brute-forcing.
+        password_reset_token:
+            policy: 'sliding_window'
+            limit: 10
+            interval: '15 minutes'
+            cache_pool: rate_limiter.cache
+            lock_factory: null
+        # Promo-code check (authenticated), keyed by user id to stop a logged-in
+        # account from enumerating valid promo codes.
+        promo_code:
+            policy: 'sliding_window'
+            limit: 20
+            interval: '5 minutes'
+            cache_pool: rate_limiter.cache
+            lock_factory: null
+        # NOTE: login is throttled at the firewall via `login_throttling`
+        # (see security.yaml), which manages its own limiter and counts only
+        # failed attempts. It cannot consume a framework.rate_limiter factory,
+        # so there is intentionally no `login` entry here.
