@@ -23,6 +23,13 @@ class SendTwoFactorCodeMessageHandler extends MessageHandlerParentClass
         string $socialTwitter,
         string $socialTikTok,
         string $currency,
+        string $supportUrl,
+        string $faqs,
+        string $privacyPolicy,
+        string $generalTerms,
+        string $contactUs,
+        string $aboutUs,
+        string $cokiePolicy,
         private string $twoFactorCodeTemplate,
     ) {
         parent::__construct(
@@ -37,6 +44,13 @@ class SendTwoFactorCodeMessageHandler extends MessageHandlerParentClass
             $socialTwitter,
             $socialTikTok,
             $currency,
+            $supportUrl,
+            $faqs,
+            $privacyPolicy,
+            $generalTerms,
+            $contactUs,
+            $aboutUs,
+            $cokiePolicy
         );
     }
 

@@ -58,6 +58,13 @@ services:
                 $socialTwitter: '%env(TWITTER_URL)%'
                 $socialTikTok: '%env(TIKTOK_URL)%'
                 $currency: '%env(TARGET_CURRENCY)%'
+                $supportUrl: '%env(SUPPORT_PATH)%'
+                $faqs: '%env(FAQS_PATH)%'
+                $privacyPolicy: '%env(PRIVACY_POLICY_PATH)%'
+                $generalTerms: '%env(GENERAL_TERMS_PATH)%'
+                $contactUs: '%env(CONTACT_US_PATH)%'
+                $aboutUs: '%env(ABOUT_US_PATH)%'
+                $cokiePolicy: '%env(COKIE_POLICY_PATH)%'
 
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name
@@ -275,6 +282,11 @@ services:
     App\MessageHandler\NewProductAddedMessageHandler:
         arguments:
             $adminEmail: '%env(ADMIN_EMAIL)%'
+    
+    App\MessageHandler\NewShoppingRequestHandler:
+        arguments:
+            $newShoppingRequestTemplate: '%env(SHOPPING_REQUEST_CONFIRMATION_TEMPLATE_ID)%'
+            $statusPath: '%env(SHOPPING_REQUEST_STATUS_PATH)%'
 
     App\Service\EmailQueueService:
         arguments:

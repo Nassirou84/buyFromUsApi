@@ -24,6 +24,13 @@ class SendResetEmailMessageHandler extends MessageHandlerParentClass
         string $socialTwitter,
         string $socialTikTok,
         string $currency,
+        string $supportUrl,
+        string $faqs,
+        string $privacyPolicy,
+        string $generalTerms,
+        string $contactUs,
+        string $aboutUs,
+        string $cokiePolicy,
         private string $passwordResetTemplateId,
         private string $resetPasswordPagePath,
     ) {
@@ -39,6 +46,13 @@ class SendResetEmailMessageHandler extends MessageHandlerParentClass
             $socialTwitter,
             $socialTikTok,
             $currency,
+            $supportUrl,
+            $faqs,
+            $privacyPolicy,
+            $generalTerms,
+            $contactUs,
+            $aboutUs,
+            $cokiePolicy
         );
     }
 

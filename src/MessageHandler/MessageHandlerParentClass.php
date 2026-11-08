@@ -20,7 +20,13 @@ abstract class MessageHandlerParentClass
     protected string $socialTwitter,
     protected string $socialTikTok,
     protected string $currency,
-    protected string $supportUrl
+    protected string $supportUrl,
+    protected string $faqs,
+    protected string $privacyPolicy,
+    protected string $generalTerms,
+    protected string $contactUs,
+    protected string $aboutUs,
+    protected string $cokiePolicy
   ) {
   }
 }

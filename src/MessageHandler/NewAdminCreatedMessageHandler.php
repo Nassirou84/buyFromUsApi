@@ -23,6 +23,13 @@ final class NewAdminCreatedMessageHandler extends MessageHandlerParentClass
         string $socialTwitter,
         string $socialTikTok,
         string $currency,
+        string $supportUrl,
+        string $faqs,
+        string $privacyPolicy,
+        string $generalTerms,
+        string $contactUs,
+        string $aboutUs,
+        string $cokiePolicy,
         private string $resetPasswordPagePath,
     ) {
         parent::__construct(
@@ -37,6 +44,13 @@ final class NewAdminCreatedMessageHandler extends MessageHandlerParentClass
             $socialTwitter,
             $socialTikTok,
             $currency,
+            $supportUrl,
+            $faqs,
+            $privacyPolicy,
+            $generalTerms,
+            $contactUs,
+            $aboutUs,
+            $cokiePolicy,
         );
     }
 

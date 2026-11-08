@@ -107,6 +107,35 @@ class GcsUploaderService
     }
 
     /**
+     * Uploads a shopping-request image under "request/{uid}/" and returns its public URL.
+     */
+    public function uploadShoppingRequestImage(UploadedFile $file, string $uid): string
+    {
+        $originalFilename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $safeFilename = $this->sluggerInterface->slug($originalFilename);
+        $safeUid = $this->sluggerInterface->slug($uid);
+        $fileName = sprintf(
+            'request/%s/%s-%s.%s',
+            $safeUid,
+            $safeFilename,
+            uniqid(),
+            $file->guessExtension() ?? 'png',
+        );
+
+        $this->storageBucket->upload(
+            fopen($file->getPathname(), 'r'),
+            [
+                'name' => $fileName,
+                'metadata' => [
+                    'contentType' => $file->getMimeType(),
+                ],
+            ],
+        );
+
+        return sprintf('https://storage.googleapis.com/%s/%s', $this->storageBucket->name(), $fileName);
+    }
+
+    /**
      * Deletes the object behind a public bucket URL. URLs that do not belong to this
      * bucket (e.g. external images) are left alone. Returns whether an object was deleted.
      */

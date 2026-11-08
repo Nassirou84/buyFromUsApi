@@ -11,6 +11,7 @@ use App\Entity\Order;
 use App\Entity\OrderItem;
 use App\Entity\OrderProcessed;
 use App\Entity\Payment;
+use App\Entity\Product;
 use App\Entity\User;
 use App\Enumeration\OrderStatusEnum;
 use App\Message\OrderConfirmationMessage;
@@ -229,7 +230,7 @@ final class OrderService
             $orderItem->setStatus(OrderItem::STATUS_PENDING);
             $this->entityManager->persist($orderItem);
             $orderItems[] = [
-                'IMAGE_URL' => $product?->getCoverImage(),
+                'IMAGE_URL' => $this->resolveItemImageUrl($product, $item->getVariant()),
                 'NAME' => $product->getTitle(),
                 'VARIANT' => $item->getVariantLabel(),
                 'QUANTITY' => $item->getQuantity(),
@@ -296,6 +297,20 @@ final class OrderService
         );
     }
 
+    /**
+     * Image shown for an order line in the confirmation email: the selected variant's own
+     * image when it has one, falling back to the product cover image otherwise.
+     *
+     * @param array<string, mixed>|null $variant
+     */
+    private function resolveItemImageUrl(?Product $product, ?array $variant): ?string
+    {
+        $storedVariant = $product?->findVariant($variant);
+        $image = $storedVariant['image'] ?? $variant['image'] ?? null;
+
+        return is_string($image) && '' !== trim($image) ? $image : $product?->getCoverImage();
+    }
+
     public function resendOrderConfirmation(Order $order): void
     {
         $payment = $order->getPayments()[0] ?? null;
@@ -308,7 +323,7 @@ final class OrderService
         foreach ($order->getProducts() as $item) {
             $product = $item->getProduct();
             $items[] = [
-                'IMAGE_URL' => $product?->getCoverImage(),
+                'IMAGE_URL' => $this->resolveItemImageUrl($product, $item->getVariant()),
                 'NAME' => $product?->getTitle(),
                 'VARIANT' => $item->getVariantLabel(),
                 'QUANTITY' => $item->getQuantity(),

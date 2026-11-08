@@ -98,6 +98,9 @@ class ShoppingRequest
     #[Groups(['shopping_request:read'])]
     private ?User $customer = null;
 
+    #[ORM\Column(length: 255)]
+    private ?string $accessToken = null;
+
     public function __construct()
     {
         $this->createdAt = new DateTime();
@@ -274,6 +277,18 @@ class ShoppingRequest
     public function setCustomer(?User $customer): static
     {
         $this->customer = $customer;
+
+        return $this;
+    }
+
+    public function getAccessToken(): ?string
+    {
+        return $this->accessToken;
+    }
+
+    public function setAccessToken(string $accessToken): static
+    {
+        $this->accessToken = $accessToken;
 
         return $this;
     }
