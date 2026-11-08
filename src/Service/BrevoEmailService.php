@@ -28,11 +28,13 @@ class BrevoEmailService
 
     public function __construct(
         Environment $twig,
-        string $apiKey,
+        SecretManagerService $secretManager,
         string $fromEmail,
         string $fromName = 'No Reply',
         ?LoggerInterface $logger = null,
     ) {
+        $apiKey = $secretManager->getSecret('brevo_api_key');
+
         $this->client = HttpClient::create([
             'headers' => [
                 'api-key' => $apiKey,

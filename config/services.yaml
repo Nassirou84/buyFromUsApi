@@ -162,7 +162,6 @@ services:
             $twig: '@twig'
             $fromEmail: '%env(MAILER_FROM)%'
             $fromName: '%env(MAILER_FROM_NAME)%'
-            $apiKey: '%env(BREVO_API_KEY)%'
         tags: ['monolog.logger']
 
     App\Service\OrderService:
@@ -313,3 +312,8 @@ services:
         arguments:
             $defaultCurrency: '%env(TARGET_CURRENCY)%'
             $defaultTaxRate: '%env(TAXE_RATE)%'
+
+    App\Service\SecretManagerService:
+        arguments:
+            $projectId: '%env(GCP_PROJECT_ID)%'
+            $credentialsPath: '%kernel.project_dir%/config/secrets/secrets-key.json'
