@@ -9,8 +9,9 @@ framework:
                 property: 'status'
             supports:
                 - App\Entity\Order
-            initial_marking: !php/const App\Enumeration\OrderStatusEnum::PLACED
+            initial_marking: !php/const App\Enumeration\OrderStatusEnum::PENDING
             places:
+                - !php/const App\Enumeration\OrderStatusEnum::PENDING
                 - !php/const App\Enumeration\OrderStatusEnum::PLACED
                 - !php/const App\Enumeration\OrderStatusEnum::PROCESSED
                 - !php/const App\Enumeration\OrderStatusEnum::IN_TRANSIT
@@ -19,6 +20,9 @@ framework:
                 - !php/const App\Enumeration\OrderStatusEnum::DELIVERED
                 - !php/const App\Enumeration\OrderStatusEnum::CANCELLED
             transitions:
+                confirm_order:
+                    from: !php/const App\Enumeration\OrderStatusEnum::PENDING
+                    to: !php/const App\Enumeration\OrderStatusEnum::PLACED
                 processed_order:
                     from: !php/const App\Enumeration\OrderStatusEnum::PLACED
                     to: !php/const App\Enumeration\OrderStatusEnum::PROCESSED

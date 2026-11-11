@@ -26,19 +26,17 @@ class PaymentMethodDataProvider implements ProviderInterface
             return null;
         }
 
+        $repository = $this->managerRegistry->getRepository(PaymentMethod::class);
+
         // For single card
         if (isset($uriVariables['id'])) {
-            $repository = $this->managerRegistry->getRepository(PaymentMethod::class);
-
             return $repository->findOneBy([
                 'id' => $uriVariables['id'],
-                'user' => $user,
+                'customer' => $user,
             ]);
         }
 
         // For collection
-        $repository = $this->managerRegistry->getRepository(PaymentMethod::class);
-
-        return $repository->findBy(['user' => $user]);
+        return $repository->findBy(['customer' => $user], ['isDefault' => 'DESC', 'createdAt' => 'DESC']);
     }
 }

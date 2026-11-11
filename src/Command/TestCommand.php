@@ -26,7 +26,13 @@ class TestCommand
         SymfonyStyle $io
     ): int {
 
-        $io->success($this->secretManagerService->getSecret('brevo_api_key'));
+        $secret = 'my_secret_value';
+        $encrypted = $this->secretManagerService->encryptElement($secret);
+        $decrypted = $this->secretManagerService->decryptElement($encrypted);
+
+        $io->success("Original: $secret");
+        $io->success("Encrypted: $encrypted");
+        $io->success("Decrypted: $decrypted");
 
         return Command::SUCCESS;
     }

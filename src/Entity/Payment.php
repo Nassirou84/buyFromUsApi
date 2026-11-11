@@ -71,6 +71,12 @@ class Payment
     #[Groups(['order:read:details'])]
     private ?float $taxedAmount = null;
 
+    #[ORM\Column]
+    private ?float $fees = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $paymentProvider = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
@@ -204,15 +210,16 @@ class Payment
 
     public function getPaymentLast4(): ?string
     {
-        if ($this->paymentMethod === 'cod') {
-            return null;
-        }
-        if ($this->paymentMethod === 'wave-money') {
-            return substr($this->mobileMoney, -4);
-        }
-        if ($this->paymentMethod === 'debit-card') {
+        // $paymentMethod holds the Paystack channel (see PaymentFinalizationService):
+        // 'card' or 'mobile_money'. The last 4 come from whichever identifier was
+        // stored for that channel; null-safe because either column may be empty.
+        if (self::PAYMENT_METHOD_CARD === $this->paymentMethod && null !== $this->paymentCard) {
             return substr($this->paymentCard, -4);
         }
+        if (self::PAYMENT_METHOD_MOBILE_MONEY === $this->paymentMethod && null !== $this->mobileMoney) {
+            return substr($this->mobileMoney, -4);
+        }
+
         return null;
     }
 
@@ -224,6 +231,30 @@ class Payment
     public function setTaxedAmount(float $taxedAmount): static
     {
         $this->taxedAmount = $taxedAmount;
+
+        return $this;
+    }
+
+    public function getFees(): ?float
+    {
+        return $this->fees;
+    }
+
+    public function setFees(float $fees): static
+    {
+        $this->fees = $fees;
+
+        return $this;
+    }
+
+    public function getPaymentProvider(): ?string
+    {
+        return $this->paymentProvider;
+    }
+
+    public function setPaymentProvider(?string $paymentProvider): static
+    {
+        $this->paymentProvider = $paymentProvider;
 
         return $this;
     }

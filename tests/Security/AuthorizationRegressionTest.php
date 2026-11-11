@@ -147,6 +147,198 @@ final class AuthorizationRegressionTest extends WebTestCase
         self::assertResponseStatusCodeSame(401);
     }
 
+    public function testAnonymousCannotListPaymentMethods(): void
+    {
+        $this->json('GET', '/api/payment-methods', []);
+        self::assertResponseStatusCodeSame(401);
+
+        $this->json('GET', '/api/payment-methods/1', []);
+        self::assertResponseStatusCodeSame(401);
+    }
+
+    public function testAnonymousCannotSetDefaultPaymentMethod(): void
+    {
+        // Making a payment method the default must require authentication. Use a real
+        // id so the route is reached (a missing id is rejected by the entity resolver
+        // before the security check), proving the 401 comes from the access rule.
+        $owner = $this->createUser('owner@test.com');
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $method = (new \App\Entity\PaymentMethod())->setMethodType('card')->setCardLast4('4081');
+        $method->setCustomer($owner);
+        $em->persist($method);
+        $em->flush();
+
+        $this->json('PATCH', '/api/payment-methods/'.$method->getId().'/default', []);
+        self::assertResponseStatusCodeSame(401);
+    }
+
+    public function testAnonymousCannotDeletePaymentMethod(): void
+    {
+        // Deleting a payment method must require authentication. Use a real id so the
+        // route is reached (a missing id is rejected by the entity resolver before the
+        // security check), proving the 401 comes from the access rule.
+        $owner = $this->createUser('owner@test.com');
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $method = (new \App\Entity\PaymentMethod())->setMethodType('card')->setCardLast4('4081');
+        $method->setCustomer($owner);
+        $em->persist($method);
+        $em->flush();
+
+        $this->json('DELETE', '/api/payment-methods/'.$method->getId(), []);
+        self::assertResponseStatusCodeSame(401);
+    }
+
+    public function testAnonymousCannotEditPaymentMethodMobileMoneyNumber(): void
+    {
+        // Editing the mobile money number must require authentication. Use a real id
+        // so the route is reached (a missing id is rejected by the entity resolver
+        // before the security check), proving the 401 comes from the access rule.
+        $owner = $this->createUser('owner@test.com');
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $method = (new \App\Entity\PaymentMethod())->setMethodType('mobile_money')->setMobileMoneyNumber('620000000');
+        $method->setCustomer($owner);
+        $em->persist($method);
+        $em->flush();
+
+        $this->json('PATCH', '/api/payment-methods/'.$method->getId().'/mobile-money-number', ['mobileMoneyNumber' => '610000000']);
+        self::assertResponseStatusCodeSame(401);
+    }
+
+    public function testCustomerCannotEditAnotherCustomersMobileMoneyNumber(): void
+    {
+        $owner = $this->createUser('owner@test.com');
+        $other = $this->createUser('other@test.com');
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $method = (new \App\Entity\PaymentMethod())->setMethodType('mobile_money')->setMobileMoneyNumber('620000000');
+        $method->setCustomer($owner);
+        $em->persist($method);
+        $em->flush();
+
+        // A foreign owner is reported as 404 (not 403) so ids are not leaked, and the
+        // number must be unchanged.
+        $this->client->loginUser($other);
+        $this->json('PATCH', '/api/payment-methods/'.$method->getId().'/mobile-money-number', ['mobileMoneyNumber' => '610000000']);
+        self::assertResponseStatusCodeSame(404);
+
+        $em->refresh($method);
+        self::assertSame('620000000', $method->getMobileMoneyNumber());
+    }
+
+    public function testOwnerEditsOnlyTheMobileMoneyNumber(): void
+    {
+        $owner = $this->createUser('owner@test.com');
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $method = (new \App\Entity\PaymentMethod())->setMethodType('mobile_money')->setMobileMoneyNumber('620000000')->setIsDefault(true);
+        $method->setCustomer($owner);
+        $em->persist($method);
+        $em->flush();
+
+        $this->client->loginUser($owner);
+        $this->json('PATCH', '/api/payment-methods/'.$method->getId().'/mobile-money-number', ['mobileMoneyNumber' => '+224610000000']);
+        self::assertResponseIsSuccessful();
+
+        $em->refresh($method);
+        self::assertSame('+224610000000', $method->getMobileMoneyNumber());
+        self::assertSame('mobile_money', $method->getMethodType(), 'The method type must not change.');
+        self::assertTrue($method->isDefault(), 'The default flag must not change.');
+        self::assertSame($owner, $method->getCustomer(), 'The owner must not change.');
+    }
+
+    public function testEditRejectsInvalidMobileMoneyNumber(): void
+    {
+        $owner = $this->createUser('owner@test.com');
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $method = (new \App\Entity\PaymentMethod())->setMethodType('mobile_money')->setMobileMoneyNumber('620000000');
+        $method->setCustomer($owner);
+        $em->persist($method);
+        $em->flush();
+
+        $this->client->loginUser($owner);
+        $this->json('PATCH', '/api/payment-methods/'.$method->getId().'/mobile-money-number', ['mobileMoneyNumber' => 'not-a-number']);
+        self::assertResponseStatusCodeSame(422);
+
+        $em->refresh($method);
+        self::assertSame('620000000', $method->getMobileMoneyNumber(), 'An invalid number must leave the stored value untouched.');
+    }
+
+    public function testEditRejectsNonMobileMoneyMethod(): void
+    {
+        $owner = $this->createUser('owner@test.com');
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        // A card has no mobile money number, so there is nothing to edit here.
+        $method = (new \App\Entity\PaymentMethod())->setMethodType('card')->setCardLast4('4081');
+        $method->setCustomer($owner);
+        $em->persist($method);
+        $em->flush();
+
+        $this->client->loginUser($owner);
+        $this->json('PATCH', '/api/payment-methods/'.$method->getId().'/mobile-money-number', ['mobileMoneyNumber' => '610000000']);
+        self::assertResponseStatusCodeSame(422);
+    }
+
+    public function testDeletePromotesAnotherMethodToDefault(): void
+    {
+        $owner = $this->createUser('owner@test.com');
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+
+        $default = (new \App\Entity\PaymentMethod())->setMethodType('card')->setCardLast4('1111')->setIsDefault(true);
+        $default->setCustomer($owner);
+        $other = (new \App\Entity\PaymentMethod())->setMethodType('card')->setCardLast4('2222');
+        $other->setCustomer($owner);
+        $em->persist($default);
+        $em->persist($other);
+        $em->flush();
+
+        static::getContainer()->get(\App\Service\PaymentMethodService::class)->delete($default);
+
+        $em->refresh($other);
+        self::assertTrue($other->isDefault(), 'Deleting the default must promote a remaining method to default.');
+        self::assertCount(1, $em->getRepository(\App\Entity\PaymentMethod::class)->findBy(['customer' => $owner]));
+    }
+
+    public function testSetAsDefaultMovesTheDefaultFlagToOneMethodPerCustomer(): void
+    {
+        $owner = $this->createUser('owner@test.com');
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+
+        $first = (new \App\Entity\PaymentMethod())->setMethodType('card')->setCardLast4('1111')->setIsDefault(true);
+        $first->setCustomer($owner);
+        $second = (new \App\Entity\PaymentMethod())->setMethodType('card')->setCardLast4('2222');
+        $second->setCustomer($owner);
+        $em->persist($first);
+        $em->persist($second);
+        $em->flush();
+
+        static::getContainer()->get(\App\Service\PaymentMethodService::class)->setAsDefault($second);
+
+        $em->refresh($first);
+        $em->refresh($second);
+        self::assertTrue($second->isDefault());
+        self::assertFalse($first->isDefault(), 'The previous default must be cleared so only one default remains.');
+    }
+
+    public function testPaymentMethodReadGroupHidesSensitiveData(): void
+    {
+        // The stored Paystack authorization code is a reusable charge token and
+        // must never be serialized to the API, in any payment_method read context.
+        $method = (new \App\Entity\PaymentMethod())
+            ->setAuthorizationCode('AUTH_secret_token')
+            ->setCardLast4('4081')
+            ->setCardBrand('visa')
+            ->setMethodType('card');
+
+        // Give the entity an id so API Platform can generate its IRI during normalization.
+        $idProperty = new \ReflectionProperty(\App\Entity\PaymentMethod::class, 'id');
+        $idProperty->setValue($method, 1);
+
+        $data = static::getContainer()->get('serializer')->normalize($method, null, ['groups' => ['payment_method:read']]);
+
+        self::assertArrayNotHasKey('authorizationCode', $data);
+        self::assertArrayNotHasKey('customer', $data);
+        self::assertArrayHasKey('cardLast4', $data);
+        self::assertArrayHasKey('cardBrand', $data);
+    }
+
     public function testPublicFaqIsReadableWithoutLogin(): void
     {
         $this->json('GET', '/api/faq', []);

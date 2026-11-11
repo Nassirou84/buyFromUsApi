@@ -4,6 +4,7 @@ namespace App\Enumeration;
 
 enum OrderStatusEnum: string
 {
+  case PENDING = 'pending';
   case PLACED = 'placed';
   case PROCESSED = 'processed';
   case IN_TRANSIT = 'in_transit';

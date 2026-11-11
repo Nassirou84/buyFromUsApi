@@ -25,4 +25,20 @@ class SecretManagerService
     $response = $this->client->accessSecretVersion($request);
     return $response->getPayload()->getData();
   }
+
+  public function encryptElement(string $secret)
+  {
+    $encryptionKey = $this->getSecret('encryption_key');
+
+    $encrypted = openssl_encrypt($secret, 'aes-256-cbc', $encryptionKey, 0, substr($encryptionKey, 0, 16));
+    return $encrypted;
+  }
+
+  public function decryptElement(string $encrypted): string
+  {
+    $encryptionKey = $this->getSecret('encryption_key');
+
+    $decrypted = openssl_decrypt($encrypted, 'aes-256-cbc', $encryptionKey, 0, substr($encryptionKey, 0, 16));
+    return $decrypted;
+  }
 }
