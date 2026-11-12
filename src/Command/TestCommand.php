@@ -3,6 +3,7 @@
 namespace App\Command;
 
 use App\Service\SecretManagerService;
+use App\Service\GoogleKmsService;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -13,10 +14,10 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 class TestCommand
 {
-    private SecretManagerService $secretManagerService;
+    private GoogleKmsService $secretManagerService;
 
     public function __construct(
-        SecretManagerService $secretManagerService
+        GoogleKmsService $secretManagerService
     ) {
         $this->secretManagerService = $secretManagerService;
         // You can inject services here if needed
@@ -27,8 +28,8 @@ class TestCommand
     ): int {
 
         $secret = 'my_secret_value';
-        $encrypted = $this->secretManagerService->encryptElement($secret);
-        $decrypted = $this->secretManagerService->decryptElement($encrypted);
+        $encrypted = $this->secretManagerService->encrypt($secret);
+        $decrypted = $this->secretManagerService->decrypt($encrypted);
 
         $io->success("Original: $secret");
         $io->success("Encrypted: $encrypted");

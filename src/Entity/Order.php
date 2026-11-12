@@ -60,10 +60,6 @@ use Symfony\Component\Serializer\Attribute\SerializedName;
             normalizationContext: ['groups' => ['order:read', 'order:read:details']],
         ),
         new Post(
-            controller: PlaceOrderController::class,
-            uriTemplate: '/orders/finalize',
-        ),
-        new Post(
             security: "is_granted('ROLE_USER')",
             controller: CancelOrderController::class,
             uriTemplate: '/orders/{id}/cancel',

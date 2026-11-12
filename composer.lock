@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2bd118b8f403d647ce6612e01b88e3c0",
+    "content-hash": "7f64f0c487437e1a96281bfac22d491b",
     "packages": [
         {
             "name": "api-platform/doctrine-common",
@@ -2993,6 +2993,57 @@
                 "source": "https://github.com/googleapis/google-cloud-php-core/tree/v1.74.0"
             },
             "time": "2026-10-07T21:40:20+00:00"
+        },
+        {
+            "name": "google/cloud-kms",
+            "version": "v2.14.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/googleapis/google-cloud-php-kms.git",
+                "reference": "9094cb7f79747b8919436f0906bb4d76924d9e66"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/googleapis/google-cloud-php-kms/zipball/9094cb7f79747b8919436f0906bb4d76924d9e66",
+                "reference": "9094cb7f79747b8919436f0906bb4d76924d9e66",
+                "shasum": ""
+            },
+            "require": {
+                "google/gax": "^1.38.0",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "google/cloud-core": "^1.52.7",
+                "phpunit/phpunit": "^9.0"
+            },
+            "suggest": {
+                "ext-grpc": "Enables use of gRPC, a universal high-performance RPC framework created by Google.",
+                "ext-protobuf": "Provides a significant increase in throughput over the pure PHP protobuf implementation. See https://cloud.google.com/php/grpc for installation instructions."
+            },
+            "type": "library",
+            "extra": {
+                "component": {
+                    "id": "cloud-kms",
+                    "path": "Kms",
+                    "entry": null,
+                    "target": "googleapis/google-cloud-php-kms.git"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Google\\Cloud\\Kms\\": "src",
+                    "GPBMetadata\\Google\\Cloud\\Kms\\": "metadata"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "Apache-2.0"
+            ],
+            "description": "Cloud KMS Client for PHP",
+            "support": {
+                "source": "https://github.com/googleapis/google-cloud-php-kms/tree/v2.14.0"
+            },
+            "time": "2026-10-28T01:51:30+00:00"
         },
         {
             "name": "google/cloud-secret-manager",

@@ -7,7 +7,12 @@ use Google\Cloud\SecretManager\V1\Client\SecretManagerServiceClient;
 
 class SecretManagerService
 {
+  private const CACHE_TTL_SECONDS = 180;
+
   private SecretManagerServiceClient $client;
+
+  /** @var array<string, array{value: string, expiresAt: int}> */
+  private array $cache = [];
 
   public function __construct(
     private string $projectId,
@@ -20,25 +25,22 @@ class SecretManagerService
 
   public function getSecret(string $secretId): string
   {
+    $now = time();
+
+    if (isset($this->cache[$secretId]) && $this->cache[$secretId]['expiresAt'] > $now) {
+      return $this->cache[$secretId]['value'];
+    }
+
     $name = $this->client->secretVersionName($this->projectId, $secretId, 'latest');
     $request = (new AccessSecretVersionRequest())->setName($name);
     $response = $this->client->accessSecretVersion($request);
-    return $response->getPayload()->getData();
-  }
+    $value = $response->getPayload()->getData();
 
-  public function encryptElement(string $secret)
-  {
-    $encryptionKey = $this->getSecret('encryption_key');
+    $this->cache[$secretId] = [
+      'value' => $value,
+      'expiresAt' => $now + self::CACHE_TTL_SECONDS,
+    ];
 
-    $encrypted = openssl_encrypt($secret, 'aes-256-cbc', $encryptionKey, 0, substr($encryptionKey, 0, 16));
-    return $encrypted;
-  }
-
-  public function decryptElement(string $encrypted): string
-  {
-    $encryptionKey = $this->getSecret('encryption_key');
-
-    $decrypted = openssl_decrypt($encrypted, 'aes-256-cbc', $encryptionKey, 0, substr($encryptionKey, 0, 16));
-    return $decrypted;
+    return $value;
   }
 }

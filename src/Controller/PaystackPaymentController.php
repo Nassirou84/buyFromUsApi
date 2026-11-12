@@ -3,14 +3,16 @@
 namespace App\Controller;
 
 use App\Entity\Order;
+use App\Entity\User;
 use App\Repository\BasketRepository;
 use App\Repository\OrderRepository;
 use App\Repository\PaymentMethodRepository;
 use App\Service\OrderService;
 use App\Service\PaymentFinalizationService;
+use App\Service\PaymentMethodService;
 use App\Service\PaymentService;
 use App\Service\PaystackService;
-use App\Service\SecretManagerService;
+use App\Service\RateLimiterService;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -39,10 +41,19 @@ final class PaystackPaymentController extends AbstractController
         private readonly PaystackService $paystackService,
         private readonly PaymentService $paymentService,
         private readonly PaymentMethodRepository $paymentMethodRepository,
-        private readonly SecretManagerService $secretManager,
+        private readonly PaymentMethodService $paymentMethodService,
         private readonly PaymentFinalizationService $paymentFinalizer,
+        private readonly RateLimiterService $rateLimiter,
+        private readonly float $savedCardStepUpThreshold = 0.0,
     ) {
     }
+
+    // Strict throttle on starting a payment: at most four NEW checkout attempts per
+    // minute per caller. Keyed by user id when logged in, else client IP, so it
+    // covers guests too. Idempotent replays (same key) are resolved before this
+    // check and never consume an attempt, so a legitimate retry is not punished.
+    private const PAYMENT_MAX_ATTEMPTS = 4;
+    private const PAYMENT_WINDOW_SECONDS = 60;
 
     #[Route('/initialize-payment', name: 'app_paystack_payment')]
     public function initializePayment(Request $request): JsonResponse
@@ -84,6 +95,13 @@ final class PaystackPaymentController extends AbstractController
             if (null !== $existing) {
                 return $this->resumeExistingAttempt($existing, $currentUser, $checkout);
             }
+        }
+
+        // This is a genuinely new attempt (no existing order for this key). Throttle
+        // it: it is the only path that creates an order and can trigger a charge, so
+        // limiting it to one per minute blunts card-testing and runaway retries.
+        if (null !== ($limited = $this->enforcePaymentRateLimit($currentUser, $request))) {
+            return $limited;
         }
 
         // Fresh attempt: creating the order claims the key. The UNIQUE column is the
@@ -184,85 +202,99 @@ final class PaystackPaymentController extends AbstractController
                 return new JsonResponse(['success' => false, 'message' => 'payment_method_not_found'], 404);
             }
 
-            // A stored card carries a reusable Paystack authorization token: decrypt it
-            // and charge it directly, server-to-server, with no checkout redirect.
+            // A stored card carries a reusable Paystack authorization token.
             if (null !== $savedMethod->getAuthorizationCode()) {
-                if (!$email) {
-                    $this->orderService->cleanupFailedOrder($order);
+                // Step-up for high-value off-session charges: at or above the configured
+                // threshold, do NOT charge the saved card silently. Route it through the
+                // hosted checkout so Paystack runs interactive auth (3DS/OTP/PIN) instead
+                // of a card-not-present charge_authorization. Threshold 0 disables this.
+                $stepUpRequired = $this->savedCardStepUpThreshold > 0.0
+                    && (float) $order->getOrderPrice() >= $this->savedCardStepUpThreshold;
 
-                    return new JsonResponse(['success' => false, 'message' => 'email_missing'], 400);
+                if (!$stepUpRequired) {
+                    // Decrypt the token and charge it directly, server-to-server, with
+                    // no checkout redirect.
+                    if (!$email) {
+                        $this->orderService->cleanupFailedOrder($order);
+
+                        return new JsonResponse(['success' => false, 'message' => 'email_missing'], 400);
+                    }
+
+                    try {
+                        $charge = $this->paystackService->chargeAuthorization(
+                            authorizationCode: $this->paymentMethodService->decryptAuthorizationCode($savedMethod),
+                            email: $email,
+                            amount: $order->getOrderPrice(),
+                            reference: $reference,
+                            orderUid: $order->getUid()
+                        );
+                    } catch (\Exception $e) {
+                        $this->orderService->cleanupFailedOrder($order);
+
+                        return new JsonResponse(
+                            ['success' => false, 'message' => 'paystack_charge_failed'],
+                            Response::HTTP_BAD_GATEWAY
+                        );
+                    }
+
+                    // The API call succeeded but the card was not charged. A reusable
+                    // authorization can come back needing a step we cannot complete
+                    // server-side (`send_otp`, `pending`): there is no money to keep and
+                    // no way to finish here, so tear the order down and tell the client to
+                    // retry through the hosted checkout.
+                    $chargeStatus = $charge['status'] ?? null;
+                    if ('success' !== $chargeStatus) {
+                        $this->orderService->cleanupFailedOrder($order);
+
+                        $needsHostedFlow = \in_array($chargeStatus, ['send_otp', 'pending', 'open_url'], true);
+
+                        return new JsonResponse(
+                            [
+                                'success' => false,
+                                'message' => $needsHostedFlow ? 'card_requires_hosted_checkout' : 'card_charge_declined',
+                                'status' => $chargeStatus,
+                            ],
+                            Response::HTTP_PAYMENT_REQUIRED
+                        );
+                    }
+
+                    // Charged inline — no redirect. Finalize through the shared service so
+                    // this path behaves exactly like verify/webhook: confirm the order,
+                    // record the Payment, save nothing new (the card is already saved),
+                    // email the confirmation, and return the full order details.
+                    $result = $this->paymentFinalizer->finalize($charge, $reference);
+
+                    if (null === $result['details']) {
+                        // Order vanished or amount check failed after a successful charge:
+                        // do not leave a paid-but-unconfirmed order silently.
+                        return new JsonResponse(
+                            ['success' => false, 'message' => $result['outcome']],
+                            Response::HTTP_BAD_GATEWAY
+                        );
+                    }
+
+                    $details = $result['details'];
+                    $details['charged'] = true;
+                    $details['order_uid'] = $order->getUid();
+
+                    return new JsonResponse($details);
                 }
 
-                try {
-                    $charge = $this->paystackService->chargeAuthorization(
-                        authorizationCode: $this->secretManager->decryptElement($savedMethod->getAuthorizationCode()),
-                        email: $email,
-                        amount: $order->getOrderPrice(),
-                        reference: $reference,
-                        orderUid: $order->getUid()
-                    );
-                } catch (\Exception $e) {
-                    $this->orderService->cleanupFailedOrder($order);
+                // Step-up required: fall through to the hosted card checkout below, which
+                // Paystack authenticates interactively. No off-session charge happens.
+                $channels = ['card'];
+            } else {
+                // Only cards are saveable, so a saved method without a reusable
+                // authorization token cannot be charged. (Mobile money used to land
+                // here; it is no longer stored and is entered in the Paystack checkout
+                // on every purchase.)
+                $this->orderService->cleanupFailedOrder($order);
 
-                    return new JsonResponse(
-                        ['success' => false, 'message' => 'paystack_charge_failed'],
-                        Response::HTTP_BAD_GATEWAY
-                    );
-                }
-
-                // The API call succeeded but the card was not charged. A reusable
-                // authorization can come back needing a step we cannot complete
-                // server-side (`send_otp`, `pending`): there is no money to keep and
-                // no way to finish here, so tear the order down and tell the client to
-                // retry through the hosted checkout.
-                $chargeStatus = $charge['status'] ?? null;
-                if ('success' !== $chargeStatus) {
-                    $this->orderService->cleanupFailedOrder($order);
-
-                    $needsHostedFlow = \in_array($chargeStatus, ['send_otp', 'pending', 'open_url'], true);
-
-                    return new JsonResponse(
-                        [
-                            'success' => false,
-                            'message' => $needsHostedFlow ? 'card_requires_hosted_checkout' : 'card_charge_declined',
-                            'status' => $chargeStatus,
-                        ],
-                        Response::HTTP_PAYMENT_REQUIRED
-                    );
-                }
-
-                // Charged inline — no redirect. Finalize through the shared service so
-                // this path behaves exactly like verify/webhook: confirm the order,
-                // record the Payment, save nothing new (the card is already saved),
-                // email the confirmation, and return the full order details.
-                $result = $this->paymentFinalizer->finalize($charge, $reference);
-
-                if (null === $result['details']) {
-                    // Order vanished or amount check failed after a successful charge:
-                    // do not leave a paid-but-unconfirmed order silently.
-                    return new JsonResponse(
-                        ['success' => false, 'message' => $result['outcome']],
-                        Response::HTTP_BAD_GATEWAY
-                    );
-                }
-
-                $details = $result['details'];
-                $details['charged'] = true;
-                $details['order_uid'] = $order->getUid();
-
-                return new JsonResponse($details);
+                return new JsonResponse(
+                    ['success' => false, 'message' => 'payment_method_not_chargeable'],
+                    422
+                );
             }
-
-            // Only cards are saveable, so a saved method without a reusable
-            // authorization token cannot be charged. (Mobile money used to land
-            // here; it is no longer stored and is entered in the Paystack checkout
-            // on every purchase.)
-            $this->orderService->cleanupFailedOrder($order);
-
-            return new JsonResponse(
-                ['success' => false, 'message' => 'payment_method_not_chargeable'],
-                422
-            );
         }
 
         // Everything else — a new card and all mobile money — goes through the
@@ -316,6 +348,31 @@ final class PaystackPaymentController extends AbstractController
         }
 
         return is_string($key) && '' !== $key ? $key : null;
+    }
+
+    /**
+     * Enforces the per-caller "new payment attempt" throttle. Returns a 429 response
+     * when the caller is over the limit, otherwise records this attempt and returns
+     * null. Keyed by user id when authenticated, else by client IP, so both logged-in
+     * and guest checkouts are covered.
+     */
+    private function enforcePaymentRateLimit(?UserInterface $currentUser, Request $request): ?JsonResponse
+    {
+        $identity = $currentUser instanceof User
+            ? 'user_' . $currentUser->getId()
+            : 'ip_' . ($request->getClientIp() ?? 'unknown');
+        $key = 'payment_init_' . $identity;
+
+        if ($this->rateLimiter->tooManyAttempts($key, self::PAYMENT_MAX_ATTEMPTS)) {
+            return new JsonResponse(
+                ['success' => false, 'message' => 'too_many_payment_attempts'],
+                Response::HTTP_TOO_MANY_REQUESTS
+            );
+        }
+
+        $this->rateLimiter->hit($key, self::PAYMENT_WINDOW_SECONDS);
+
+        return null;
     }
 
     /**

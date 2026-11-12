@@ -169,6 +169,18 @@ services:
             $expressShippingCost: '%env(EXPRESS_SHIPPING_COST)%'
             $expressShippingDuration: '%env(EXPRESS_SHIPPING_DURATION)%'
 
+    # Optional allowlist of Paystack webhook source IPs (comma-separated). Empty = off.
+    App\Controller\WebhookController:
+        arguments:
+            $allowedWebhookIps: '%env(PAYSTACK_WEBHOOK_IPS)%'
+
+    # Amount (in the order currency) at or above which a saved-card charge is NOT
+    # done off-session; it is routed through the hosted checkout for interactive
+    # step-up auth (3DS/OTP). 0 disables the step-up (current behaviour).
+    App\Controller\PaystackPaymentController:
+        arguments:
+            $savedCardStepUpThreshold: '%env(float:SAVED_CARD_STEP_UP_THRESHOLD)%'
+
     gesdinet.jwtrefreshtoken:
         class: Gesdinet\JWTRefreshTokenBundle\Service\RefreshToken
         arguments:
@@ -316,4 +328,9 @@ services:
     App\Service\SecretManagerService:
         arguments:
             $projectId: '%env(GCP_PROJECT_ID)%'
+            $credentialsPath: '%kernel.project_dir%/config/secrets/secrets-key.json'
+    App\Service\GoogleKmsService:
+        public: true
+        arguments:
+            $cryptoKey: '%env(GCP_KMS_CRYPTO_KEY)%'
             $credentialsPath: '%kernel.project_dir%/config/secrets/secrets-key.json'

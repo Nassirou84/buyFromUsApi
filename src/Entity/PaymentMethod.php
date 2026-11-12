@@ -28,6 +28,8 @@ use Symfony\Component\Serializer\Attribute\SerializedName;
     ],
 )]
 #[ORM\Entity(repositoryClass: PaymentMethodRepository::class)]
+#[ORM\Index(name: 'idx_pm_auth_fingerprint', columns: ['authorization_fingerprint'])]
+#[ORM\Index(name: 'idx_pm_card_signature', columns: ['card_signature'])]
 class PaymentMethod
 {
     #[ORM\Id]
@@ -40,6 +42,22 @@ class PaymentMethod
     // Sensitive: the Paystack authorization (charge) token — never exposed via the API.
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $authorizationCode = null;
+
+    // Blind index for the authorization token: HMAC(token, pepper). KMS encryption
+    // is non-deterministic, so the ciphertext cannot be matched in a query; this
+    // deterministic, non-reversible fingerprint is what dedupe looks up. Never
+    // exposed via the API.
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $authorizationFingerprint = null;
+
+    // Paystack's per-card identifier (`SIG_...`) from the authorization object.
+    // THIS is what identifies a card across transactions: the authorization_code
+    // is per-authorization and Paystack hands out a NEW one for each transaction,
+    // even for the same card and customer, so it cannot be used to dedupe.
+    // Not a chargeable credential (unlike the authorization token) and scoped to
+    // Paystack, so it is stored as-is to stay queryable; never exposed via the API.
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $cardSignature = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     #[Groups(['payment_method:read'])]
@@ -90,6 +108,30 @@ class PaymentMethod
     public function setAuthorizationCode(?string $authorizationCode): static
     {
         $this->authorizationCode = $authorizationCode;
+
+        return $this;
+    }
+
+    public function getAuthorizationFingerprint(): ?string
+    {
+        return $this->authorizationFingerprint;
+    }
+
+    public function setAuthorizationFingerprint(?string $authorizationFingerprint): static
+    {
+        $this->authorizationFingerprint = $authorizationFingerprint;
+
+        return $this;
+    }
+
+    public function getCardSignature(): ?string
+    {
+        return $this->cardSignature;
+    }
+
+    public function setCardSignature(?string $cardSignature): static
+    {
+        $this->cardSignature = $cardSignature;
 
         return $this;
     }
