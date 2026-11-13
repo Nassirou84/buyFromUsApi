@@ -26,15 +26,15 @@ class OrderItem
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['order:read'])]
+    #[Groups(['order:read', 'product_return:read'])]
     private ?Product $product = null;
 
     #[ORM\Column]
-    #[Groups(['order:read'])]
+    #[Groups(['order:read', 'product_return:read'])]
     private ?int $quantity = null;
 
     #[ORM\Column]
-    #[Groups(['order:read'])]
+    #[Groups(['order:read', 'product_return:read'])]
     private ?float $unitPrice = null;
 
     #[ORM\Column]
@@ -59,7 +59,7 @@ class OrderItem
      * @var array<string, mixed>|null
      */
     #[ORM\Column(type: Types::JSON, nullable: true)]
-    #[Groups(['order:read'])]
+    #[Groups(['order:read', 'product_return:read'])]
     private ?array $variant = null;
 
     public function __construct()
@@ -176,6 +176,7 @@ class OrderItem
         return $this;
     }
 
+    #[Groups(['order:read', 'product_return:read'])]
     public function getVariantLabel(): ?string
     {
         return Product::getVariantLabel($this->variant);

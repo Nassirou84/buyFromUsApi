@@ -13,7 +13,6 @@ use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use App\Controller\CancelOrderController;
 use App\Controller\OrderSummaryController;
-use App\Controller\PlaceOrderController;
 use App\Enumeration\OrderStatusEnum;
 use App\Repository\OrderRepository;
 use DateTime;
@@ -73,7 +72,7 @@ use Symfony\Component\Serializer\Attribute\SerializedName;
         ),
     ],
     denormalizationContext: ['groups' => ['order:write', 'order:edit', 'order:read:admin']],
-    normalizationContext: ['groups' => ['order:read', 'order:read:details', 'assignDelivery:read']],
+    normalizationContext: ['groups' => ['order:read', 'order:read:details', 'assignDelivery:read', 'product_return:read']],
     filters: ['my_order.search_filter', 'my_order.order_filter'],
 )]
 #[ORM\Entity(repositoryClass: OrderRepository::class)]
@@ -117,36 +116,36 @@ class Order
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['order:read', 'assignDelivery:read'])]
+    #[Groups(['order:read', 'assignDelivery:read', 'product_return:read'])]
     /** @phpstan-ignore-next-line */
     private ?int $id = null;
 
     #[ORM\Column]
-    #[Groups(['order:write', 'order:read'])]
+    #[Groups(['order:write', 'order:read', 'product_return:read'])]
     private ?float $orderPrice = null;
 
     #[ORM\ManyToOne(inversedBy: 'orders')]
     private ?User $customer = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read'])]
     private ?string $fullName = null;
 
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read'])]
     private ?string $street = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read'])]
     private ?string $city = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read'])]
     private ?string $state = null;
 
     #[ORM\Column]
-    #[Groups(['order:write', 'order:read', 'assignDelivery:read'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'product_return:read'])]
     private ?DateTime $createdAt = null;
 
     #[ORM\Column(length: 255)]
@@ -158,7 +157,7 @@ class Order
     private ?DateTime $updatedAt = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:read', 'assignDelivery:read', 'assignDelivery:driver'])]
+    #[Groups(['order:read', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read'])]
     private ?string $uid = null;
 
     /**
@@ -173,11 +172,11 @@ class Order
     private ?DateTime $estimatedDeliveryAt = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['order:read', 'assignDelivery:driver'])]
+    #[Groups(['order:read', 'assignDelivery:driver', 'product_return:read'])]
     private ?string $country = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['order:read', 'assignDelivery:driver'])]
+    #[Groups(['order:read', 'assignDelivery:driver', 'product_return:read'])]
     private ?string $suite = null;
 
     /**
@@ -191,23 +190,23 @@ class Order
     private ?string $email = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['order:read', 'assignDelivery:read'])]
+    #[Groups(['order:read', 'assignDelivery:read', 'product_return:read'])]
     private ?bool $isPriority = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['order:read'])]
+    #[Groups(['order:read', 'product_return:read'])]
     private ?float $discount = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['order:read'])]
+    #[Groups(['order:read', 'product_return:read'])]
     private ?float $taxes = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['order:read'])]
+    #[Groups(['order:read', 'product_return:read'])]
     private ?float $shippingFee = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['order:read', 'order:edit', 'assignDelivery:read', 'assignDelivery:driver'])]
+    #[Groups(['order:read', 'order:edit', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read'])]
     private ?string $phone = null;
 
     #[ORM\Column(length: 255)]
@@ -234,7 +233,7 @@ class Order
     private ?string $authorizationUrl = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['order:read'])]
+    #[Groups(['order:read', 'product_return:read'])]
     private ?\DateTime $deliveredAt = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
@@ -261,11 +260,17 @@ class Order
      * orderPrice/discount). Null when no promo code was used.
      */
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['order:read:admin'])]
+    #[Groups(['order:read:admin', 'product_return:read'])]
     private ?string $promoCode = null;
 
     #[ORM\Column(nullable: true)]
     private ?bool $isPaymentFailed = null;
+
+    /**
+     * @var Collection<int, ProductReturn>
+     */
+    #[ORM\OneToMany(targetEntity: ProductReturn::class, mappedBy: 'returnOrder')]
+    private Collection $productReturns;
 
     public function __construct()
     {
@@ -275,6 +280,7 @@ class Order
         $this->products = new ArrayCollection();
         $this->payments = new ArrayCollection();
         $this->orderProcesseds = new ArrayCollection();
+        $this->productReturns = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -773,6 +779,36 @@ class Order
     public function setIsPaymentFailed(?bool $isPaymentFailed): static
     {
         $this->isPaymentFailed = $isPaymentFailed;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, ProductReturn>
+     */
+    public function getProductReturns(): Collection
+    {
+        return $this->productReturns;
+    }
+
+    public function addProductReturn(ProductReturn $productReturn): static
+    {
+        if (!$this->productReturns->contains($productReturn)) {
+            $this->productReturns->add($productReturn);
+            $productReturn->setReturnOrder($this);
+        }
+
+        return $this;
+    }
+
+    public function removeProductReturn(ProductReturn $productReturn): static
+    {
+        if ($this->productReturns->removeElement($productReturn)) {
+            // set the owning side to null (unless already changed)
+            if ($productReturn->getReturnOrder() === $this) {
+                $productReturn->setReturnOrder(null);
+            }
+        }
 
         return $this;
     }

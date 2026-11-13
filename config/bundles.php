@@ -15,4 +15,5 @@ return [
     Kyzegs\DoctrineEncryptionBundle\DoctrineEncryptionBundle::class => ['all' => true],
     Scheb\TwoFactorBundle\SchebTwoFactorBundle::class => ['all' => true],
     Symfony\AI\AiBundle\AiBundle::class => ['all' => true],
+    Skies\QRcodeBundle\SkiesQRcodeBundle::class => ['all' => true],
 ];

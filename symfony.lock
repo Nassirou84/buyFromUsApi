@@ -343,5 +343,8 @@
         "files": [
             "config/packages/workflow.yaml"
         ]
+    },
+    "yellowskies/qr-code-bundle": {
+        "version": "v2.1.2"
     }
 }

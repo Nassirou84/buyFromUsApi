@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "7f64f0c487437e1a96281bfac22d491b",
+    "content-hash": "dae04e411c71cd14d71fef11ffd837ed",
     "packages": [
         {
             "name": "api-platform/doctrine-common",
@@ -11999,6 +11999,72 @@
                 "source": "https://github.com/willdurand/Negotiation/tree/3.1.0"
             },
             "time": "2022-01-30T20:08:53+00:00"
+        },
+        {
+            "name": "yellowskies/qr-code-bundle",
+            "version": "v2.1.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/AntoineTesson/QRcodeBundle.git",
+                "reference": "b5f66cca5f38666340841a4572c1b9464474e0cf"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/AntoineTesson/QRcodeBundle/zipball/b5f66cca5f38666340841a4572c1b9464474e0cf",
+                "reference": "b5f66cca5f38666340841a4572c1b9464474e0cf",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.2",
+                "symfony/framework-bundle": "^6.4 || ^7.0 || ^8.0",
+                "symfony/options-resolver": "^6.4 || ^7.0 || ^8.0",
+                "symfony/twig-bundle": "^6.4 || ^7.0 || ^8.0",
+                "twig/twig": "^3.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^12.5.22 || ^13.1.6",
+                "symfony/phpunit-bridge": "^6.4 || ^7.0 || ^8.0"
+            },
+            "type": "symfony-bundle",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "2.0-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Skies\\QRcodeBundle\\": ""
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "Apache-2.0"
+            ],
+            "authors": [
+                {
+                    "name": "Antoine Tesson",
+                    "email": "tesson.a@gmail.com",
+                    "homepage": "https://yellow-skies.com"
+                }
+            ],
+            "description": "Symfony Barcode & QR Code Generator Bundle with Twig extension",
+            "keywords": [
+                "barcode",
+                "bundle",
+                "generator",
+                "qr code",
+                "qrcode",
+                "symfony",
+                "symfony6",
+                "symfony7",
+                "symfony8",
+                "twig"
+            ],
+            "support": {
+                "issues": "https://github.com/AntoineTesson/QRcodeBundle/issues",
+                "source": "https://github.com/AntoineTesson/QRcodeBundle/tree/v2.1.2"
+            },
+            "time": "2026-10-24T16:34:02+00:00"
         }
     ],
     "packages-dev": [

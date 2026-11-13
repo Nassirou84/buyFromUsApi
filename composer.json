@@ -55,7 +55,8 @@
         "symfony/webhook": "8.1.*",
         "symfony/workflow": "8.1.*",
         "symfony/yaml": "8.1.*",
-        "utopia-php/user-agent": "^0.1.2"
+        "utopia-php/user-agent": "^0.1.2",
+        "yellowskies/qr-code-bundle": "^2.1"
     },
     "config": {
         "allow-plugins": {

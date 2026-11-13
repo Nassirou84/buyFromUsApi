@@ -82,7 +82,7 @@ class Product
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read'])]
+    #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read', 'product_return:read'])]
     #[Assert\NotBlank]
     #[Assert\Length(max: 255)]
     private ?string $title = null;
@@ -104,13 +104,13 @@ class Product
     private ?string $scrappingUrl = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read', 'order:read:admin'])]
+    #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read', 'order:read:admin', 'product_return:read'])]
     #[Assert\NotBlank]
     #[Assert\Length(max: 255)]
     private ?string $seller = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read'])]
+    #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read', 'product_return:read'])]
     #[Assert\NotBlank]
     #[Assert\Length(max: 255)]
     private ?string $brand = null;
@@ -156,7 +156,7 @@ class Product
     private ?array $details = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read'])]
+    #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read', 'product_return:read'])]
     #[Assert\NotBlank]
     #[Assert\Length(max: 255)]
     #[Assert\Regex(pattern: '/^[a-z0-9]+(?:-[a-z0-9]+)*$/', message: 'The slug may only contain lowercase letters, digits and hyphens.')]
@@ -168,7 +168,7 @@ class Product
 
     #[ORM\Column(length: 10)]
     #[Assert\Length(max: 10)]
-    #[Groups(['product:read:details', 'order:read'])]
+    #[Groups(['product:read:details', 'order:read', 'product_return:read'])]
     private ?string $uid = null;
 
     #[ORM\Column(nullable: true)]
@@ -218,6 +218,19 @@ class Product
     #[ORM\Column(nullable: true)]
     #[Groups(['product:read:details', 'product:read'])]
     private ?bool $sellerChoice = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $numberOfView = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $numberOfReturn = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $numberOfOrder = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $qteAvailableInHub = null;
+
 
     public function __construct(
     ) {
@@ -448,7 +461,7 @@ class Product
         return $this;
     }
 
-    #[Groups(['product:read', 'product:read:details', 'order:read', 'basket:read', 'wishlist:read'])]
+    #[Groups(['product:read', 'product:read:details', 'order:read', 'basket:read', 'wishlist:read', 'product_return:read'])]
     public function getActualPrice(): ?float
     {
         return PriceCalculator::calculate($this->usdPrice);
@@ -736,6 +749,7 @@ class Product
         return $this->getLastPrice() - $this->getActualPrice();
     }
 
+    #[Groups(['product_return:read'])]
     public function getCoverImage(): ?string
     {
         $photos = $this->photos;
@@ -748,5 +762,53 @@ class Product
             }
         }
         return $this->photos[0]?->getUrl();
+    }
+
+    public function getNumberOfView(): ?int
+    {
+        return $this->numberOfView;
+    }
+
+    public function setNumberOfView(?int $numberOfView): static
+    {
+        $this->numberOfView = $numberOfView;
+
+        return $this;
+    }
+
+    public function getNumberOfReturn(): ?int
+    {
+        return $this->numberOfReturn;
+    }
+
+    public function setNumberOfReturn(?int $numberOfReturn): static
+    {
+        $this->numberOfReturn = $numberOfReturn;
+
+        return $this;
+    }
+
+    public function getNumberOfOrder(): ?int
+    {
+        return $this->numberOfOrder;
+    }
+
+    public function setNumberOfOrder(?int $numberOfOrder): static
+    {
+        $this->numberOfOrder = $numberOfOrder;
+
+        return $this;
+    }
+
+    public function getQteAvailableInHub(): ?int
+    {
+        return $this->qteAvailableInHub;
+    }
+
+    public function setQteAvailableInHub(?int $qteAvailableInHub): static
+    {
+        $this->qteAvailableInHub = $qteAvailableInHub;
+
+        return $this;
     }
 }

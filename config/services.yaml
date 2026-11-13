@@ -262,6 +262,12 @@ services:
         arguments: [{createdAt: ~}]
         tags:
           - { name: api_platform.filter }
+    
+    return_request.search_filter:
+        parent: 'api_platform.doctrine.orm.search_filter'
+        arguments: [{status: 'exact', 'refundtype': 'exact'}]
+        tags:
+            - { name: api_platform.filter }
     ###< Filters 
 
     App\MessageHandler\SendTwoFactorCodeMessageHandler:
@@ -299,6 +305,10 @@ services:
             $newShoppingRequestTemplate: '%env(SHOPPING_REQUEST_CONFIRMATION_TEMPLATE_ID)%'
             $statusPath: '%env(SHOPPING_REQUEST_STATUS_PATH)%'
 
+    App\MessageHandler\NewReturnRequestMessageHandler:
+        arguments:
+            $newReturnRequestTemplate: '%env(RETURN_REQUEST_CONFIRMATION_TEMPLATE_ID)%'
+
     App\Service\EmailQueueService:
         arguments:
             $frontendURL: '%env(FRONTEND_URL)%'
@@ -334,3 +344,7 @@ services:
         arguments:
             $cryptoKey: '%env(GCP_KMS_CRYPTO_KEY)%'
             $credentialsPath: '%kernel.project_dir%/config/secrets/secrets-key.json'
+
+    # yellowskies/qr-code-bundle registers its generator only as the non-autowired
+    # service id "skies_barcode.generator"; alias the class so it can be injected by type.
+    Skies\QRcodeBundle\Generator\Generator: '@skies_barcode.generator'

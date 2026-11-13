@@ -41,3 +41,34 @@ framework:
                 cancel_order:
                     from: [!php/const App\Enumeration\OrderStatusEnum::PLACED, !php/const App\Enumeration\OrderStatusEnum::PROCESSED, !php/const App\Enumeration\OrderStatusEnum::IN_TRANSIT, !php/const App\Enumeration\OrderStatusEnum::ARRIVED_IN_FACILITY, !php/const App\Enumeration\OrderStatusEnum::OUT_FOR_DELIVERY]
                     to: !php/const App\Enumeration\OrderStatusEnum::CANCELLED
+        
+        product_return:
+            type: 'state_machine'
+            audit_trail:
+                enabled: true
+            marking_store:
+                type: 'method'
+                property: 'status'
+            supports:
+                - App\Entity\ProductReturn
+            initial_marking: !php/const App\Enumeration\ProductReturnStatusEnum::INITIATED
+            places:
+                - !php/const App\Enumeration\ProductReturnStatusEnum::INITIATED
+                - !php/const App\Enumeration\ProductReturnStatusEnum::COLLECTED
+                - !php/const App\Enumeration\ProductReturnStatusEnum::APPROVED
+                - !php/const App\Enumeration\ProductReturnStatusEnum::REJECTED
+                - !php/const App\Enumeration\ProductReturnStatusEnum::COMPLETED
+            transitions:
+                collect_return:
+                    from: !php/const App\Enumeration\ProductReturnStatusEnum::INITIATED
+                    to: !php/const App\Enumeration\ProductReturnStatusEnum::COLLECTED
+                approve_return:
+                    from: !php/const App\Enumeration\ProductReturnStatusEnum::INITIATED
+                    to: !php/const App\Enumeration\ProductReturnStatusEnum::APPROVED
+                reject_return:
+                    from: !php/const App\Enumeration\ProductReturnStatusEnum::INITIATED
+                    to: !php/const App\Enumeration\ProductReturnStatusEnum::REJECTED
+                complete_return:
+                    from: !php/const App\Enumeration\ProductReturnStatusEnum::APPROVED
+                    to: !php/const App\Enumeration\ProductReturnStatusEnum::COMPLETED
+
