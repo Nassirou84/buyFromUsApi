@@ -114,6 +114,17 @@ final class AuthorizationRegressionTest extends WebTestCase
         self::assertResponseStatusCodeSame(401);
     }
 
+    public function testAnonymousCannotAddTrackingNumbers(): void
+    {
+        // Adding shipping tracking numbers is admin fulfillment tooling
+        // (ROLE_SUPER_ADMIN / ROLE_OPERATOR), never public.
+        $this->json('POST', '/api/admin/orders/anything/tracking-numbers', [
+            'trackingNumbers' => [['trackingNumber' => 'x', 'carrierName' => 'USPS']],
+        ]);
+
+        self::assertResponseStatusCodeSame(401);
+    }
+
     public function testAnonymousCannotReadOrWriteAdminFaq(): void
     {
         $this->json('GET', '/api/admin/faq', []);

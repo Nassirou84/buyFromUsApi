@@ -4,12 +4,28 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Post;
+use ApiPlatform\OpenApi\Model;
+use App\Controller\AddSerialNumberController;
 use App\Repository\OrderItemRepository;
 use DateTime;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 
+#[ApiResource(
+    operations: [
+        new Post(
+            uriTemplate: '/order_items/add_serial_number',
+            controller: AddSerialNumberController::class,
+            openapi: new Model\Operation(
+                summary: 'Add serial number to order item, accepts orderItemId and productSerialNumber in a JSON payload'
+            )
+        )
+    ],
+    normalizationContext: ['groups' => ['product_return:read']]
+)]
 #[ORM\Entity(repositoryClass: OrderItemRepository::class)]
 class OrderItem
 {
@@ -61,6 +77,10 @@ class OrderItem
     #[ORM\Column(type: Types::JSON, nullable: true)]
     #[Groups(['order:read', 'product_return:read'])]
     private ?array $variant = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['order:read', 'product_return:read'])]
+    private ?string $productSerialNumber = null;
 
     public function __construct()
     {
@@ -180,5 +200,17 @@ class OrderItem
     public function getVariantLabel(): ?string
     {
         return Product::getVariantLabel($this->variant);
+    }
+
+    public function getProductSerialNumber(): ?string
+    {
+        return $this->productSerialNumber;
+    }
+
+    public function setProductSerialNumber(?string $productSerialNumber): static
+    {
+        $this->productSerialNumber = $productSerialNumber;
+
+        return $this;
     }
 }

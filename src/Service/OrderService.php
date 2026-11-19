@@ -649,12 +649,56 @@ final class OrderService
         }
     }
 
+    /**
+     * Adds one or many tracking numbers to the order's current OrderProcessed.
+     * Must be called after the order is processed and before it is marked in transit.
+     *
+     * @param array<string, mixed> $data
+     */
+    public function addTrackingNumbers(Order $order, array $data): OrderProcessed
+    {
+        $orderProcessed = $order->getOrderProcesseds()->last();
+        if (!$orderProcessed instanceof OrderProcessed) {
+            throw new \LogicException('order_not_processed');
+        }
+
+        $trackingNumbers = $data['trackingNumbers'] ?? null;
+        if (!is_array($trackingNumbers) || 0 === count($trackingNumbers)) {
+            throw new \InvalidArgumentException('trackingNumbers_are_required');
+        }
+
+        foreach ($trackingNumbers as $entry) {
+            $trackingNumber = is_array($entry) ? ($entry['trackingNumber'] ?? null) : null;
+            $carrierName = is_array($entry) ? ($entry['carrierName'] ?? null) : null;
+            if (!is_string($trackingNumber) || '' === trim($trackingNumber)
+                || !is_string($carrierName) || '' === trim($carrierName)) {
+                throw new \InvalidArgumentException('each_tracking_number_requires_trackingNumber_and_carrierName');
+            }
+            $orderProcessed->addTrackingNumber([
+                'trackingNumber' => trim($trackingNumber),
+                'carrierName' => trim($carrierName),
+            ]);
+        }
+
+        $order->setUpdatedAt(new \DateTime());
+        $this->entityManager->persist($orderProcessed);
+        $this->entityManager->flush();
+
+        return $orderProcessed;
+    }
+
     public function markAsInTransit(Order $order, array $data, array $files): OrderProcessed
     {
         $workflow = $this->workflowRegistry->get($order, 'order');
         if ($workflow->can($order, 'ship_order')) {
 
             $orderProcessed = $order->getOrderProcesseds()->last();
+            if (!$orderProcessed instanceof OrderProcessed) {
+                throw new \LogicException('order_not_processed');
+            }
+            if (empty($orderProcessed->getTrackingNumbers())) {
+                throw new \InvalidArgumentException('tracking_numbers_required_before_in_transit');
+            }
             $orderProcessed->setShippedFromUsaAt(new \DateTime());
 
             $courrierRepository = $this->entityManager->getRepository(Courrier::class);
@@ -688,33 +732,86 @@ final class OrderService
         }
     }
 
+    /**
+     * Confirms one parcel has arrived at the facility by matching the last 4
+     * characters of the submitted tracking number against the order's stored
+     * tracking numbers. Each matching parcel is stamped with an "arrivedAt".
+     * The order only transitions to ARRIVED_IN_FACILITY once every stored
+     * tracking number has been confirmed.
+     *
+     * @param array<string, mixed> $data
+     */
     public function markAsArrivedInFacility(Order $order, array $data): OrderProcessed
     {
         $workflow = $this->workflowRegistry->get($order, 'order');
-        if ($workflow->can($order, 'arrived_in_facility')) {
-            $orderProcessed = $order->getOrderProcesseds()->last();
-            if (!isset($data['lastFour'])) {
-                throw new \InvalidArgumentException('lastFour_is_required');
-            }
-            $sellerOrderReference = $orderProcessed->getSellerOrderReference();
-            $lastFour = $data['lastFour'];
-            if (substr($sellerOrderReference, -4) !== $lastFour) {
-                throw new \InvalidArgumentException('lastFour_does_not_match_seller_order_reference');
-            }
+        if (!$workflow->can($order, 'arrived_in_facility')) {
+            throw new \LogicException('order_cannot_be_marked_arrived_in_facility');
+        }
 
+        $orderProcessed = $order->getOrderProcesseds()->last();
+        if (!$orderProcessed instanceof OrderProcessed) {
+            throw new \LogicException('order_not_processed');
+        }
+
+        $trackingNumber = $data['trackingNumber'] ?? null;
+        if (!is_string($trackingNumber) || '' === trim($trackingNumber)) {
+            throw new \InvalidArgumentException('trackingNumber_is_required');
+        }
+        $submittedLastFour = substr(trim($trackingNumber), -4);
+
+        $trackingNumbers = $orderProcessed->getTrackingNumbers();
+        if (!is_array($trackingNumbers) || 0 === count($trackingNumbers)) {
+            throw new \LogicException('order_has_no_tracking_numbers');
+        }
+
+        // Match the first not-yet-confirmed parcel whose last 4 digits match.
+        $matchedIndex = null;
+        foreach ($trackingNumbers as $index => $entry) {
+            if (substr((string) $entry['trackingNumber'], -4) !== $submittedLastFour) {
+                continue;
+            }
+            if (!empty($entry['arrivedAt'])) {
+                continue;
+            }
+            $matchedIndex = $index;
+            break;
+        }
+
+        if (null === $matchedIndex) {
+            // Distinguish "no such parcel" from "already confirmed".
+            foreach ($trackingNumbers as $entry) {
+                if (substr((string) $entry['trackingNumber'], -4) === $submittedLastFour) {
+                    throw new \InvalidArgumentException('tracking_number_already_confirmed');
+                }
+            }
+            throw new \InvalidArgumentException('tracking_number_does_not_match');
+        }
+
+        $trackingNumbers[$matchedIndex]['arrivedAt'] = (new \DateTime())->format(\DateTimeInterface::ATOM);
+        $orderProcessed->setTrackingNumbers($trackingNumbers);
+
+        // Only transition once every parcel has been confirmed arrived.
+        $allArrived = true;
+        foreach ($trackingNumbers as $entry) {
+            if (empty($entry['arrivedAt'])) {
+                $allArrived = false;
+                break;
+            }
+        }
+
+        if ($allArrived) {
             $workflow->apply($order, 'arrived_in_facility');
-            $order->setUpdatedAt(new \DateTime());
             $orderProcessed->setCollectedAt(new \DateTime());
             if (isset($data['collectionNote'])) {
                 $orderProcessed->setCollectionNote($data['collectionNote']);
             }
-            $this->entityManager->persist($orderProcessed);
-            $this->entityManager->flush();
-
-            return $orderProcessed;
-        } else {
-            throw new \LogicException('order_cannot_be_marked_arrived_in_facility');
         }
+
+        $order->setUpdatedAt(new \DateTime());
+        $this->entityManager->persist($orderProcessed);
+        $this->entityManager->flush();
+
+        return $orderProcessed;
     }
 
     public function markAsOutForDelivery(Order $order): OrderProcessed

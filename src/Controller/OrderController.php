@@ -200,6 +200,39 @@ final class OrderController extends AbstractController
         return new JsonResponse(['message' => 'order_marked_as_processed', 'status' => OrderStatusEnum::PROCESSED->value, 'processed' => $processed]);
     }
 
+    #[Route('orders/{uid}/tracking-numbers', name: 'app_order_add_tracking_numbers', methods: ['POST'])]
+    public function addTrackingNumbers(
+        Request $request,
+        string $uid,
+        OrderService $orderService,
+        OrderRepository $orderRepository,
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+        $user = $this->getUser();
+        if (!$user) {
+            return new JsonResponse(['error' => 'user_not_authenticated'], 401);
+        }
+        if (count(array_intersect([User::ROLE_SUPER_ADMIN, User::ROLE_OPERATOR], $user->getRoles())) === 0) {
+            return new JsonResponse(['error' => 'access_denied'], JsonResponse::HTTP_FORBIDDEN);
+        }
+
+        $order = $orderRepository->findOneBy(['uid' => $uid]);
+        if (!$order) {
+            return new JsonResponse(['error' => 'order_not_found'], JsonResponse::HTTP_NOT_FOUND);
+        }
+
+        try {
+            $processed = $orderService->addTrackingNumbers($order, is_array($data) ? $data : []);
+        } catch (\InvalidArgumentException|\LogicException $e) {
+            return new JsonResponse(['error' => $e->getMessage()], JsonResponse::HTTP_BAD_REQUEST);
+        }
+
+        return new JsonResponse([
+            'message' => 'tracking_numbers_added',
+            'trackingNumbers' => $processed->getTrackingNumbers(),
+        ]);
+    }
+
     #[Route('orders/{uid}/in-transit', name: 'app_order_in_transit', methods: ['POST'])]
     public function markAsInTransit(
         Request $request,
@@ -248,9 +281,24 @@ final class OrderController extends AbstractController
             return new JsonResponse(['error' => 'order_not_found'], JsonResponse::HTTP_NOT_FOUND);
         }
 
-        $processed = $orderService->markAsArrivedInFacility($order, $requestData);
+        try {
+            $processed = $orderService->markAsArrivedInFacility($order, $requestData);
+        } catch (\InvalidArgumentException|\LogicException $e) {
+            return new JsonResponse(['error' => $e->getMessage()], JsonResponse::HTTP_BAD_REQUEST);
+        }
 
-        return new JsonResponse(['message' => 'order_marked_as_arrived_in_facility', 'status' => OrderStatusEnum::ARRIVED_IN_FACILITY->value, 'processed' => $processed]);
+        $trackingNumbers = $processed->getTrackingNumbers() ?? [];
+        $arrivedCount = count(array_filter($trackingNumbers, static fn (array $entry): bool => !empty($entry['arrivedAt'])));
+        $allArrived = OrderStatusEnum::ARRIVED_IN_FACILITY->value === $order->getStatus();
+
+        return new JsonResponse([
+            'message' => $allArrived ? 'order_marked_as_arrived_in_facility' : 'tracking_number_confirmed',
+            'status' => $order->getStatus(),
+            'allArrived' => $allArrived,
+            'arrivedCount' => $arrivedCount,
+            'trackingNumbersCount' => count($trackingNumbers),
+            'processed' => $processed,
+        ]);
     }
 
     #[Route('orders/{uid}/out_for_delivery', name: 'app_order_shipped', methods: ['POST'])]
