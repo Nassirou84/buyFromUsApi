@@ -2,13 +2,14 @@
 
 namespace App\Service;
 
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
-
-use App\Service\GcsUploaderService;
 use App\Entity\ShoppingRequest;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Message\NewShoppingRequestMessage;
+use App\Service\GcsUploaderService;
 use App\Service\UniqUidGenerator;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 
 class ShoppingRequestService
 {
@@ -17,6 +18,7 @@ class ShoppingRequestService
     private EntityManagerInterface $entityManagerInterface,
     private UniqUidGenerator $uniqUidGenerator,
     private TokenStorageInterface $tokenStorageInterface,
+    private MessageBusInterface $messageBusInterface,
   ) {
   }
 
@@ -45,17 +47,34 @@ class ShoppingRequestService
 
     $images = [];
 
+    $uniqueId = $this->uniqUidGenerator->generateUniqueUid(ShoppingRequest::class);
+
     foreach ($files as $file) {
-      $uploadedImage = $this->gcsUploaderService->upload($file);
+      $uploadedImage = $this->gcsUploaderService->uploadShoppingRequestImage($file, $uniqueId);
       $images[] = $uploadedImage;
     }
-    $uniqueId = $this->uniqUidGenerator->generateUniqueUid(ShoppingRequest::class);
 
     $shoppingRequest->setImages($images);
     $shoppingRequest->setStatus(ShoppingRequest::STATUS_SUBMITTED);
     $shoppingRequest->setUid($uniqueId);
+    $shoppingRequest->setAccessToken(str_shuffle(sha1($uniqueId . random_bytes(16))));
     $this->entityManagerInterface->persist($shoppingRequest);
     $this->entityManagerInterface->flush();
+
+    $this->messageBusInterface->dispatch(new NewShoppingRequestMessage(
+      $shoppingRequest->getEmail(),
+      $shoppingRequest->getTitle(),
+      $shoppingRequest->getDescription(),
+      $shoppingRequest->getFullName(),
+      $shoppingRequest->getPhone(),
+      $shoppingRequest->getAddress(),
+      $shoppingRequest->getCreatedAt()->format('d-m-Y H:i:s'),
+      $shoppingRequest->getUid(),
+      $shoppingRequest->getPreferredContact(),
+      $shoppingRequest->getQuantity(),
+      $shoppingRequest->getAccessToken()
+    ));
+
     return $shoppingRequest;
   }
 }

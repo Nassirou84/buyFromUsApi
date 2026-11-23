@@ -14,6 +14,8 @@
         "doctrine/orm": "^3.7.6",
         "gesdinet/jwt-refresh-token-bundle": "^2.3.0",
         "google/apiclient": "^2.20.1",
+        "google/cloud-kms": "^2.14",
+        "google/cloud-secret-manager": "^2.6",
         "google/cloud-storage": "^2.6.1",
         "guzzlehttp/guzzle": "^7.16.1",
         "kyzegs/doctrine-encryption-bundle": ">=2",
@@ -50,9 +52,11 @@
         "symfony/serializer": "8.1.*",
         "symfony/twig-bundle": "8.1.*",
         "symfony/validator": "8.1.*",
+        "symfony/webhook": "8.1.*",
         "symfony/workflow": "8.1.*",
         "symfony/yaml": "8.1.*",
-        "utopia-php/user-agent": "^0.1.2"
+        "utopia-php/user-agent": "^0.1.2",
+        "yellowskies/qr-code-bundle": "^2.1"
     },
     "config": {
         "allow-plugins": {

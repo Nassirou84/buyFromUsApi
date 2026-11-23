@@ -11,6 +11,7 @@ use App\Entity\Order;
 use App\Entity\OrderItem;
 use App\Entity\OrderProcessed;
 use App\Entity\Payment;
+use App\Entity\Product;
 use App\Entity\User;
 use App\Enumeration\OrderStatusEnum;
 use App\Message\OrderConfirmationMessage;
@@ -162,6 +163,195 @@ final class OrderService
     }
 
     /**
+     * Lightweight order creation for the Paystack checkout flow: the order is created up front
+     * with a PENDING status and isPaidSuccessfully = false, before the customer is redirected to
+     * pay. It only persists the order and its items from the basket — no Payment entity is created,
+     * no confirmation email is sent and the basket is left untouched; all of that happens later,
+     * once Paystack confirms the payment.
+     *
+     * Totals are computed from each item's current variant-aware unit price (so the selected variant's
+     * price is respected), the promo code discount is applied on that same subtotal, and the stored
+     * orderPrice is the discounted subtotal plus shipping. The promo code is validated but NOT marked
+     * as used here (it must only be consumed once payment succeeds).
+     */
+    public function createPendingOrder(
+        array $shippingAddress,
+        Basket $basket,
+        ?string $promoCode = null,
+        ?string $idempotencyKey = null,
+    ): Order {
+        $user = $this->tokenService->getToken()?->getUser();
+
+        // Subtotal from the current variant-aware unit price of each line, so the price actually
+        // charged for the selected variant is what the totals are built on.
+        $subtotal = 0.0;
+        foreach ($basket->getBasketItems() as $item) {
+            $subtotal += $item->getUnitPrice() * $item->getQuantity();
+        }
+
+        $discountAmount = 0.0;
+        $promoCodeApplicable = $promoCode && $this->promoCodeService->checkPromoCode($promoCode, $basket);
+        if ($promoCodeApplicable) {
+            $discountAmount = $this->promoCodeService->discountedAmountForAmount($promoCode, $subtotal);
+        }
+        $totalAfterDiscount = $subtotal - $discountAmount;
+
+        // Keep the applied promo code on the order so it can be consumed once Paystack
+        // confirms the payment; the discount is already reflected in the totals above.
+        $appliedPromoCode = $promoCodeApplicable ? $promoCode : null;
+
+        $taxAmount = ceil($subtotal * $this->currencyProvider->getTaxRate());
+
+        $isExpressShipping = 'express' === ($shippingAddress['shippingOption'] ?? null);
+        $shippingCost = $isExpressShipping ? $this->expressShippingCost : 0;
+
+        $order = new Order();
+        $order->setStreet($shippingAddress['street'] ?? '');
+        $order->setCity($shippingAddress['city'] ?? '');
+        $order->setCountry('Ivory Coast');
+        $order->setAccessToken(bin2hex(random_bytes(32)));
+        $order->setSuite($shippingAddress['suite'] ?? '');
+        $order->setState($shippingAddress['state'] ?? '');
+        $order->setFullName($shippingAddress['fullName'] ?? '');
+        $order->setEmail($shippingAddress['email'] ?? '');
+        $order->setPhone($shippingAddress['phone'] ?? '');
+        $uid = $this->uniqUidGenerator->generateUniqueUid(Order::class);
+        $order->setUid($uid);
+        // Stable, one-time reference for this order; reused on every retry so Paystack
+        // dedupes the charge by reference.
+        $order->setPaystackReference(sprintf('flot_%s_%s', $uid, bin2hex(random_bytes(6))));
+        // The checkout idempotency lock (unique column): a concurrent/retried attempt
+        // with the same key collides here and reuses this order instead of charging again.
+        $order->setIdempotencyKey($idempotencyKey);
+        $order->setIsPriority($isExpressShipping);
+        $order->setShippingFee($shippingCost);
+        $order->setEstimatedDeliveryAt(
+            $isExpressShipping
+            ? (new \DateTime())->modify('+' . $this->expressShippingDuration)
+            : (new \DateTime())->modify('+15 days'),
+        );
+        $order->setDiscount(round($discountAmount, 1));
+        $order->setTaxes($taxAmount);
+        $order->setOrderPrice($totalAfterDiscount + $shippingCost);
+        $order->setStatus(OrderStatusEnum::PENDING->value);
+        $order->setIsPaidSuccessfully(false);
+        $order->setPromoCode($appliedPromoCode);
+
+        if ($user instanceof User) {
+            $order->setCustomer($user);
+        } else {
+            $foundUser = $this->userRepository->findOneBy(['email' => $shippingAddress['email'] ?? null]);
+            if ($foundUser) {
+                $order->setCustomer($foundUser);
+            }
+        }
+
+        $this->entityManager->persist($order);
+
+        foreach ($basket->getBasketItems() as $item) {
+            $orderItem = new OrderItem();
+            $orderItem->setCurrentOrder($order);
+            $orderItem->setProduct($item->getProduct());
+            $orderItem->setQuantity($item->getQuantity());
+            $orderItem->setUnitPrice($item->getUnitPrice());
+            $orderItem->setVariant($item->getVariant());
+            $orderItem->setStatus(OrderItem::STATUS_PENDING);
+            $this->entityManager->persist($orderItem);
+            // Keep the inverse side in sync so $order->getProducts() is populated in
+            // memory. The saved-card inline charge finalizes in this same request and
+            // reads the items straight off this instance (no fresh reload like verify).
+            $order->addProduct($orderItem);
+        }
+
+        $this->entityManager->flush();
+
+        return $order;
+    }
+
+    /**
+     * Removes a pending order created for a Paystack checkout attempt that never reached a
+     * successful payment initialization. Because createPendingOrder() deliberately leaves the
+     * basket intact, retrying the checkout just builds a brand-new pending order, so the
+     * abandoned one has to be cleaned up here (together with its items) instead of piling up as
+     * an orphaned PENDING row that the customer could never pay for.
+     *
+     * As a safety guard, only still-pending, not-yet-paid orders are removed; anything already
+     * paid or advanced through the workflow is left untouched.
+     */
+    public function cleanupFailedOrder(Order $order): void
+    {
+        if ($order->isPaidSuccessfully() || OrderStatusEnum::PENDING->value !== $order->getStatus()) {
+            return;
+        }
+
+        // OrderItem uses orphanRemoval, but remove the lines explicitly so the cleanup does not
+        // rely on cascade behaviour and leaves no dangling rows behind.
+        foreach ($order->getProducts() as $orderItem) {
+            $this->entityManager->remove($orderItem);
+        }
+
+        $this->entityManager->remove($order);
+        $this->entityManager->flush();
+    }
+
+    /**
+     * Cleans up the PENDING order left behind when a customer aborts a Paystack
+     * checkout (closes the payment window without paying), identified by its uid.
+     * The actual guard lives in cleanupFailedOrder(): only a still-pending,
+     * not-yet-paid order and its items are removed, so a paid or advanced order is
+     * never touched. Returns true when an order was removed, false when there was
+     * nothing to clean up (unknown uid, or an order past the pending stage).
+     */
+    public function abortPendingOrder(string $orderUid): bool
+    {
+        $order = $this->orderRepository->findOneBy(['uid' => $orderUid]);
+        if (null === $order) {
+            return false;
+        }
+
+        $willRemove = !$order->isPaidSuccessfully()
+            && OrderStatusEnum::PENDING->value === $order->getStatus();
+
+        $this->cleanupFailedOrder($order);
+
+        return $willRemove;
+    }
+
+    /**
+     * Caches the Paystack hosted-checkout authorization_url on the order so an
+     * idempotent replay of /initialize-payment can resume the same modal.
+     */
+    public function attachAuthorizationUrl(Order $order, string $authorizationUrl): void
+    {
+        $order->setAuthorizationUrl($authorizationUrl);
+        $this->entityManager->persist($order);
+        $this->entityManager->flush();
+    }
+
+    public function markOrderAsFailed(string $orderUid): void
+    {
+        $order = $this->orderRepository->findOneBy(['uid' => $orderUid]);
+        if (null === $order) {
+            return;
+        }
+        $order->setIsPaymentFailed(true);
+        $this->entityManager->persist($order);
+        $this->entityManager->flush();
+    }
+
+    public function confirmOrderAsPaid(string $orderUid): Order
+    {
+        $order = $this->orderRepository->findOneBy(['uid' => $orderUid]);
+        if ($order && !$order->isPaidSuccessfully()) {
+            $order->setStatus(OrderStatusEnum::PLACED->value);
+            $order->setIsPaidSuccessfully(true);
+            $this->entityManager->persist($order);
+            $this->entityManager->flush();
+        }
+        return $order;
+    }
+
+    /**
      * @return array{0: Order, 1: Payment, 2: array, 3: float|int}
      */
     private function persistOrder(
@@ -201,7 +391,7 @@ final class OrderService
         $order->setDiscount(round($discountAmount, 1));
         $order->setTaxes($taxAmount);
         $order->setOrderPrice($totalAmount);
-        $order->setStatus(Order::STATUS_ORDER_PLACED);
+        $order->setStatus(OrderStatusEnum::PLACED->value);
 
         if ($user instanceof User) {
             $order->setCustomer($user);
@@ -229,7 +419,7 @@ final class OrderService
             $orderItem->setStatus(OrderItem::STATUS_PENDING);
             $this->entityManager->persist($orderItem);
             $orderItems[] = [
-                'IMAGE_URL' => $product?->getCoverImage(),
+                'IMAGE_URL' => $this->resolveItemImageUrl($product, $item->getVariant()),
                 'NAME' => $product->getTitle(),
                 'VARIANT' => $item->getVariantLabel(),
                 'QUANTITY' => $item->getQuantity(),
@@ -296,6 +486,20 @@ final class OrderService
         );
     }
 
+    /**
+     * Image shown for an order line in the confirmation email: the selected variant's own
+     * image when it has one, falling back to the product cover image otherwise.
+     *
+     * @param array<string, mixed>|null $variant
+     */
+    private function resolveItemImageUrl(?Product $product, ?array $variant): ?string
+    {
+        $storedVariant = $product?->findVariant($variant);
+        $image = $storedVariant['image'] ?? $variant['image'] ?? null;
+
+        return is_string($image) && '' !== trim($image) ? $image : $product?->getCoverImage();
+    }
+
     public function resendOrderConfirmation(Order $order): void
     {
         $payment = $order->getPayments()[0] ?? null;
@@ -303,12 +507,23 @@ final class OrderService
             throw new \InvalidArgumentException('No payment found for this order');
         }
 
+        $this->sendOrderConfirmation($order, $payment);
+    }
+
+    /**
+     * Builds the confirmation email data from a (already paid/placed) order and its payment,
+     * then dispatches the OrderConfirmationMessage. Used both by the manual resend flow and
+     * by the Paystack checkout once a payment has been verified, where the freshly created
+     * Payment is passed in explicitly rather than read back off the order's lazy collection.
+     */
+    public function sendOrderConfirmation(Order $order, Payment $payment): void
+    {
         $items = [];
         $subTotal = 0;
         foreach ($order->getProducts() as $item) {
             $product = $item->getProduct();
             $items[] = [
-                'IMAGE_URL' => $product?->getCoverImage(),
+                'IMAGE_URL' => $this->resolveItemImageUrl($product, $item->getVariant()),
                 'NAME' => $product?->getTitle(),
                 'VARIANT' => $item->getVariantLabel(),
                 'QUANTITY' => $item->getQuantity(),
@@ -434,12 +649,56 @@ final class OrderService
         }
     }
 
+    /**
+     * Adds one or many tracking numbers to the order's current OrderProcessed.
+     * Must be called after the order is processed and before it is marked in transit.
+     *
+     * @param array<string, mixed> $data
+     */
+    public function addTrackingNumbers(Order $order, array $data): OrderProcessed
+    {
+        $orderProcessed = $order->getOrderProcesseds()->last();
+        if (!$orderProcessed instanceof OrderProcessed) {
+            throw new \LogicException('order_not_processed');
+        }
+
+        $trackingNumbers = $data['trackingNumbers'] ?? null;
+        if (!is_array($trackingNumbers) || 0 === count($trackingNumbers)) {
+            throw new \InvalidArgumentException('trackingNumbers_are_required');
+        }
+
+        foreach ($trackingNumbers as $entry) {
+            $trackingNumber = is_array($entry) ? ($entry['trackingNumber'] ?? null) : null;
+            $carrierName = is_array($entry) ? ($entry['carrierName'] ?? null) : null;
+            if (!is_string($trackingNumber) || '' === trim($trackingNumber)
+                || !is_string($carrierName) || '' === trim($carrierName)) {
+                throw new \InvalidArgumentException('each_tracking_number_requires_trackingNumber_and_carrierName');
+            }
+            $orderProcessed->addTrackingNumber([
+                'trackingNumber' => trim($trackingNumber),
+                'carrierName' => trim($carrierName),
+            ]);
+        }
+
+        $order->setUpdatedAt(new \DateTime());
+        $this->entityManager->persist($orderProcessed);
+        $this->entityManager->flush();
+
+        return $orderProcessed;
+    }
+
     public function markAsInTransit(Order $order, array $data, array $files): OrderProcessed
     {
         $workflow = $this->workflowRegistry->get($order, 'order');
         if ($workflow->can($order, 'ship_order')) {
 
             $orderProcessed = $order->getOrderProcesseds()->last();
+            if (!$orderProcessed instanceof OrderProcessed) {
+                throw new \LogicException('order_not_processed');
+            }
+            if (empty($orderProcessed->getTrackingNumbers())) {
+                throw new \InvalidArgumentException('tracking_numbers_required_before_in_transit');
+            }
             $orderProcessed->setShippedFromUsaAt(new \DateTime());
 
             $courrierRepository = $this->entityManager->getRepository(Courrier::class);
@@ -473,33 +732,86 @@ final class OrderService
         }
     }
 
+    /**
+     * Confirms one parcel has arrived at the facility by matching the last 4
+     * characters of the submitted tracking number against the order's stored
+     * tracking numbers. Each matching parcel is stamped with an "arrivedAt".
+     * The order only transitions to ARRIVED_IN_FACILITY once every stored
+     * tracking number has been confirmed.
+     *
+     * @param array<string, mixed> $data
+     */
     public function markAsArrivedInFacility(Order $order, array $data): OrderProcessed
     {
         $workflow = $this->workflowRegistry->get($order, 'order');
-        if ($workflow->can($order, 'arrived_in_facility')) {
-            $orderProcessed = $order->getOrderProcesseds()->last();
-            if (!isset($data['lastFour'])) {
-                throw new \InvalidArgumentException('lastFour_is_required');
-            }
-            $sellerOrderReference = $orderProcessed->getSellerOrderReference();
-            $lastFour = $data['lastFour'];
-            if (substr($sellerOrderReference, -4) !== $lastFour) {
-                throw new \InvalidArgumentException('lastFour_does_not_match_seller_order_reference');
-            }
+        if (!$workflow->can($order, 'arrived_in_facility')) {
+            throw new \LogicException('order_cannot_be_marked_arrived_in_facility');
+        }
 
+        $orderProcessed = $order->getOrderProcesseds()->last();
+        if (!$orderProcessed instanceof OrderProcessed) {
+            throw new \LogicException('order_not_processed');
+        }
+
+        $trackingNumber = $data['trackingNumber'] ?? null;
+        if (!is_string($trackingNumber) || '' === trim($trackingNumber)) {
+            throw new \InvalidArgumentException('trackingNumber_is_required');
+        }
+        $submittedLastFour = substr(trim($trackingNumber), -4);
+
+        $trackingNumbers = $orderProcessed->getTrackingNumbers();
+        if (!is_array($trackingNumbers) || 0 === count($trackingNumbers)) {
+            throw new \LogicException('order_has_no_tracking_numbers');
+        }
+
+        // Match the first not-yet-confirmed parcel whose last 4 digits match.
+        $matchedIndex = null;
+        foreach ($trackingNumbers as $index => $entry) {
+            if (substr((string) $entry['trackingNumber'], -4) !== $submittedLastFour) {
+                continue;
+            }
+            if (!empty($entry['arrivedAt'])) {
+                continue;
+            }
+            $matchedIndex = $index;
+            break;
+        }
+
+        if (null === $matchedIndex) {
+            // Distinguish "no such parcel" from "already confirmed".
+            foreach ($trackingNumbers as $entry) {
+                if (substr((string) $entry['trackingNumber'], -4) === $submittedLastFour) {
+                    throw new \InvalidArgumentException('tracking_number_already_confirmed');
+                }
+            }
+            throw new \InvalidArgumentException('tracking_number_does_not_match');
+        }
+
+        $trackingNumbers[$matchedIndex]['arrivedAt'] = (new \DateTime())->format(\DateTimeInterface::ATOM);
+        $orderProcessed->setTrackingNumbers($trackingNumbers);
+
+        // Only transition once every parcel has been confirmed arrived.
+        $allArrived = true;
+        foreach ($trackingNumbers as $entry) {
+            if (empty($entry['arrivedAt'])) {
+                $allArrived = false;
+                break;
+            }
+        }
+
+        if ($allArrived) {
             $workflow->apply($order, 'arrived_in_facility');
-            $order->setUpdatedAt(new \DateTime());
             $orderProcessed->setCollectedAt(new \DateTime());
             if (isset($data['collectionNote'])) {
                 $orderProcessed->setCollectionNote($data['collectionNote']);
             }
-            $this->entityManager->persist($orderProcessed);
-            $this->entityManager->flush();
-
-            return $orderProcessed;
-        } else {
-            throw new \LogicException('order_cannot_be_marked_arrived_in_facility');
         }
+
+        $order->setUpdatedAt(new \DateTime());
+        $this->entityManager->persist($orderProcessed);
+        $this->entityManager->flush();
+
+        return $orderProcessed;
     }
 
     public function markAsOutForDelivery(Order $order): OrderProcessed

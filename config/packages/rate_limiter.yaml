@@ -43,3 +43,9 @@ framework:
         # (see security.yaml), which manages its own limiter and counts only
         # failed attempts. It cannot consume a framework.rate_limiter factory,
         # so there is intentionally no `login` entry here.
+        product_return:
+            policy: 'sliding_window'
+            limit: 4
+            interval: '10 minutes'
+            cache_pool: rate_limiter.cache
+            lock_factory: null

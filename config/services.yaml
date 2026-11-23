@@ -58,6 +58,13 @@ services:
                 $socialTwitter: '%env(TWITTER_URL)%'
                 $socialTikTok: '%env(TIKTOK_URL)%'
                 $currency: '%env(TARGET_CURRENCY)%'
+                $supportUrl: '%env(SUPPORT_PATH)%'
+                $faqs: '%env(FAQS_PATH)%'
+                $privacyPolicy: '%env(PRIVACY_POLICY_PATH)%'
+                $generalTerms: '%env(GENERAL_TERMS_PATH)%'
+                $contactUs: '%env(CONTACT_US_PATH)%'
+                $aboutUs: '%env(ABOUT_US_PATH)%'
+                $cokiePolicy: '%env(COKIE_POLICY_PATH)%'
 
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name
@@ -155,13 +162,24 @@ services:
             $twig: '@twig'
             $fromEmail: '%env(MAILER_FROM)%'
             $fromName: '%env(MAILER_FROM_NAME)%'
-            $apiKey: '%env(BREVO_API_KEY)%'
         tags: ['monolog.logger']
 
     App\Service\OrderService:
         arguments:
             $expressShippingCost: '%env(EXPRESS_SHIPPING_COST)%'
             $expressShippingDuration: '%env(EXPRESS_SHIPPING_DURATION)%'
+
+    # Optional allowlist of Paystack webhook source IPs (comma-separated). Empty = off.
+    App\Controller\WebhookController:
+        arguments:
+            $allowedWebhookIps: '%env(PAYSTACK_WEBHOOK_IPS)%'
+
+    # Amount (in the order currency) at or above which a saved-card charge is NOT
+    # done off-session; it is routed through the hosted checkout for interactive
+    # step-up auth (3DS/OTP). 0 disables the step-up (current behaviour).
+    App\Controller\PaystackPaymentController:
+        arguments:
+            $savedCardStepUpThreshold: '%env(float:SAVED_CARD_STEP_UP_THRESHOLD)%'
 
     gesdinet.jwtrefreshtoken:
         class: Gesdinet\JWTRefreshTokenBundle\Service\RefreshToken
@@ -244,6 +262,12 @@ services:
         arguments: [{createdAt: ~}]
         tags:
           - { name: api_platform.filter }
+    
+    return_request.search_filter:
+        parent: 'api_platform.doctrine.orm.search_filter'
+        arguments: [{status: 'exact', 'refundtype': 'exact'}]
+        tags:
+            - { name: api_platform.filter }
     ###< Filters 
 
     App\MessageHandler\SendTwoFactorCodeMessageHandler:
@@ -275,6 +299,15 @@ services:
     App\MessageHandler\NewProductAddedMessageHandler:
         arguments:
             $adminEmail: '%env(ADMIN_EMAIL)%'
+    
+    App\MessageHandler\NewShoppingRequestHandler:
+        arguments:
+            $newShoppingRequestTemplate: '%env(SHOPPING_REQUEST_CONFIRMATION_TEMPLATE_ID)%'
+            $statusPath: '%env(SHOPPING_REQUEST_STATUS_PATH)%'
+
+    App\MessageHandler\NewReturnRequestMessageHandler:
+        arguments:
+            $newReturnRequestTemplate: '%env(RETURN_REQUEST_CONFIRMATION_TEMPLATE_ID)%'
 
     App\Service\EmailQueueService:
         arguments:
@@ -301,3 +334,17 @@ services:
         arguments:
             $defaultCurrency: '%env(TARGET_CURRENCY)%'
             $defaultTaxRate: '%env(TAXE_RATE)%'
+
+    App\Service\SecretManagerService:
+        arguments:
+            $projectId: '%env(GCP_PROJECT_ID)%'
+            $credentialsPath: '%kernel.project_dir%/config/secrets/secrets-key.json'
+    App\Service\GoogleKmsService:
+        public: true
+        arguments:
+            $cryptoKey: '%env(GCP_KMS_CRYPTO_KEY)%'
+            $credentialsPath: '%kernel.project_dir%/config/secrets/secrets-key.json'
+
+    # yellowskies/qr-code-bundle registers its generator only as the non-autowired
+    # service id "skies_barcode.generator"; alias the class so it can be injected by type.
+    Skies\QRcodeBundle\Generator\Generator: '@skies_barcode.generator'

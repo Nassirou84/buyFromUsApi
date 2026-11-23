@@ -126,6 +126,25 @@ class PromoCodeService
     return $totalAmount * ($discount / 100);
   }
 
+  /**
+   * Discount amount for an explicit subtotal, instead of the basket's priceAtAdd total.
+   * Lets callers that compute the subtotal from the current variant-aware unit prices
+   * (e.g. the pending-order/checkout flow) apply the same fixed/percentage rules on that
+   * figure, so the discount matches the prices actually charged.
+   */
+  public function discountedAmountForAmount(string $promoCode, float $amount): float
+  {
+    $promoCodeEntity = $this->promoCodeRepository->findOneBy(['code' => $promoCode]);
+    if (!$promoCodeEntity) {
+      return 0.0;
+    }
+    $discount = (float) $promoCodeEntity->getDiscount();
+    if ($promoCodeEntity->getType() === PromoCode::TYPE_FIXED) {
+      return min($discount, $amount);
+    }
+    return $amount * ($discount / 100);
+  }
+
   public function specificUsersApplicable($promoCodeEntity, Basket $basket): bool
   {
     return $promoCodeEntity->getUser() === $basket->getUser();

@@ -13,7 +13,7 @@ use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use App\Controller\CancelOrderController;
 use App\Controller\OrderSummaryController;
-use App\Controller\PlaceOrderController;
+use App\Enumeration\OrderStatusEnum;
 use App\Repository\OrderRepository;
 use DateTime;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -59,10 +59,6 @@ use Symfony\Component\Serializer\Attribute\SerializedName;
             normalizationContext: ['groups' => ['order:read', 'order:read:details']],
         ),
         new Post(
-            controller: PlaceOrderController::class,
-            uriTemplate: '/orders/finalize',
-        ),
-        new Post(
             security: "is_granted('ROLE_USER')",
             controller: CancelOrderController::class,
             uriTemplate: '/orders/{id}/cancel',
@@ -76,7 +72,7 @@ use Symfony\Component\Serializer\Attribute\SerializedName;
         ),
     ],
     denormalizationContext: ['groups' => ['order:write', 'order:edit', 'order:read:admin']],
-    normalizationContext: ['groups' => ['order:read', 'order:read:details', 'assignDelivery:read']],
+    normalizationContext: ['groups' => ['order:read', 'order:read:details', 'assignDelivery:read', 'product_return:read']],
     filters: ['my_order.search_filter', 'my_order.order_filter'],
 )]
 #[ORM\Entity(repositoryClass: OrderRepository::class)]
@@ -84,14 +80,6 @@ use Symfony\Component\Serializer\Attribute\SerializedName;
 #[ORM\UniqueConstraint(name: 'UNIQ_ORDER_UID', fields: ['uid'])]
 class Order
 {
-    public const STATUS_ORDER_PLACED = 'placed';
-    public const STATUS_PROCESSED = 'processed';
-    public const STATUS_IN_TRANSIT = 'in_transit';
-    public const STATUS_ARRIVED_IN_FACILITY = 'arrived_in_facility';
-    public const STATUS_OUT_FOR_DELIVERY = 'out_for_delivery';
-    public const STATUS_DELIVERED = 'delivered';
-    public const STATUS_CANCELLED = 'cancelled';
-
     /**
      * The ordered tracking flow a (non-cancelled) order moves through. Drives
      * the tracking history timeline exposed to the client.
@@ -99,12 +87,14 @@ class Order
      * @var list<string>
      */
     public const TRACKING_FLOW = [
-        self::STATUS_ORDER_PLACED,
-        self::STATUS_PROCESSED,
-        self::STATUS_IN_TRANSIT,
-        self::STATUS_ARRIVED_IN_FACILITY,
-        self::STATUS_OUT_FOR_DELIVERY,
-        self::STATUS_DELIVERED,
+        OrderStatusEnum::PENDING->value,
+        OrderStatusEnum::PLACED->value,
+        OrderStatusEnum::PROCESSED->value,
+        OrderStatusEnum::IN_TRANSIT->value,
+        OrderStatusEnum::ARRIVED_IN_FACILITY->value,
+        OrderStatusEnum::OUT_FOR_DELIVERY->value,
+        OrderStatusEnum::DELIVERED->value,
+        OrderStatusEnum::CANCELLED->value,
     ];
 
     /**
@@ -113,48 +103,49 @@ class Order
      * @var array<string, string>
      */
     public const STATUS_LABELS = [
-        self::STATUS_ORDER_PLACED => 'Order placed',
-        self::STATUS_PROCESSED => 'Processed',
-        self::STATUS_IN_TRANSIT => 'In transit',
-        self::STATUS_ARRIVED_IN_FACILITY => 'Arrived in facility',
-        self::STATUS_OUT_FOR_DELIVERY => 'Out for delivery',
-        self::STATUS_DELIVERED => 'Delivered',
-        self::STATUS_CANCELLED => 'Cancelled',
+        OrderStatusEnum::PENDING->value => 'Pending',
+        OrderStatusEnum::PLACED->value => 'Order placed',
+        OrderStatusEnum::PROCESSED->value => 'Processed',
+        OrderStatusEnum::IN_TRANSIT->value => 'In transit',
+        OrderStatusEnum::ARRIVED_IN_FACILITY->value => 'Arrived in facility',
+        OrderStatusEnum::OUT_FOR_DELIVERY->value => 'Out for delivery',
+        OrderStatusEnum::DELIVERED->value => 'Delivered',
+        OrderStatusEnum::CANCELLED->value => 'Cancelled',
     ];
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['order:read', 'assignDelivery:read'])]
+    #[Groups(['order:read', 'assignDelivery:read', 'product_return:read'])]
     /** @phpstan-ignore-next-line */
     private ?int $id = null;
 
     #[ORM\Column]
-    #[Groups(['order:write', 'order:read'])]
+    #[Groups(['order:write', 'order:read', 'product_return:read'])]
     private ?float $orderPrice = null;
 
     #[ORM\ManyToOne(inversedBy: 'orders')]
     private ?User $customer = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read'])]
     private ?string $fullName = null;
 
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read'])]
     private ?string $street = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read'])]
     private ?string $city = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read'])]
     private ?string $state = null;
 
     #[ORM\Column]
-    #[Groups(['order:write', 'order:read', 'assignDelivery:read'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'product_return:read'])]
     private ?DateTime $createdAt = null;
 
     #[ORM\Column(length: 255)]
@@ -166,7 +157,7 @@ class Order
     private ?DateTime $updatedAt = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:read', 'assignDelivery:read', 'assignDelivery:driver'])]
+    #[Groups(['order:read', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read'])]
     private ?string $uid = null;
 
     /**
@@ -181,11 +172,11 @@ class Order
     private ?DateTime $estimatedDeliveryAt = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['order:read', 'assignDelivery:driver'])]
+    #[Groups(['order:read', 'assignDelivery:driver', 'product_return:read'])]
     private ?string $country = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['order:read', 'assignDelivery:driver'])]
+    #[Groups(['order:read', 'assignDelivery:driver', 'product_return:read'])]
     private ?string $suite = null;
 
     /**
@@ -199,30 +190,50 @@ class Order
     private ?string $email = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['order:read', 'assignDelivery:read'])]
+    #[Groups(['order:read', 'assignDelivery:read', 'product_return:read'])]
     private ?bool $isPriority = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['order:read'])]
+    #[Groups(['order:read', 'product_return:read'])]
     private ?float $discount = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['order:read'])]
+    #[Groups(['order:read', 'product_return:read'])]
     private ?float $taxes = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['order:read'])]
+    #[Groups(['order:read', 'product_return:read'])]
     private ?float $shippingFee = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['order:read', 'order:edit', 'assignDelivery:read', 'assignDelivery:driver'])]
+    #[Groups(['order:read', 'order:edit', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read'])]
     private ?string $phone = null;
 
     #[ORM\Column(length: 255)]
     private ?string $accessToken = null;
 
+    // Idempotency lock for checkout: the client sends one key per checkout attempt
+    // (Idempotency-Key header). The UNIQUE constraint makes "one order per key"
+    // atomic, so a retried or concurrent /initialize-payment reuses this order
+    // instead of creating a second one and charging again. Nullable so older orders
+    // and clients that do not send a key are unaffected.
+    #[ORM\Column(length: 255, nullable: true, unique: true)]
+    private ?string $idempotencyKey = null;
+
+    // The stable Paystack transaction reference for this order. Stored so a retry
+    // reuses the exact same reference, letting Paystack's own reference-idempotency
+    // refuse a second charge.
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $paystackReference = null;
+
+    // The Paystack hosted-checkout authorization_url, cached so an idempotent replay
+    // can resume the same modal without re-initializing (re-initializing the same
+    // reference would be rejected by Paystack as a duplicate).
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $authorizationUrl = null;
+
     #[ORM\Column(nullable: true)]
-    #[Groups(['order:read'])]
+    #[Groups(['order:read', 'product_return:read'])]
     private ?\DateTime $deliveredAt = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
@@ -240,14 +251,36 @@ class Order
     #[Groups(['order:read'])]
     private ?AssignDelivery $assignDelivery = null;
 
+    #[ORM\Column(nullable: true)]
+    private ?bool $isPaidSuccessfully = null;
+
+    /**
+     * The promo code applied when the order was created, kept so the code can be
+     * consumed once payment is confirmed (the discount itself is already baked into
+     * orderPrice/discount). Null when no promo code was used.
+     */
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['order:read:admin', 'product_return:read'])]
+    private ?string $promoCode = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?bool $isPaymentFailed = null;
+
+    /**
+     * @var Collection<int, ProductReturn>
+     */
+    #[ORM\OneToMany(targetEntity: ProductReturn::class, mappedBy: 'returnOrder')]
+    private Collection $productReturns;
+
     public function __construct()
     {
         $this->createdAt = new DateTime();
         $this->updatedAt = new DateTime();
-        $this->status = self::STATUS_ORDER_PLACED;
+        $this->status = OrderStatusEnum::PENDING->value;
         $this->products = new ArrayCollection();
         $this->payments = new ArrayCollection();
         $this->orderProcesseds = new ArrayCollection();
+        $this->productReturns = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -607,6 +640,42 @@ class Order
         return $this;
     }
 
+    public function getIdempotencyKey(): ?string
+    {
+        return $this->idempotencyKey;
+    }
+
+    public function setIdempotencyKey(?string $idempotencyKey): static
+    {
+        $this->idempotencyKey = $idempotencyKey;
+
+        return $this;
+    }
+
+    public function getPaystackReference(): ?string
+    {
+        return $this->paystackReference;
+    }
+
+    public function setPaystackReference(?string $paystackReference): static
+    {
+        $this->paystackReference = $paystackReference;
+
+        return $this;
+    }
+
+    public function getAuthorizationUrl(): ?string
+    {
+        return $this->authorizationUrl;
+    }
+
+    public function setAuthorizationUrl(?string $authorizationUrl): static
+    {
+        $this->authorizationUrl = $authorizationUrl;
+
+        return $this;
+    }
+
     public function getDeliveredAt(): ?\DateTime
     {
         return $this->deliveredAt;
@@ -674,6 +743,72 @@ class Order
         }
 
         $this->assignDelivery = $assignDelivery;
+
+        return $this;
+    }
+
+    public function isPaidSuccessfully(): ?bool
+    {
+        return $this->isPaidSuccessfully;
+    }
+
+    public function setIsPaidSuccessfully(?bool $isPaidSuccessfully): static
+    {
+        $this->isPaidSuccessfully = $isPaidSuccessfully;
+
+        return $this;
+    }
+
+    public function getPromoCode(): ?string
+    {
+        return $this->promoCode;
+    }
+
+    public function setPromoCode(?string $promoCode): static
+    {
+        $this->promoCode = $promoCode;
+
+        return $this;
+    }
+
+    public function isPaymentFailed(): ?bool
+    {
+        return $this->isPaymentFailed;
+    }
+
+    public function setIsPaymentFailed(?bool $isPaymentFailed): static
+    {
+        $this->isPaymentFailed = $isPaymentFailed;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, ProductReturn>
+     */
+    public function getProductReturns(): Collection
+    {
+        return $this->productReturns;
+    }
+
+    public function addProductReturn(ProductReturn $productReturn): static
+    {
+        if (!$this->productReturns->contains($productReturn)) {
+            $this->productReturns->add($productReturn);
+            $productReturn->setReturnOrder($this);
+        }
+
+        return $this;
+    }
+
+    public function removeProductReturn(ProductReturn $productReturn): static
+    {
+        if ($this->productReturns->removeElement($productReturn)) {
+            // set the owning side to null (unless already changed)
+            if ($productReturn->getReturnOrder() === $this) {
+                $productReturn->setReturnOrder(null);
+            }
+        }
 
         return $this;
     }

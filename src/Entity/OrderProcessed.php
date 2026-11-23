@@ -92,6 +92,18 @@ class OrderProcessed
     #[ORM\Column(nullable: true)]
     private ?\DateTime $outForDeliveryAt = null;
 
+    /**
+     * One or many tracking numbers for the shipped package(s). This is plain data,
+     * independent of the Courrier entity (which is the forwarding courier).
+     * Each entry: {"trackingNumber": "...", "carrierName": "...", "arrivedAt": "..."}.
+     * "arrivedAt" is set when the matching parcel is confirmed arrived at the facility.
+     *
+     * @var array<int, array{trackingNumber: string, carrierName: string, arrivedAt?: string}>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    #[Groups(['order_processed:read', 'order:read:admin'])]
+    private ?array $trackingNumbers = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
@@ -290,6 +302,36 @@ class OrderProcessed
     public function setOutForDeliveryAt(?\DateTime $outForDeliveryAt): static
     {
         $this->outForDeliveryAt = $outForDeliveryAt;
+
+        return $this;
+    }
+
+    /**
+     * @return array<int, array{trackingNumber: string, carrierName: string, arrivedAt?: string}>|null
+     */
+    public function getTrackingNumbers(): ?array
+    {
+        return $this->trackingNumbers;
+    }
+
+    /**
+     * @param array<int, array{trackingNumber: string, carrierName: string, arrivedAt?: string}>|null $trackingNumbers
+     */
+    public function setTrackingNumbers(?array $trackingNumbers): static
+    {
+        $this->trackingNumbers = $trackingNumbers;
+
+        return $this;
+    }
+
+    /**
+     * @param array{trackingNumber: string, carrierName: string, arrivedAt?: string} $trackingNumber
+     */
+    public function addTrackingNumber(array $trackingNumber): static
+    {
+        $trackingNumbers = $this->trackingNumbers ?? [];
+        $trackingNumbers[] = $trackingNumber;
+        $this->trackingNumbers = $trackingNumbers;
 
         return $this;
     }

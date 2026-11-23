@@ -7,6 +7,7 @@ The shared project knowledge (architecture, the RabbitMQ link to the scrapper mi
 ## Scope of work
 
 - This repo is `buyFromUs` (Symfony API). The **scrapper microservice** is at `/Users/nassirou/Desktop/scrapper` (separate git repo). You may read it to understand the message contract, but only edit it when the task clearly involves it, and say so when you do. Commits in one repo never include changes from the other.
+- The StoreFront is at `/Users/nassirou/flot/storeFront`
 - Any change touching `product_exchange` / `add_new_product_queue` / `product.routing`, the published payload, or `Product` serialization groups affects both projects — check the scrapper's `src/Entity/Product.php`, `Product::hydrate()` and `src/Command/NewProductsAddConsumerCommand.php` before finishing.
 
 ## Working agreements

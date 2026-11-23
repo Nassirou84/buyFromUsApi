@@ -2,7 +2,7 @@
 
 namespace App\Message;
 
-class NewShoppingReequestMessage
+class NewShoppingRequestMessage
 {
   public function __construct(
     public string $email,
@@ -12,7 +12,10 @@ class NewShoppingReequestMessage
     public string $phoneNumber,
     public string $address,
     public string $createdAt,
-    public string $uid
+    public string $uid,
+    public string $preferredContact,
+    public int $quantity,
+    public string $accessToken,
   ) {
   }
 }

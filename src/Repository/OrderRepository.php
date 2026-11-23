@@ -29,8 +29,8 @@ class OrderRepository extends ServiceEntityRepository
             ->andWhere('o.status != :status1')
             ->andWhere('o.status != :status2')
             ->setParameter('user', $user)
-            ->setParameter('status1', Order::STATUS_DELIVERED)
-            ->setParameter('status2', Order::STATUS_CANCELLED)
+            ->setParameter('status1', OrderStatusEnum::DELIVERED->value)
+            ->setParameter('status2', OrderStatusEnum::CANCELLED->value)
             ->getQuery()
             ->getSingleScalarResult();
     }

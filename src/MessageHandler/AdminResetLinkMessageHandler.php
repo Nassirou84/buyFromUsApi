@@ -23,8 +23,15 @@ final class AdminResetLinkMessageHandler extends MessageHandlerParentClass
         string $socialTwitter,
         string $socialTikTok,
         string $currency,
+        string $supportUrl,
+        string $faqs,
+        string $privacyPolicy,
+        string $generalTerms,
+        string $contactUs,
+        string $aboutUs,
+        string $cokiePolicy,
         private string $adminFrontendURL,
-        private string $resetPasswordPagePath,
+        private string $resetPasswordPagePath
     ) {
         parent::__construct(
             $brevoMailer,
@@ -38,6 +45,13 @@ final class AdminResetLinkMessageHandler extends MessageHandlerParentClass
             $socialTwitter,
             $socialTikTok,
             $currency,
+            $supportUrl,
+            $faqs,
+            $privacyPolicy,
+            $generalTerms,
+            $contactUs,
+            $aboutUs,
+            $cokiePolicy
         );
     }
 

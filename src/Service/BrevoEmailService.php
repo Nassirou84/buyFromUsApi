@@ -29,11 +29,13 @@ class BrevoEmailService
 
     public function __construct(
         Environment $twig,
-        string $apiKey,
+        SecretManagerService $secretManager,
         string $fromEmail,
         string $fromName = 'No Reply',
         ?LoggerInterface $logger = null,
     ) {
+        $apiKey = $secretManager->getSecret('brevo_api_key');
+
         $this->client = HttpClient::create([
             'headers' => [
                 'api-key' => $apiKey,
@@ -54,8 +56,6 @@ class BrevoEmailService
         string $templatePath,
         array $templateData = [],
     ): void {
-        // Sent through the Brevo API (same key as the other methods) rather than Symfony Mailer,
-        // so it doesn't depend on MAILER_DSN.
         $response = $this->client->request('POST', self::BASE_URL . '/smtp/email', [
             'json' => [
                 'sender' => ['email' => $this->sender->getAddress(), 'name' => $this->sender->getName()],
@@ -65,7 +65,6 @@ class BrevoEmailService
             ],
         ]);
 
-        // toArray() throws on non-2xx, so the messenger handler can retry/fail properly
         $this->logger?->info('Local template email sent', [
             'template' => $templatePath,
             'message_id' => $response->toArray()['messageId'] ?? null,
@@ -83,7 +82,6 @@ class BrevoEmailService
             ],
         ]);
 
-        // toArray() throws on non-2xx, so the messenger handler can retry/fail properly
         $this->logger?->info('Text email sent', [
             'message_id' => $response->toArray()['messageId'] ?? null,
         ]);

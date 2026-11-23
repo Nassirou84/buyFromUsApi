@@ -26,6 +26,13 @@ class WelcomeMessageHandler extends MessageHandlerParentClass
     string $socialTwitter,
     string $socialTikTok,
     string $currency,
+    string $supportUrl,
+    string $faqs,
+    string $privacyPolicy,
+    string $generalTerms,
+    string $contactUs,
+    string $aboutUs,
+    string $cokiePolicy,
     private string $welcomeEmailTemplateId,
     private BannerRepository $bannerRepository,
   ) {
@@ -41,6 +48,13 @@ class WelcomeMessageHandler extends MessageHandlerParentClass
       $socialTwitter,
       $socialTikTok,
       $currency,
+      $supportUrl,
+      $faqs,
+      $privacyPolicy,
+      $generalTerms,
+      $contactUs,
+      $aboutUs,
+      $cokiePolicy,
     );
   }
 
