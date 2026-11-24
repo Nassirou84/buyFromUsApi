@@ -184,8 +184,28 @@ final class PaystackPaymentController extends AbstractController
         $shippingAddress = $checkout['shippingAddress'];
 
         $reference = (string) $order->getPaystackReference();
-        $email = $shippingAddress['email'] ?? $order->getEmail();
+        // Pick the first non-empty email. `??` alone is not enough: the storefront
+        // may send shippingAddress.email as an empty string, which is not null and
+        // would otherwise reach Paystack as "" (rejected: "email is not allowed to
+        // be empty"). Fall back to the order's email, then the logged-in user's.
+        $shippingEmail = $shippingAddress['email'] ?? null;
+        $email = $this->resolveCheckoutEmail(
+            is_string($shippingEmail) ? $shippingEmail : null,
+            $order->getEmail(),
+            $currentUser instanceof User ? $currentUser->getEmail() : null,
+        );
         $channels = [self::CHANNELS[$selectedPaymentMethod] ?? 'card'];
+
+        // No usable email anywhere: Paystack requires one, so fail fast with a
+        // clear reason instead of a generic initialization failure downstream.
+        if (null === $email) {
+            $this->orderService->cleanupFailedOrder($order);
+
+            return new JsonResponse(
+                ['success' => false, 'message' => 'checkout_email_required'],
+                422
+            );
+        }
 
         // The customer picked one of their saved payment methods.
         if (null !== $savedPaymentMethodId) {
@@ -310,10 +330,18 @@ final class PaystackPaymentController extends AbstractController
                 orderUid: $order->getUid()
             );
         } catch (\Exception $e) {
+            // TEMPORARY DEBUG: this project has no logging configured (MonologBundle
+            // is not enabled), so write to PHP's error log and surface the real
+            // Paystack reason in the response. Revert once the cause is known.
+            error_log('[paystack-init] order=' . $order->getUid() . ' error=' . $e->getMessage());
             $this->orderService->cleanupFailedOrder($order);
 
             return new JsonResponse(
-                ['success' => false, 'message' => 'paystack_initialization_failed'],
+                [
+                    'success' => false,
+                    'message' => 'paystack_initialization_failed',
+                    'debug' => $e->getMessage(),
+                ],
                 Response::HTTP_BAD_GATEWAY
             );
         }
@@ -348,6 +376,22 @@ final class PaystackPaymentController extends AbstractController
         }
 
         return is_string($key) && '' !== $key ? $key : null;
+    }
+
+    /**
+     * Returns the first candidate that is a non-empty (trimmed) email string, or
+     * null when none qualify. Guards the Paystack init against an empty-string
+     * email, which `??` would pass through unchanged.
+     */
+    private function resolveCheckoutEmail(?string ...$candidates): ?string
+    {
+        foreach ($candidates as $candidate) {
+            if (null !== $candidate && '' !== trim($candidate)) {
+                return trim($candidate);
+            }
+        }
+
+        return null;
     }
 
     /**
