@@ -72,9 +72,12 @@ class PaystackService
       ]
     );
 
-    $data = json_decode($response->getContent(), true);
+    // getContent(false) reads the body WITHOUT throwing on a 4xx/5xx, so we can
+    // surface Paystack's own `message` (e.g. "Currency not supported") instead of
+    // a generic transport exception. getStatusCode() never throws.
+    $data = json_decode($response->getContent(false), true);
 
-    if (($response->getStatusCode() !== 200) || empty($data['status'])) {
+    if ((200 !== $response->getStatusCode()) || empty($data['status'])) {
       throw new \RuntimeException('Failed to initialize Paystack transaction: ' . ($data['message'] ?? 'Unknown error'));
     }
 
@@ -130,9 +133,9 @@ class PaystackService
       ]
     );
 
-    $data = json_decode($response->getContent(), true);
+    $data = json_decode($response->getContent(false), true);
 
-    if (($response->getStatusCode() !== 200) || empty($data['status'])) {
+    if ((200 !== $response->getStatusCode()) || empty($data['status'])) {
       throw new \RuntimeException('Failed to charge Paystack authorization: ' . ($data['message'] ?? 'Unknown error'));
     }
 
@@ -154,9 +157,9 @@ class PaystackService
       ]
     );
 
-    $data = json_decode($response->getContent(), true);
+    $data = json_decode($response->getContent(false), true);
 
-    if (($response->getStatusCode() !== 200) || empty($data['status'])) {
+    if ((200 !== $response->getStatusCode()) || empty($data['status'])) {
       $orderUid = $data['data']['metadata']['order_uid'] ?? null;
       if ($orderUid !== null) {
         $this->orderService->markOrderAsFailed($orderUid);

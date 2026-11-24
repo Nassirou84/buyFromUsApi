@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\ProductReturnItemRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -43,6 +44,18 @@ class ProductReturnItem
     #[Groups(['product_return:read'])]
     #[Assert\NotBlank]
     private ?string $reason = null;
+
+    #[ORM\Column(length: 30, nullable: true)]
+    private ?string $itemCondition = null;
+
+    #[ORM\Column(type: Types::SIMPLE_ARRAY, nullable: true)]
+    private ?array $itemControls = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTime $inspectedAt = null;
+
+    #[ORM\ManyToOne]
+    private ?User $inspectedBy = null;
 
     public function getId(): ?int
     {
@@ -93,6 +106,54 @@ class ProductReturnItem
     public function setReason(string $reason): static
     {
         $this->reason = $reason;
+
+        return $this;
+    }
+
+    public function getItemCondition(): ?string
+    {
+        return $this->itemCondition;
+    }
+
+    public function setItemCondition(?string $itemCondition): static
+    {
+        $this->itemCondition = $itemCondition;
+
+        return $this;
+    }
+
+    public function getItemControls(): ?array
+    {
+        return $this->itemControls;
+    }
+
+    public function setItemControls(?array $itemControls): static
+    {
+        $this->itemControls = $itemControls;
+
+        return $this;
+    }
+
+    public function getInspectedAt(): ?\DateTime
+    {
+        return $this->inspectedAt;
+    }
+
+    public function setInspectedAt(\DateTime $inspectedAt): static
+    {
+        $this->inspectedAt = $inspectedAt;
+
+        return $this;
+    }
+
+    public function getInspectedBy(): ?User
+    {
+        return $this->inspectedBy;
+    }
+
+    public function setInspectedBy(?User $inspectedBy): static
+    {
+        $this->inspectedBy = $inspectedBy;
 
         return $this;
     }
