@@ -299,6 +299,10 @@ services:
     App\MessageHandler\NewProductAddedMessageHandler:
         arguments:
             $adminEmail: '%env(ADMIN_EMAIL)%'
+
+    App\MessageHandler\RefundNotificationMessageHandler:
+        arguments:
+            $adminEmail: '%env(ADMIN_EMAIL)%'
     
     App\MessageHandler\NewShoppingRequestHandler:
         arguments:

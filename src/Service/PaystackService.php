@@ -14,6 +14,15 @@ class PaystackService
   // display (e.g. 63616 XOF must be sent as 6_361_600 to show "63616").
   private const SUBUNIT_MULTIPLIER = 100;
 
+  /**
+   * Converts an amount Paystack reports (currency subunit, e.g. 5728500) back to the
+   * main unit we store (57285). Null when the value isn't numeric.
+   */
+  public static function fromSubunit(mixed $value): ?int
+  {
+    return is_numeric($value) ? (int) round(((float) $value) / self::SUBUNIT_MULTIPLIER) : null;
+  }
+
   public function __construct(
     private HttpClientInterface $httpClient,
     private SecretManagerService $secretManager,
@@ -203,6 +212,88 @@ class PaystackService
     }
 
     return $data['data'];
+  }
+
+  /**
+   * Fetches a refund by its Paystack refund id (GET /refund/{id}).
+   * Returns the refund `data` (id, status, amount in subunit, transaction_reference, ...).
+   *
+   * @return array<string, mixed>
+   *
+   * @throws \RuntimeException when Paystack doesn't return the refund
+   * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+   */
+  public function fetchRefund(string $refundId): array
+  {
+    $data = $this->getJson('/refund/' . rawurlencode($refundId));
+
+    if (!is_array($data['data'] ?? null)) {
+      throw new \RuntimeException('Paystack refund ' . $refundId . ' not returned');
+    }
+
+    return $data['data'];
+  }
+
+  /**
+   * Lists refunds created in a date range (GET /refund). Paystack can't filter this
+   * endpoint by transaction, so callers match on transaction_reference themselves.
+   *
+   * @return array{data: list<array<string, mixed>>, pageCount: int}
+   *
+   * @throws \RuntimeException when the list can't be read
+   * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+   */
+  public function listRefunds(\DateTimeInterface $from, ?\DateTimeInterface $to = null, int $page = 1, int $perPage = 100): array
+  {
+    $query = [
+      'from' => $from->format(\DateTimeInterface::ATOM),
+      'page' => $page,
+      'perPage' => $perPage,
+    ];
+    if ($to !== null) {
+      $query['to'] = $to->format(\DateTimeInterface::ATOM);
+    }
+
+    $data = $this->getJson('/refund', $query);
+
+    if (!is_array($data['data'] ?? null)) {
+      throw new \RuntimeException('Paystack refund list not returned');
+    }
+
+    return [
+      'data' => array_values(array_filter($data['data'], 'is_array')),
+      'pageCount' => (int) ($data['meta']['pageCount'] ?? 1),
+    ];
+  }
+
+  /**
+   * Authenticated GET on the Paystack API; throws unless it answered 200 with status true.
+   *
+   * @param array<string, mixed> $query
+   *
+   * @return array<string, mixed>
+   */
+  private function getJson(string $path, array $query = []): array
+  {
+    $secretKey = $this->secretManager->getSecret('paystack_test_secret_key');
+
+    $response = $this->httpClient->request('GET', self::BASE_URL . $path, [
+      'headers' => [
+        'Authorization' => 'Bearer ' . $secretKey,
+        'Content-Type' => 'application/json',
+      ],
+      'query' => $query,
+    ]);
+
+    $statusCode = $response->getStatusCode();
+    $data = json_decode($response->getContent(false), true);
+
+    if (200 !== $statusCode || !is_array($data) || empty($data['status'])) {
+      $message = is_array($data) ? ($data['message'] ?? 'Unknown error') : 'Invalid response';
+      throw new \RuntimeException('Paystack GET ' . $path . ' failed (HTTP ' . $statusCode . '): ' . $message);
+    }
+
+    return $data;
   }
 
   public function verifyTransaction(string $reference): array

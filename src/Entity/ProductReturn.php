@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
@@ -8,6 +10,7 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use App\Filter\ProductReturnKeywordFilter;
 use App\Repository\ProductReturnRepository;
+use DateTime;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
@@ -17,23 +20,27 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 #[ApiResource(
     operations: [
-        new Get(),
+        new Get(
+            security: "is_granted('ROLE_ADMIN')",
+            normalizationContext: ['groups' => ['product_return:read', 'product_return:read:admin']],
+        ),
         new GetCollection(
             security: "is_granted('ROLE_ADMIN')",
+            normalizationContext: ['groups' => ['product_return:read', 'product_return:read:admin']],
             filters: ['return_request.search_filter', ProductReturnKeywordFilter::class],
         ),
         new Post(
             routeName: 'app_product_return',
             uriTemplate: '/api/product-return/initiate',
-        )
+        ),
     ],
-    normalizationContext: ['groups' => ['product_return:read']]
+    normalizationContext: ['groups' => ['product_return:read']],
 )]
 #[ORM\Entity(repositoryClass: ProductReturnRepository::class)]
 class ProductReturn
 {
-    const STORE_CREDIT = 'credit';
-    const REFUND = 'refund';
+    public const STORE_CREDIT = 'credit';
+    public const REFUND = 'refund';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -56,7 +63,7 @@ class ProductReturn
     #[ORM\Column]
     #[Assert\NotNull]
     #[Groups(['product_return:read'])]
-    private ?\DateTime $createdAt = null;
+    private ?DateTime $createdAt = null;
 
     #[ORM\Column(length: 255)]
     #[Groups(['product_return:read'])]
@@ -85,26 +92,31 @@ class ProductReturn
     private Collection $returnItems;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[Groups(['product_return:read'])]
     private ?string $returnNote = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['product_return:read'])]
     private ?int $totalToBeRefunded = null;
 
     #[ORM\Column(nullable: true)]
-    private ?\DateTime $completedAt = null;
+    #[Groups(['product_return:read'])]
+    private ?DateTime $completedAt = null;
 
     #[ORM\ManyToOne]
+    #[Groups(['product_return:read:admin'])]
     private ?User $completedBy = null;
 
     /**
      * @var Collection<int, Refund>
      */
     #[ORM\OneToMany(targetEntity: Refund::class, mappedBy: 'productReturn')]
+    #[Groups(['product_return:read:admin'])]
     private Collection $refunds;
 
     public function __construct()
     {
-        $this->createdAt = new \DateTime();
+        $this->createdAt = new DateTime();
         $this->returnItems = new ArrayCollection();
         $this->refunds = new ArrayCollection();
     }
@@ -138,12 +150,12 @@ class ProductReturn
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTime
+    public function getCreatedAt(): ?DateTime
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(\DateTime $createdAt): static
+    public function setCreatedAt(DateTime $createdAt): static
     {
         $this->createdAt = $createdAt;
 
@@ -252,12 +264,12 @@ class ProductReturn
         return $this;
     }
 
-    public function getCompletedAt(): ?\DateTime
+    public function getCompletedAt(): ?DateTime
     {
         return $this->completedAt;
     }
 
-    public function setCompletedAt(?\DateTime $completedAt): static
+    public function setCompletedAt(?DateTime $completedAt): static
     {
         $this->completedAt = $completedAt;
 

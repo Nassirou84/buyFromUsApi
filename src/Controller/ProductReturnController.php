@@ -133,7 +133,11 @@ final class ProductReturnController extends AbstractController
             return new JsonResponse(['error' => 'return_not_found'], Response::HTTP_NOT_FOUND);
         }
 
-        $data = $serializer->serialize($return, 'json', ['groups' => ['product_return:read']]);
+        // Refund (gateway) details and the completing admin are for admins only, not drivers.
+        $groups = in_array('ROLE_ADMIN', $user->getRoles(), true)
+            ? ['product_return:read', 'product_return:read:admin']
+            : ['product_return:read'];
+        $data = $serializer->serialize($return, 'json', ['groups' => $groups]);
 
         return new JsonResponse($data, Response::HTTP_OK, [], true);
     }
@@ -290,7 +294,7 @@ final class ProductReturnController extends AbstractController
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_BAD_GATEWAY);
         }
 
-        $data = $serializer->serialize($productReturn, 'json', ['groups' => ['product_return:read']]);
+        $data = $serializer->serialize($productReturn, 'json', ['groups' => ['product_return:read', 'product_return:read:admin']]);
 
         return new JsonResponse([
             'success' => true,

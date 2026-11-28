@@ -62,6 +62,7 @@ symfony server:start                       # or: php -S 127.0.0.1:8000 -t public
 php bin/console messenger:consume async_priority_high async_default async_priority_low -vv
 php bin/console app:process-email-queue
 php bin/console app:currency-rate-update
+php bin/console app:refund:sync-status      # polls Paystack for unresolved refunds; must run via cron in prod
 php bin/console app:fill-products-uid
 php bin/console app:rabbit-mq-test         # publishes one product to product_exchange
 

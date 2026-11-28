@@ -79,6 +79,10 @@ php bin/console app:process-email-queue
 # Update currency exchange rates
 php bin/console app:currency-rate-update
 
+# Catch up refund statuses missed by Paystack webhooks (run via cron, e.g. every 15 min):
+#   */15 * * * * cd <app dir> && php bin/console app:refund:sync-status --limit=50 --env=prod
+php bin/console app:refund:sync-status --dry-run
+
 # Static analysis
 vendor/bin/phpstan analyse
 

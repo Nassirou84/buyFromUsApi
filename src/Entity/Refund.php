@@ -9,6 +9,8 @@ use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use InvalidArgumentException;
+use LogicException;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 use function in_array;
 
@@ -52,58 +54,74 @@ class Refund
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['product_return:read:admin'])]
     /** @phpstan-ignore-next-line */
     private ?int $id = null;
 
     /** Our own reference, unique per attempt; doubles as the idempotency key. */
     #[ORM\Column(length: 64, unique: true)]
+    #[Groups(['product_return:read:admin'])]
     private string $reference;
 
     /** Refund id returned by the gateway; null until the gateway accepted the request. */
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['product_return:read:admin'])]
     private ?string $refundTransactionNumber = null;
 
     #[ORM\Column(length: 30)]
+    #[Groups(['product_return:read:admin'])]
     private string $provider;
 
     /** Payment channel of the original charge (card, mobile_money, ...). */
     #[ORM\Column(length: 30)]
+    #[Groups(['product_return:read:admin'])]
     private string $channel;
 
     /** Reference of the original gateway transaction being refunded. */
     #[ORM\Column(length: 255)]
+    #[Groups(['product_return:read:admin'])]
     private string $transactionReference;
 
     #[ORM\Column(length: 3)]
+    #[Groups(['product_return:read:admin'])]
     private string $currency;
 
     #[ORM\Column]
+    #[Groups(['product_return:read:admin'])]
     private int $itemsAmount;
 
     #[ORM\Column]
+    #[Groups(['product_return:read:admin'])]
     private int $shippingAmount;
 
     #[ORM\Column]
+    #[Groups(['product_return:read:admin'])]
     private int $taxAmount;
 
     /** Tax rate (percent) applied on the original payment, copied for the record. */
     #[ORM\Column]
+    #[Groups(['product_return:read:admin'])]
     private int $taxRate;
 
     /** Total sent to the gateway: items + shipping + tax. */
     #[ORM\Column]
+    #[Groups(['product_return:read:admin'])]
     private int $amount;
 
     #[ORM\Column(length: 30)]
+    #[Groups(['product_return:read:admin'])]
     private string $reason;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[Groups(['product_return:read:admin'])]
     private ?string $note;
 
     #[ORM\Column(length: 20)]
+    #[Groups(['product_return:read:admin'])]
     private string $status = self::STATUS_PENDING;
 
     /** Raw status string last reported by the gateway. */
+    #[Groups(['product_return:read:admin'])]
     #[ORM\Column(length: 30, nullable: true)]
     private ?string $gatewayStatus = null;
 
@@ -112,9 +130,10 @@ class Refund
     private ?array $gatewayResponse = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[Groups(['product_return:read:admin'])]
     private ?string $failureReason = null;
 
-    /** @var list<array{status: string, at: string, source: string, gatewayStatus: ?string}> */
+    /** @var list<array{status: string, at: string, source: string, gatewayStatus: ?string, by?: ?int, note?: string}> */
     #[ORM\Column(type: Types::JSON)]
     private array $statusHistory = [];
 
@@ -130,18 +149,23 @@ class Refund
     private User $initiatedBy;
 
     #[ORM\Column]
+    #[Groups(['product_return:read:admin'])]
     private DateTimeImmutable $createdAt;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['product_return:read:admin'])]
     private ?DateTimeImmutable $submittedAt = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['product_return:read:admin'])]
     private ?DateTimeImmutable $processedAt = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['product_return:read:admin'])]
     private ?DateTimeImmutable $failedAt = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['product_return:read:admin'])]
     private ?DateTimeImmutable $updatedAt = null;
 
     public function __construct(
@@ -191,11 +215,11 @@ class Refund
      *
      * @param array<string, mixed> $response
      */
-    public function markSubmitted(?string $gatewayRefundId, string $status, ?string $gatewayStatus, array $response): void
+    public function markSubmitted(?string $gatewayRefundId, string $status, ?string $gatewayStatus, array $response, string $source = 'api', ?string $failureReason = null): void
     {
         $this->refundTransactionNumber ??= $gatewayRefundId;
         $this->submittedAt ??= new DateTimeImmutable();
-        $this->applyGatewayStatus($status, $gatewayStatus, $response, 'api');
+        $this->applyGatewayStatus($status, $gatewayStatus, $response, $source, $failureReason);
     }
 
     /**
@@ -231,6 +255,35 @@ class Refund
         }
     }
 
+    /**
+     * Closes a `needs_attention` refund by hand, once an admin has checked the outcome
+     * on the gateway side. The gateway response stays as it was; who resolved it and why
+     * go into the status history.
+     */
+    public function resolveManually(string $status, User $resolvedBy, string $note): void
+    {
+        if (self::STATUS_NEEDS_ATTENTION !== $this->status) {
+            throw new LogicException('refund_not_awaiting_reconciliation');
+        }
+        if (!in_array($status, [self::STATUS_PROCESSED, self::STATUS_FAILED], true)) {
+            throw new InvalidArgumentException('refund_resolution_invalid');
+        }
+
+        $now = new DateTimeImmutable();
+        $this->status = $status;
+        $this->updatedAt = $now;
+        if (self::STATUS_PROCESSED === $status) {
+            $this->processedAt = $now;
+        } else {
+            $this->failedAt = $now;
+            $this->failureReason = 'resolved by admin: ' . $note;
+        }
+        $this->recordStatus($status, 'admin', $this->gatewayStatus, [
+            'by' => $resolvedBy->getId(),
+            'note' => $note,
+        ]);
+    }
+
     public function isTerminal(): bool
     {
         return in_array($this->status, [self::STATUS_PROCESSED, self::STATUS_FAILED], true);
@@ -241,14 +294,17 @@ class Refund
         return in_array($this->status, self::ACTIVE_STATUSES, true);
     }
 
-    private function recordStatus(string $status, string $source, ?string $gatewayStatus): void
+    /**
+     * @param array{by?: ?int, note?: string} $extra
+     */
+    private function recordStatus(string $status, string $source, ?string $gatewayStatus, array $extra = []): void
     {
         $this->statusHistory[] = [
             'status' => $status,
             'at' => (new DateTimeImmutable())->format(DATE_ATOM),
             'source' => $source,
             'gatewayStatus' => $gatewayStatus,
-        ];
+        ] + $extra;
     }
 
     public function getId(): ?int
@@ -345,7 +401,7 @@ class Refund
     }
 
     /**
-     * @return list<array{status: string, at: string, source: string, gatewayStatus: ?string}>
+     * @return list<array{status: string, at: string, source: string, gatewayStatus: ?string, by?: ?int, note?: string}>
      */
     public function getStatusHistory(): array
     {

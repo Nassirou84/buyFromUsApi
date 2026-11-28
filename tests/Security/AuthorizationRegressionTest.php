@@ -182,6 +182,38 @@ final class AuthorizationRegressionTest extends WebTestCase
         self::assertResponseStatusCodeSame(401);
     }
 
+    public function testAnonymousCannotRetryOrReconcileRefunds(): void
+    {
+        // Retrying or reconciling a gateway refund moves money: ROLE_ADMIN only.
+        $this->json('POST', '/api/admin/refunds/1/retry', []);
+        self::assertResponseStatusCodeSame(401);
+
+        $this->json('POST', '/api/admin/refunds/1/reconcile', ['resolution' => 'failed', 'note' => 'x']);
+        self::assertResponseStatusCodeSame(401);
+    }
+
+    public function testCustomerCannotRetryOrReconcileRefunds(): void
+    {
+        $this->client->loginUser($this->createUser('customer-refund@test.com'));
+
+        $this->json('POST', '/api/admin/refunds/1/retry', []);
+        self::assertResponseStatusCodeSame(403);
+
+        $this->json('POST', '/api/admin/refunds/1/reconcile', ['resolution' => 'failed', 'note' => 'x']);
+        self::assertResponseStatusCodeSame(403);
+    }
+
+    public function testAnonymousAndCustomersCannotReadProductReturns(): void
+    {
+        // A return exposes its gateway refunds (references, statuses, amounts): ROLE_ADMIN only.
+        $this->json('GET', '/api/product_returns/1', []);
+        self::assertResponseStatusCodeSame(401);
+
+        $this->client->loginUser($this->createUser('customer-return@test.com'));
+        $this->json('GET', '/api/product_returns/1', []);
+        self::assertResponseStatusCodeSame(403);
+    }
+
     public function testAnonymousCannotReadOrWriteAdminFaq(): void
     {
         $this->json('GET', '/api/admin/faq', []);
