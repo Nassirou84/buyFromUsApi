@@ -670,8 +670,10 @@ final class OrderService
         foreach ($trackingNumbers as $entry) {
             $trackingNumber = is_array($entry) ? ($entry['trackingNumber'] ?? null) : null;
             $carrierName = is_array($entry) ? ($entry['carrierName'] ?? null) : null;
-            if (!is_string($trackingNumber) || '' === trim($trackingNumber)
-                || !is_string($carrierName) || '' === trim($carrierName)) {
+            if (
+                !is_string($trackingNumber) || '' === trim($trackingNumber)
+                || !is_string($carrierName) || '' === trim($carrierName)
+            ) {
                 throw new \InvalidArgumentException('each_tracking_number_requires_trackingNumber_and_carrierName');
             }
             $orderProcessed->addTrackingNumber([
@@ -964,9 +966,13 @@ final class OrderService
         foreach ($orders as $orderData) {
             $order = $this->orderRepository->findOneBy(['uid' => $orderData['uid']]);
             if ($order && $order->getStatus() === OrderStatusEnum::OUT_FOR_DELIVERY->value) {
+                $pin = random_int(100000, 999999);
                 $orderAssign = new AssignDelivery();
                 $orderAssign->setAssignOrder($order);
                 $orderAssign->setDriver($deliveryPerson);
+                $orderAssign->setIsStarted(false);
+                $orderAssign->setIsCompleted(false);
+                $orderAssign->setDeliveryPin((string) $pin);
 
                 $this->entityManager->persist($orderAssign);
                 $this->entityManager->persist($order);

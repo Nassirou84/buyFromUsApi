@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\PaymentRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 
@@ -77,10 +79,20 @@ class Payment
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $paymentProvider = null;
 
+    #[ORM\Column]
+    private ?int $taxRate = null;
+
+    /**
+     * @var Collection<int, Refund>
+     */
+    #[ORM\OneToMany(targetEntity: Refund::class, mappedBy: 'payment')]
+    private Collection $refunds;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
         $this->updatedAt = new \DateTime();
+        $this->refunds = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -257,5 +269,25 @@ class Payment
         $this->paymentProvider = $paymentProvider;
 
         return $this;
+    }
+
+    public function getTaxRate(): int
+    {
+        return $this->taxRate;
+    }
+
+    public function setTaxRate(int $taxRate): static
+    {
+        $this->taxRate = $taxRate;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Refund>
+     */
+    public function getRefunds(): Collection
+    {
+        return $this->refunds;
     }
 }

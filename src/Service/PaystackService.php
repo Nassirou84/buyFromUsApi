@@ -142,6 +142,69 @@ class PaystackService
     return $data['data'];
   }
 
+  /**
+   * Requests a (partial or full) refund of a settled transaction.
+   * Returns the Paystack refund `data` (id, status, amount, ...).
+   *
+   * The two failure modes are kept apart because they need opposite handling:
+   * - \DomainException: Paystack answered and refused (4xx). Nothing was refunded; safe to retry.
+   * - \RuntimeException / TransportExceptionInterface: timeout, network error or 5xx.
+   *   The refund may or may not exist; it must be reconciled before retrying.
+   *
+   * @param int $amount Amount in the main currency unit (e.g. XOF)
+   *
+   * @return array<string, mixed>
+   *
+   * @throws \Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface
+   */
+  public function refund(
+    string $transactionReference,
+    int $amount,
+    string $currency,
+    ?string $merchantNote = null,
+    ?string $customerNote = null
+  ): array {
+    $secretKey = $this->secretManager->getSecret('paystack_test_secret_key');
+
+    $payload = [
+      'transaction' => $transactionReference,
+      'amount' => $amount * self::SUBUNIT_MULTIPLIER,
+      'currency' => $currency,
+    ];
+    if ($merchantNote !== null) {
+      $payload['merchant_note'] = mb_substr($merchantNote, 0, 255);
+    }
+    if ($customerNote !== null) {
+      $payload['customer_note'] = mb_substr($customerNote, 0, 255);
+    }
+
+    $response = $this->httpClient->request(
+      'POST',
+      self::BASE_URL . '/refund',
+      [
+        'headers' => [
+          'Authorization' => 'Bearer ' . $secretKey,
+          'Content-Type' => 'application/json',
+        ],
+        'json' => $payload,
+      ]
+    );
+
+    $statusCode = $response->getStatusCode();
+    $data = json_decode($response->getContent(false), true);
+    $message = is_array($data) ? ($data['message'] ?? 'Unknown error') : 'Invalid response';
+
+    if ($statusCode >= 400 && $statusCode < 500) {
+      throw new \DomainException('Paystack refused the refund: ' . $message);
+    }
+
+    if (!in_array($statusCode, [200, 201], true) || !is_array($data) || empty($data['status']) || !is_array($data['data'] ?? null)) {
+      throw new \RuntimeException('Paystack refund outcome unknown (HTTP ' . $statusCode . '): ' . $message);
+    }
+
+    return $data['data'];
+  }
+
   public function verifyTransaction(string $reference): array
   {
     $secretKey = $this->secretManager->getSecret('paystack_test_secret_key');

@@ -1,16 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Tests\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 final class ProductReturnControllerTest extends WebTestCase
 {
-    public function testIndex(): void
+    public function testGetByUidRequiresAuthentication(): void
     {
         $client = static::createClient();
-        $client->request('GET', '/product/return');
+        $client->request('GET', '/api/product-returns/uid/fake-uid');
 
-        self::assertResponseIsSuccessful();
+        self::assertResponseStatusCodeSame(401);
     }
 }

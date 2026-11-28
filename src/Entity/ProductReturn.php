@@ -10,6 +10,7 @@ use App\Filter\ProductReturnKeywordFilter;
 use App\Repository\ProductReturnRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -83,10 +84,29 @@ class ProductReturn
     #[Groups(['product_return:read'])]
     private Collection $returnItems;
 
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $returnNote = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $totalToBeRefunded = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTime $completedAt = null;
+
+    #[ORM\ManyToOne]
+    private ?User $completedBy = null;
+
+    /**
+     * @var Collection<int, Refund>
+     */
+    #[ORM\OneToMany(targetEntity: Refund::class, mappedBy: 'productReturn')]
+    private Collection $refunds;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
         $this->returnItems = new ArrayCollection();
+        $this->refunds = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -206,5 +226,61 @@ class ProductReturn
         }
 
         return $this;
+    }
+
+    public function getReturnNote(): ?string
+    {
+        return $this->returnNote;
+    }
+
+    public function setReturnNote(?string $returnNote): static
+    {
+        $this->returnNote = $returnNote;
+
+        return $this;
+    }
+
+    public function getTotalToBeRefunded(): ?int
+    {
+        return $this->totalToBeRefunded;
+    }
+
+    public function setTotalToBeRefunded(?int $totalToBeRefunded): static
+    {
+        $this->totalToBeRefunded = $totalToBeRefunded;
+
+        return $this;
+    }
+
+    public function getCompletedAt(): ?\DateTime
+    {
+        return $this->completedAt;
+    }
+
+    public function setCompletedAt(?\DateTime $completedAt): static
+    {
+        $this->completedAt = $completedAt;
+
+        return $this;
+    }
+
+    public function getCompletedBy(): ?User
+    {
+        return $this->completedBy;
+    }
+
+    public function setCompletedBy(?User $completedBy): static
+    {
+        $this->completedBy = $completedBy;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Refund>
+     */
+    public function getRefunds(): Collection
+    {
+        return $this->refunds;
     }
 }

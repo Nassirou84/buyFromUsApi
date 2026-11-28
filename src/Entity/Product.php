@@ -228,8 +228,6 @@ class Product
     #[ORM\Column(nullable: true)]
     private ?int $numberOfOrder = null;
 
-    #[ORM\Column(nullable: true)]
-    private ?int $qteAvailableInHub = null;
 
 
     public function __construct(
@@ -796,18 +794,6 @@ class Product
     public function setNumberOfOrder(?int $numberOfOrder): static
     {
         $this->numberOfOrder = $numberOfOrder;
-
-        return $this;
-    }
-
-    public function getQteAvailableInHub(): ?int
-    {
-        return $this->qteAvailableInHub;
-    }
-
-    public function setQteAvailableInHub(?int $qteAvailableInHub): static
-    {
-        $this->qteAvailableInHub = $qteAvailableInHub;
 
         return $this;
     }

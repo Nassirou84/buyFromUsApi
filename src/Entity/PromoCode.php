@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
-use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
-use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
 use App\Repository\PromoCodeRepository;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -43,12 +41,8 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
         new Post(
             security: "is_granted('ROLE_ADMIN')"
         ),
-        new Patch(
-            security: "is_granted('ROLE_ADMIN')"
-        ),
-        new Delete(
-            security: "is_granted('ROLE_ADMIN')"
-        )
+        // No Patch/Delete: a promo code is immutable once created, because past orders and
+        // refunds depend on its terms. Use POST /api/admin/promo_codes/{id}/terminate instead.
     ],
     denormalizationContext: ['groups' => ['promo_code:write']],
     normalizationContext: ['groups' => ['promo_code:read']]

@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Entity\Basket;
+use App\Entity\Order;
 use App\Entity\PromoCode;
 use App\Entity\PromoCodeUsage;
 use App\Entity\User;
@@ -198,5 +199,30 @@ class PromoCodeService
     $this->entityManagerInterface->flush();
 
     return $promoCode;
+  }
+
+  /**
+   * Ends a promo code for good: promo codes are never edited or deleted, only deactivated
+   * with an expiry date in the past, so orders and refunds that used it keep its terms.
+   */
+  public function terminate(PromoCode $promoCode): PromoCode
+  {
+    $promoCode->setIsActive(false);
+
+    $now = new \DateTime();
+    if ($promoCode->getExpiresAt() === null || $promoCode->getExpiresAt() > $now) {
+      $promoCode->setExpiresAt((clone $now)->modify('-1 day'));
+    }
+
+    $this->entityManagerInterface->flush();
+
+    return $promoCode;
+  }
+
+  public function getOrderPromoCode(Order $order): ?PromoCode
+  {
+    $promoCode = $order->getPromoCode();
+    $entity = $this->entityManagerInterface->getRepository(PromoCode::class)->findOneBy(['code' => $promoCode]);
+    return $entity;
   }
 }

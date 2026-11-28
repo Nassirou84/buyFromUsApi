@@ -8,6 +8,7 @@ use ApiPlatform\Metadata\HttpOperation;
 use ApiPlatform\Metadata\Resource\Factory\ResourceMetadataCollectionFactoryInterface;
 use App\Entity\Basket;
 use App\Entity\Product;
+use App\Entity\PromoCode;
 use App\Entity\Setting;
 use App\Entity\User;
 use App\Service\CurrencyProvider;
@@ -105,6 +106,62 @@ final class AuthorizationRegressionTest extends WebTestCase
             self::assertArrayNotHasKey($field, $data, sprintf('"%s" must not be readable from the storefront', $field));
         }
         self::assertArrayHasKey('lastPrice', $data);
+    }
+
+    public function testPromoCodesCannotBeEditedOrDeleted(): void
+    {
+        // Promo codes are immutable once created: refunds and past orders rely on their terms.
+        $factory = static::getContainer()->get(ResourceMetadataCollectionFactoryInterface::class);
+        foreach ($factory->create(PromoCode::class) as $resource) {
+            foreach ($resource->getOperations() as $name => $operation) {
+                if (!$operation instanceof HttpOperation) {
+                    continue;
+                }
+                self::assertNotContains(
+                    $operation->getMethod(),
+                    ['PUT', 'PATCH', 'DELETE'],
+                    sprintf('PromoCode operation "%s" must not allow %s', $name, $operation->getMethod()),
+                );
+                if ('POST' === $operation->getMethod()) {
+                    self::assertStringContainsString('ROLE_ADMIN', (string) $operation->getSecurity());
+                }
+            }
+        }
+    }
+
+    public function testAnonymousAndCustomerCannotTerminatePromoCode(): void
+    {
+        $this->json('POST', '/api/admin/promo_codes/1/terminate', []);
+        self::assertResponseStatusCodeSame(401);
+
+        $this->client->loginUser($this->createUser('customer-promo@test.com'));
+        $this->json('POST', '/api/admin/promo_codes/1/terminate', []);
+        self::assertResponseStatusCodeSame(403);
+    }
+
+    public function testTerminateDeactivatesAndBackdatesPromoCode(): void
+    {
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $promoCode = (new PromoCode())
+            ->setCode('TERMINATE-ME')
+            ->setDiscount('10')
+            ->setTerms(PromoCode::APPLY_ALL_USERS)
+            ->setExpiresAt((new \DateTime())->modify('+1 month'));
+        $em->persist($promoCode);
+        $em->flush();
+
+        $admin = $this->createUser('admin-promo@test.com');
+        $admin->setRoles(['ROLE_ADMIN']);
+        $em->flush();
+        $this->client->loginUser($admin);
+
+        $this->json('POST', sprintf('/api/admin/promo_codes/%d/terminate', $promoCode->getId()), []);
+        self::assertResponseIsSuccessful();
+
+        $em->clear();
+        $reloaded = $em->getRepository(PromoCode::class)->find($promoCode->getId());
+        self::assertFalse($reloaded->isActive());
+        self::assertLessThan(new \DateTime(), $reloaded->getExpiresAt());
     }
 
     public function testAnonymousCannotCancelOrder(): void

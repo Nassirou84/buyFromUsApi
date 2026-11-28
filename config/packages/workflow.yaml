@@ -55,20 +55,12 @@ framework:
             places:
                 - !php/const App\Enumeration\ProductReturnStatusEnum::INITIATED
                 - !php/const App\Enumeration\ProductReturnStatusEnum::COLLECTED
-                - !php/const App\Enumeration\ProductReturnStatusEnum::APPROVED
-                - !php/const App\Enumeration\ProductReturnStatusEnum::REJECTED
                 - !php/const App\Enumeration\ProductReturnStatusEnum::COMPLETED
             transitions:
                 collect_return:
                     from: !php/const App\Enumeration\ProductReturnStatusEnum::INITIATED
                     to: !php/const App\Enumeration\ProductReturnStatusEnum::COLLECTED
-                approve_return:
-                    from: !php/const App\Enumeration\ProductReturnStatusEnum::INITIATED
-                    to: !php/const App\Enumeration\ProductReturnStatusEnum::APPROVED
-                reject_return:
-                    from: !php/const App\Enumeration\ProductReturnStatusEnum::INITIATED
-                    to: !php/const App\Enumeration\ProductReturnStatusEnum::REJECTED
                 complete_return:
-                    from: !php/const App\Enumeration\ProductReturnStatusEnum::APPROVED
+                    from: !php/const App\Enumeration\ProductReturnStatusEnum::COLLECTED
                     to: !php/const App\Enumeration\ProductReturnStatusEnum::COMPLETED
 

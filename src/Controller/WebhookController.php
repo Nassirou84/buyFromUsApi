@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Service\PaymentFinalizationService;
+use App\Service\RefundService;
 use App\Service\SecretManagerService;
 use App\Service\WebhookEventService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -15,6 +16,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 use function in_array;
 use function is_array;
+use function is_string;
 
 final class WebhookController extends AbstractController
 {
@@ -22,6 +24,7 @@ final class WebhookController extends AbstractController
         private readonly SecretManagerService $secretManager,
         private readonly PaymentFinalizationService $paymentFinalizer,
         private readonly WebhookEventService $webhookEvents,
+        private readonly RefundService $refundService,
         // Comma-separated allowlist of Paystack webhook source IPs. Empty = disabled
         // (HMAC remains the gate). Enabling it requires correct trusted-proxy config
         // so getClientIp() returns the real sender, not a proxy.
@@ -75,6 +78,10 @@ final class WebhookController extends AbstractController
                 // event is NOT marked processed and Paystack retries it.
                 $this->paymentFinalizer->finalize($data, (string) $reference);
             }
+        } elseif (is_string($event) && str_starts_with($event, 'refund.')) {
+            // refund.pending / processing / processed / failed: moves the Refund row forward.
+            // An unknown refund is logged and acknowledged (nothing to retry against).
+            $this->refundService->applyGatewayWebhook($event, $data);
         }
 
         // Record only after successful handling, so a transient failure above leaves

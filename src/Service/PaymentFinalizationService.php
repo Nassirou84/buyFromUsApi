@@ -172,6 +172,8 @@ final class PaymentFinalizationService
         }
         $payment->setFees($fees);
         $payment->setUserOrder($order);
+        $taxRate = (int) ($_ENV['TAX_RATE'] ?? 18);
+        $payment->setTaxRate($taxRate);
 
         return $payment;
     }

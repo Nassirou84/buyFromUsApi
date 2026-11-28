@@ -82,13 +82,23 @@ class AssignDelivery
     private ?bool $isCompleted = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['assignDelivery:read', 'assignDelivery:write', 'order:read'])]
     private ?bool $isStarted = null;
+
+    #[ORM\Column(length: 6, nullable: true)]
+    #[Groups(['assignDelivery:read', 'assignDelivery:write', 'order:read'])]
+    private ?string $deliveryPin = null;
+
+    #[ORM\Column(nullable: true)]
+    #[Groups(['assignDelivery:read', 'assignDelivery:write', 'order:read'])]
+    private ?\DateTime $estimatedArrivalTime = null;
 
     public function __construct()
     {
         $this->createdAt = new \DateTime();
         $this->isCompleted = false;
         $this->isStarted = false;
+        $this->estimatedArrivalTime = null;
     }
 
     public function getId(): ?int
@@ -192,6 +202,30 @@ class AssignDelivery
     public function setIsStarted(?bool $isStarted): static
     {
         $this->isStarted = $isStarted;
+
+        return $this;
+    }
+
+    public function getDeliveryPin(): ?string
+    {
+        return $this->deliveryPin;
+    }
+
+    public function setDeliveryPin(?string $deliveryPin): static
+    {
+        $this->deliveryPin = $deliveryPin;
+
+        return $this;
+    }
+
+    public function getEstimatedArrivalTime(): ?\DateTime
+    {
+        return $this->estimatedArrivalTime;
+    }
+
+    public function setEstimatedArrivalTime(?\DateTime $estimatedArrivalTime): static
+    {
+        $this->estimatedArrivalTime = $estimatedArrivalTime;
 
         return $this;
     }

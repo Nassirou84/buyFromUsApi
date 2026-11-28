@@ -17,6 +17,11 @@ use ApiPlatform\Metadata\ApiResource;
 )]
 class ProductReturnItem
 {
+
+    const CONDITION_GRADE_A = 'grade_a';
+    const CONDITION_GRADE_B = 'grade_b';
+    const CONDITION_GRADE_C = 'grade_c';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -46,16 +51,32 @@ class ProductReturnItem
     private ?string $reason = null;
 
     #[ORM\Column(length: 30, nullable: true)]
+    #[Groups(['product_return:read'])]
     private ?string $itemCondition = null;
 
     #[ORM\Column(type: Types::SIMPLE_ARRAY, nullable: true)]
+    #[Groups(['product_return:read'])]
     private ?array $itemControls = null;
 
     #[ORM\Column(nullable: true)]
+    #[Groups(['product_return:read'])]
     private ?\DateTime $inspectedAt = null;
 
     #[ORM\ManyToOne]
+    #[Groups(['product_return:read'])]
     private ?User $inspectedBy = null;
+
+    #[ORM\Column(length: 30, nullable: true)]
+    #[Groups(['product_return:read'])]
+    private ?string $decision = null;
+
+    #[ORM\ManyToOne]
+    #[Groups(['product_return:read'])]
+    private ?User $decidedBy = null;
+
+    #[ORM\Column(nullable: true)]
+    #[Groups(['product_return:read'])]
+    private ?\DateTime $decidedAt = null;
 
     public function getId(): ?int
     {
@@ -154,6 +175,42 @@ class ProductReturnItem
     public function setInspectedBy(?User $inspectedBy): static
     {
         $this->inspectedBy = $inspectedBy;
+
+        return $this;
+    }
+
+    public function getDecision(): ?string
+    {
+        return $this->decision;
+    }
+
+    public function setDecision(?string $decision): static
+    {
+        $this->decision = $decision;
+
+        return $this;
+    }
+
+    public function getDecidedBy(): ?User
+    {
+        return $this->decidedBy;
+    }
+
+    public function setDecidedBy(?User $decidedBy): static
+    {
+        $this->decidedBy = $decidedBy;
+
+        return $this;
+    }
+
+    public function getDecidedAt(): ?\DateTime
+    {
+        return $this->decidedAt;
+    }
+
+    public function setDecidedAt(?\DateTime $decidedAt): static
+    {
+        $this->decidedAt = $decidedAt;
 
         return $this;
     }

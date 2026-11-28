@@ -61,6 +61,7 @@ final class ProductController extends AbstractController
         $slug = $slugger->slug($data['title'] ?? '')->lower() . '-' . uniqid();
 
         $variants = json_decode($data['variants'] ?? '[]', true) ?: [];
+        $uploadedFiles = [];
         // Variant image files picked in the admin arrive as variantImages[<variant index>].
         $variantImages = $request->files->get('variantImages');
         $variantImages = is_array($variantImages) ? $variantImages : [];
@@ -73,6 +74,7 @@ final class ProductController extends AbstractController
                 $hash = md5_file($variantImage->getPathname());
                 $variant['image'] = $uploadedByHash[$hash]
                     ??= $gcsUploaderService->uploadProductImage($variantImage, $slug);
+                $uploadedFiles[] = $variant['image'];
             } elseif (!empty($variant['image']) && str_starts_with($variant['image'], 'data:')) {
                 $hash = md5($variant['image']);
                 try {
@@ -81,12 +83,34 @@ final class ProductController extends AbstractController
                             $variant['image'],
                             $variant['title'] ?? 'variant'
                         );
+                    $uploadedFiles[] = $variant['image'];
                 } catch (\InvalidArgumentException $e) {
+                    foreach ($uploadedFiles as $uploadedFile) {
+                        $gcsUploaderService->deleteByUrl($uploadedFile);
+                    }
+
                     return new JsonResponse(['error' => $e->getMessage()], JsonResponse::HTTP_BAD_REQUEST);
                 }
             }
         }
         unset($variant);
+
+        $uploadedProductImages = [];
+        try {
+            if (!empty($images)) {
+                foreach ($images as $image) {
+                    $file = $gcsUploaderService->uploadProductImage($image, $slug);
+                    $uploadedProductImages[] = $file;
+                    $uploadedFiles[] = $file;
+                }
+            }
+        } catch (\Throwable) {
+            foreach ($uploadedFiles as $uploadedFile) {
+                $gcsUploaderService->deleteByUrl($uploadedFile);
+            }
+
+            return new JsonResponse(['error' => 'image_upload_failed'], JsonResponse::HTTP_BAD_GATEWAY);
+        }
 
         $productUid = $uniqUidGenerator->generateUniqueUid(Product::class);
 
@@ -121,14 +145,21 @@ final class ProductController extends AbstractController
         $product->setSlug($slug);
         $productService->updateLatestPrice($product);
 
-        $entityManager->persist($product);
-        $entityManager->flush();
+        try {
+            $entityManager->wrapInTransaction(function () use ($entityManager, $product, $photoService, $uploadedProductImages): void {
+                $entityManager->persist($product);
+                $entityManager->flush();
 
-        if (!empty($images)) {
-            foreach ($images as $image) {
-                $file = $gcsUploaderService->uploadProductImage($image, $slug);
-                $photoService->createPhotoForProduct($product, $file);
+                foreach ($uploadedProductImages as $file) {
+                    $photoService->createPhotoForProduct($product, $file);
+                }
+            });
+        } catch (\Throwable) {
+            foreach ($uploadedFiles as $uploadedFile) {
+                $gcsUploaderService->deleteByUrl($uploadedFile);
             }
+
+            return new JsonResponse(['error' => 'product_publish_failed'], JsonResponse::HTTP_BAD_GATEWAY);
         }
         $normalizedProduct = $normalizer->normalize($product, null, ['groups' => 'product:read']);
 

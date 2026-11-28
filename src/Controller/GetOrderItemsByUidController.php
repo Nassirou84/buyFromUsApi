@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Repository\OrderRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 final class GetOrderItemsByUidController extends AbstractController
@@ -19,7 +20,7 @@ final class GetOrderItemsByUidController extends AbstractController
         $order = $orderRepository->findOneBy(['uid' => $uid]);
 
         if (!$order) {
-            return new JsonResponse(['error' => 'order_not_found'], JsonResponse::HTTP_NOT_FOUND);
+            return new JsonResponse(['error' => 'order_not_found'], Response::HTTP_NOT_FOUND);
         }
 
         $items = [];
@@ -31,6 +32,14 @@ final class GetOrderItemsByUidController extends AbstractController
             ];
         }
 
-        return new JsonResponse(['items' => $items], JsonResponse::HTTP_OK);
+        $orderAcceptStoreCredit = false;
+        if ($order->getCustomer()) {
+            $orderAcceptStoreCredit = true;
+        }
+
+        return new JsonResponse([
+            'items' => $items,
+            'acceptStoreCredit' => $orderAcceptStoreCredit,
+        ], Response::HTTP_OK);
     }
 }

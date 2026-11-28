@@ -3,14 +3,15 @@
 namespace App\Entity;
 
 use App\Repository\InventoryRepository;
-use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: InventoryRepository::class)]
 class Inventory
 {
-    const MAIN_WAREHOUSE = 'main_warehouse';
 
+    const TYPE_RETURN = 'return';
+    const TYPE_SALE = 'sale';
+    const TYPE_STOCK = 'stock';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -18,30 +19,31 @@ class Inventory
     /** @phpstan-ignore-next-line */
     private ?int $id = null;
 
-    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
+    #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
-    private ?OrderItem $item = null;
+    private ?Product $product = null;
+
+    #[ORM\OneToOne(cascade: ['persist', 'remove'])]
+    private ?ProductReturnItem $productReturnItem = null;
+
+    #[ORM\Column]
+    private ?int $quantity = null;
 
     #[ORM\Column]
     private ?\DateTime $createdAt = null;
 
+    #[ORM\Column(length: 30)]
+    private ?string $type = null;
+
     #[ORM\Column]
     private ?bool $isAvailable = null;
 
-    #[ORM\Column(length: 255)]
-    private ?string $itemCondition = null;
-
-    #[ORM\Column(type: Types::SIMPLE_ARRAY)]
-    private array $packaging = [];
-
-    #[ORM\ManyToOne(inversedBy: 'inventories')]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?Hub $hub = null;
+    #[ORM\Column(nullable: true)]
+    private ?bool $canBeResold = null;
 
     public function __construct()
     {
         $this->createdAt = new \DateTime();
-        $this->isAvailable = false;
     }
 
     public function getId(): ?int
@@ -49,14 +51,38 @@ class Inventory
         return $this->id;
     }
 
-    public function getItem(): ?OrderItem
+    public function getProduct(): ?Product
     {
-        return $this->item;
+        return $this->product;
     }
 
-    public function setItem(OrderItem $item): static
+    public function setProduct(?Product $product): static
     {
-        $this->item = $item;
+        $this->product = $product;
+
+        return $this;
+    }
+
+    public function getProductReturnItem(): ?ProductReturnItem
+    {
+        return $this->productReturnItem;
+    }
+
+    public function setProductReturnItem(?ProductReturnItem $productReturnItem): static
+    {
+        $this->productReturnItem = $productReturnItem;
+
+        return $this;
+    }
+
+    public function getQuantity(): ?int
+    {
+        return $this->quantity;
+    }
+
+    public function setQuantity(int $quantity): static
+    {
+        $this->quantity = $quantity;
 
         return $this;
     }
@@ -73,6 +99,18 @@ class Inventory
         return $this;
     }
 
+    public function getType(): ?string
+    {
+        return $this->type;
+    }
+
+    public function setType(string $type): static
+    {
+        $this->type = $type;
+
+        return $this;
+    }
+
     public function isAvailable(): ?bool
     {
         return $this->isAvailable;
@@ -85,38 +123,14 @@ class Inventory
         return $this;
     }
 
-    public function getItemCondition(): ?string
+    public function isCanBeResold(): ?bool
     {
-        return $this->itemCondition;
+        return $this->canBeResold;
     }
 
-    public function setItemCondition(string $itemCondition): static
+    public function setCanBeResold(?bool $canBeResold): static
     {
-        $this->itemCondition = $itemCondition;
-
-        return $this;
-    }
-
-    public function getPackaging(): array
-    {
-        return $this->packaging;
-    }
-
-    public function setPackaging(array $packaging): static
-    {
-        $this->packaging = $packaging;
-
-        return $this;
-    }
-
-    public function getHub(): ?Hub
-    {
-        return $this->hub;
-    }
-
-    public function setHub(?Hub $hub): static
-    {
-        $this->hub = $hub;
+        $this->canBeResold = $canBeResold;
 
         return $this;
     }

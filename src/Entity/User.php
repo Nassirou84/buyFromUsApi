@@ -126,11 +126,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?DateTime $registrationTokenCreatedAt = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['user:create', 'user:read', 'user:admin:read', 'order:read'])]
+    #[Groups(['user:create', 'user:read', 'user:admin:read', 'order:read', 'product_return:read'])]
     private ?string $firstName = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['user:create', 'user:read', 'user:admin:read', 'order:read'])]
+    #[Groups(['user:create', 'user:read', 'user:admin:read', 'order:read', 'product_return:read'])]
     private ?string $lastName = null;
 
     #[ORM\Column(nullable: true)]
@@ -229,6 +229,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(targetEntity: PaymentMethod::class, mappedBy: 'customer', orphanRemoval: true)]
     private Collection $paymentMethods;
 
+    #[ORM\Column(nullable: true)]
+    #[Groups(['user:login:read', 'user:admin:read'])]
+    private ?int $creditBalance = null;
+
     public function __construct()
     {
         $this->country = 'CIV';
@@ -242,6 +246,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->promoCodes = new ArrayCollection();
         $this->assignDeliveries = new ArrayCollection();
         $this->paymentMethods = new ArrayCollection();
+        $this->creditBalance = 0;
     }
 
     public function getId(): ?int
@@ -793,6 +798,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
                 $paymentMethod->setCustomer(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getCreditBalance(): ?int
+    {
+        return $this->creditBalance;
+    }
+
+    public function setCreditBalance(?int $creditBalance): static
+    {
+        $this->creditBalance = $creditBalance;
 
         return $this;
     }
