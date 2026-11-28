@@ -8,6 +8,7 @@ use App\Entity\User;
 use App\Message\NewReturnRequestMessage;
 use App\Repository\ProductReturnItemRepository;
 use App\Repository\ProductReturnRepository;
+use App\Repository\UserRepository;
 use App\Service\ProductReturnService;
 use App\Service\QrcodeGeneratorService;
 use InvalidArgumentException;
@@ -259,6 +260,48 @@ final class ProductReturnController extends AbstractController
         }
 
         $productReturnService->rejectReturnItem($item, $user);
+
+        return new JsonResponse(['success' => true]);
+    }
+
+    #[Route('/item/{itemId}/send-back', name: 'app_product_return_send_back_item', methods: ['POST'])]
+    public function sendBackReturnItem(
+        int $itemId,
+        Request $request,
+        ProductReturnItemRepository $productReturnItemRepository,
+        ProductReturnService $productReturnService,
+        UserRepository $userRepository,
+    ): JsonResponse {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return new JsonResponse(['error' => 'unauthenticated'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        if (!in_array('ROLE_ADMIN', $user->getRoles(), true)) {
+            return new JsonResponse(['error' => 'forbidden'], Response::HTTP_FORBIDDEN);
+        }
+
+        $item = $productReturnItemRepository->find($itemId);
+        if (!$item) {
+            return new JsonResponse(['error' => 'item_not_found'], Response::HTTP_NOT_FOUND);
+        }
+
+        $requestData = json_decode($request->getContent(), true);
+        $driverId = is_array($requestData) ? ($requestData['driver_id'] ?? null) : null;
+        $driver = $driverId ? $userRepository->find($driverId) : null;
+        if (!$driver) {
+            return new JsonResponse(['error' => 'driver_not_found'], Response::HTTP_NOT_FOUND);
+        }
+        if (!in_array(User::ROLE_DRIVER, $driver->getRoles(), true)) {
+            return new JsonResponse(['error' => 'user_is_not_driver'], Response::HTTP_BAD_REQUEST);
+        }
+
+        try {
+            $productReturnService->sendBackReturnItem($item, $driver);
+        } catch (LogicException $e) {
+            // item_not_collected / item_not_rejected / item_already_sent_back
+            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_CONFLICT);
+        }
 
         return new JsonResponse(['success' => true]);
     }

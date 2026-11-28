@@ -128,28 +128,28 @@ class Order
     private ?User $customer = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read', 'assignDelivery:read'])]
     private ?string $fullName = null;
 
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read', 'assignDelivery:read'])]
     private ?string $street = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read', 'assignDelivery:read'])]
     private ?string $city = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read', 'assignDelivery:read'])]
     private ?string $state = null;
 
     #[ORM\Column]
-    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'product_return:read'])]
+    #[Groups(['order:write', 'order:read', 'assignDelivery:read', 'product_return:read', 'assignDelivery:read'])]
     private ?DateTime $createdAt = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:read', 'order:edit', 'assignDelivery:read', 'assignDelivery:driver'])]
+    #[Groups(['order:read', 'order:edit', 'assignDelivery:read', 'assignDelivery:driver', 'assignDelivery:read'])]
     private ?string $status = null;
 
     #[ORM\Column(nullable: true)]
@@ -157,7 +157,7 @@ class Order
     private ?DateTime $updatedAt = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['order:read', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read'])]
+    #[Groups(['order:read', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read', 'assignDelivery:read'])]
     private ?string $uid = null;
 
     /**
@@ -172,11 +172,11 @@ class Order
     private ?DateTime $estimatedDeliveryAt = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['order:read', 'assignDelivery:driver', 'product_return:read'])]
+    #[Groups(['order:read', 'assignDelivery:driver', 'product_return:read', 'assignDelivery:read'])]
     private ?string $country = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['order:read', 'assignDelivery:driver', 'product_return:read'])]
+    #[Groups(['order:read', 'assignDelivery:driver', 'product_return:read', 'assignDelivery:read'])]
     private ?string $suite = null;
 
     /**
@@ -187,10 +187,11 @@ class Order
     private Collection $payments;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['order:read', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read', 'assignDelivery:read'])]
     private ?string $email = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['order:read', 'assignDelivery:read', 'product_return:read'])]
+    #[Groups(['order:read', 'assignDelivery:read', 'product_return:read', 'assignDelivery:read'])]
     private ?bool $isPriority = null;
 
     #[ORM\Column(nullable: true)]
@@ -206,7 +207,7 @@ class Order
     private ?float $shippingFee = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['order:read', 'order:edit', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read'])]
+    #[Groups(['order:read', 'order:edit', 'assignDelivery:read', 'assignDelivery:driver', 'product_return:read', 'assignDelivery:read'])]
     private ?string $phone = null;
 
     #[ORM\Column(length: 255)]
@@ -233,7 +234,7 @@ class Order
     private ?string $authorizationUrl = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['order:read', 'product_return:read'])]
+    #[Groups(['order:read', 'product_return:read', 'assignDelivery:read'])]
     private ?\DateTime $deliveredAt = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]

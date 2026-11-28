@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Service;
+use App\Entity\AssignDelivery;
 use App\Entity\Order;
 use App\Entity\OrderItem;
 use App\Entity\ProductReturn;
@@ -15,6 +16,7 @@ use App\Enumeration\ProductReturnStatusEnum;
 use App\Repository\OrderItemRepository;
 use App\Repository\OrderRepository;
 use App\Repository\ProductReturnItemRepository;
+use App\Repository\ProductReturnRepository;
 use App\Service\StoreCreditService;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
@@ -34,7 +36,45 @@ final class ProductReturnService
     private StoreCreditService $storeCreditService,
     private InventoryService $inventoryService,
     private RefundService $refundService,
+    private ProductReturnRepository $productReturnRepository,
   ) {
+  }
+
+  /**
+   * Assigns a driver to collect each initiated return that has no collection assignment yet.
+   * Returns that are unknown, not initiated or already assigned are skipped.
+   *
+   * @param array<int, array{uid?: string}> $returns
+   */
+  public function batchAssignReturnCollection(array $returns, User $driver): int
+  {
+    $processed = 0;
+    foreach ($returns as $returnData) {
+      $return = $this->productReturnRepository->findOneBy(['uid' => $returnData['uid'] ?? null]);
+      if (!$return || $return->getStatus() !== ProductReturnStatusEnum::INITIATED->value) {
+        continue;
+      }
+      $alreadyAssigned = $return->getAssignDeliveries()->exists(
+        fn (int $key, AssignDelivery $assignment): bool => $assignment->getType() === AssignDelivery::TYPE_RETURN_COLLECTION
+      );
+      if ($alreadyAssigned) {
+        continue;
+      }
+
+      $assignment = new AssignDelivery();
+      $assignment->setType(AssignDelivery::TYPE_RETURN_COLLECTION);
+      $assignment->setDriver($driver);
+      $assignment->setIsStarted(false);
+      $assignment->setIsCompleted(false);
+      $assignment->setDeliveryPin((string) random_int(100000, 999999));
+      $return->addAssignDelivery($assignment);
+
+      $this->entityManagerInterface->persist($assignment);
+      $processed++;
+    }
+    $this->entityManagerInterface->flush();
+
+    return $processed;
   }
 
   public function initiateReturn(array $requestData): ProductReturn
@@ -234,6 +274,39 @@ final class ProductReturnService
     $this->entityManagerInterface->flush();
 
     return $item;
+  }
+
+  /**
+   * Assigns a driver to bring a rejected item back to the customer. The item must have
+   * been collected (the return is no longer initiated) and can only be sent back once.
+   * The assignment is linked to the return too, so the driver gets the order address.
+   */
+  public function sendBackReturnItem(ProductReturnItem $item, User $driver): AssignDelivery
+  {
+    $return = $item->getProductReturn();
+    if (!$return || $return->getStatus() === ProductReturnStatusEnum::INITIATED->value) {
+      throw new \LogicException('item_not_collected');
+    }
+    if ($item->getDecision() !== ProductReturnDecisionEnum::REJECTED->value) {
+      throw new \LogicException('item_not_rejected');
+    }
+    if ($item->findRedelivery() !== null) {
+      throw new \LogicException('item_already_sent_back');
+    }
+
+    $assignment = new AssignDelivery();
+    $assignment->setType(AssignDelivery::TYPE_REDELIVERY_RETURN_ITEM);
+    $assignment->setDriver($driver);
+    $assignment->setIsStarted(false);
+    $assignment->setIsCompleted(false);
+    $assignment->setDeliveryPin((string) random_int(100000, 999999));
+    $return->addAssignDelivery($assignment);
+    $item->addAssignDelivery($assignment);
+
+    $this->entityManagerInterface->persist($assignment);
+    $this->entityManagerInterface->flush();
+
+    return $assignment;
   }
 
   /**

@@ -5,14 +5,16 @@ namespace App\Controller;
 use App\Entity\User;
 use App\Enumeration\OrderStatusEnum;
 use App\Repository\OrderRepository;
+use App\Repository\ProductReturnRepository;
 use App\Repository\UserRepository;
 use App\Service\OrderService;
+use App\Service\ProductReturnService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 
 #[Route('/api/admin/')]
@@ -329,19 +331,31 @@ final class OrderController extends AbstractController
     public function getOrdersAwaitingDelivery(
         Request $request,
         OrderRepository $orderRepository,
-        SerializerInterface $serializer
+        ProductReturnRepository $productReturnRepository,
+        NormalizerInterface $normalizer
     ): JsonResponse {
+        $user = $this->getUser();
+        if (!$user) {
+            return new JsonResponse(['error' => 'user_not_authenticated'], 401);
+        }
+        if (count(array_intersect([User::ROLE_SUPER_ADMIN, User::ROLE_OPERATOR], $user->getRoles())) === 0) {
+            return new JsonResponse(['error' => 'access_denied'], JsonResponse::HTTP_FORBIDDEN);
+        }
+
         $page = max(1, (int) $request->query->get('page', 1));
-        $orders = $orderRepository->findAwaitingDelivery(10, ($page - 1) * 10);
+        $offset = ($page - 1) * 10;
+        $orders = $orderRepository->findAwaitingDelivery(10, $offset);
         $totalOrders = $orderRepository->countAwaitingDelivery();
+        $returns = $productReturnRepository->findAwaitingCollection(10, $offset);
+        $totalReturns = $productReturnRepository->countAwaitingCollection();
 
-        $json = $serializer->serialize([
-            'orders' => $orders,
+        return new JsonResponse([
+            'orders' => $normalizer->normalize($orders, 'json', ['groups' => ['order:read']]),
+            'returns' => $normalizer->normalize($returns, 'json', ['groups' => ['product_return:read']]),
             'page' => $page,
-            'total' => $totalOrders
-        ], 'json', ['groups' => ['order:read']]);
-
-        return JsonResponse::fromJsonString($json);
+            'total' => $totalOrders,
+            'totalReturns' => $totalReturns,
+        ]);
     }
 
     #[Route('batch-assign-delivery', name: 'app_batch_assign_delivery', methods: ['POST'])]
@@ -372,5 +386,35 @@ final class OrderController extends AbstractController
         $processed = $orderService->batchAssignDelivery($requestData['orders'], $driver);
 
         return new JsonResponse(['message' => 'batch_delivery_assigned', 'processed' => $processed]);
+    }
+
+    #[Route('batch-assign-return-collection', name: 'app_batch_assign_return_collection', methods: ['POST'])]
+    public function batchAssignReturnCollection(
+        Request $request,
+        ProductReturnService $productReturnService,
+        UserRepository $userRepository
+    ): JsonResponse {
+        $user = $this->getUser();
+        if (!$user) {
+            return new JsonResponse(['error' => 'user_not_authenticated'], 401);
+        }
+        if (count(array_intersect([User::ROLE_SUPER_ADMIN, User::ROLE_OPERATOR], $user->getRoles())) === 0) {
+            return new JsonResponse(['error' => 'access_denied'], JsonResponse::HTTP_FORBIDDEN);
+        }
+        $requestData = json_decode($request->getContent(), true);
+        if (!is_array($requestData) || empty($requestData['returns']) || !is_array($requestData['returns'])) {
+            return new JsonResponse(['error' => 'no_returns_provided'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+        $driverId = $requestData['driver_id'] ?? null;
+        $driver = $driverId ? $userRepository->find($driverId) : null;
+        if (!$driver) {
+            return new JsonResponse(['error' => 'driver_not_found'], JsonResponse::HTTP_NOT_FOUND);
+        }
+        if (!in_array(User::ROLE_DRIVER, $driver->getRoles(), true)) {
+            return new JsonResponse(['error' => 'user_is_not_driver'], JsonResponse::HTTP_BAD_REQUEST);
+        }
+        $processed = $productReturnService->batchAssignReturnCollection($requestData['returns'], $driver);
+
+        return new JsonResponse(['message' => 'batch_return_collection_assigned', 'processed' => $processed]);
     }
 }

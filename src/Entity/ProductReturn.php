@@ -45,24 +45,24 @@ class ProductReturn
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['product_return:read'])]
+    #[Groups(['product_return:read', 'assignDelivery:read'])]
     /** @phpstan-ignore-next-line */
     private ?int $id = null;
 
     #[ORM\ManyToOne(inversedBy: 'productReturns')]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['product_return:read'])]
+    #[Groups(['product_return:read', 'assignDelivery:read', 'assignDelivery:driver'])]
     #[Assert\NotNull]
     private ?Order $returnOrder = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['product_return:read'])]
+    #[Groups(['product_return:read', 'assignDelivery:read'])]
     #[Assert\Email]
     private ?string $email = null;
 
     #[ORM\Column]
     #[Assert\NotNull]
-    #[Groups(['product_return:read'])]
+    #[Groups(['product_return:read', 'assignDelivery:read', 'assignDelivery:driver'])]
     private ?DateTime $createdAt = null;
 
     #[ORM\Column(length: 255)]
@@ -71,16 +71,16 @@ class ProductReturn
     private ?string $refundtype = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['product_return:read'])]
+    #[Groups(['product_return:read', 'assignDelivery:read', 'assignDelivery:driver'])]
     private ?string $additionalDetails = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['product_return:read'])]
+    #[Groups(['product_return:read', 'assignDelivery:read', 'assignDelivery:driver'])]
     #[Assert\NotNull]
     private ?string $uid = null;
 
     #[ORM\Column(length: 20)]
-    #[Groups(['product_return:read'])]
+    #[Groups(['product_return:read', 'assignDelivery:read', 'assignDelivery:driver'])]
     #[Assert\NotNull]
     private ?string $status = null;
 
@@ -88,7 +88,7 @@ class ProductReturn
      * @var Collection<int, ProductReturnItem>
      */
     #[ORM\OneToMany(targetEntity: ProductReturnItem::class, mappedBy: 'productReturn', cascade: ['persist', 'remove'], orphanRemoval: true)]
-    #[Groups(['product_return:read'])]
+    #[Groups(['product_return:read', 'assignDelivery:driver'])]
     private Collection $returnItems;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
@@ -114,11 +114,18 @@ class ProductReturn
     #[Groups(['product_return:read:admin'])]
     private Collection $refunds;
 
+    /**
+     * @var Collection<int, AssignDelivery>
+     */
+    #[ORM\OneToMany(targetEntity: AssignDelivery::class, mappedBy: 'productReturn')]
+    private Collection $assignDeliveries;
+
     public function __construct()
     {
         $this->createdAt = new DateTime();
         $this->returnItems = new ArrayCollection();
         $this->refunds = new ArrayCollection();
+        $this->assignDeliveries = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -294,5 +301,35 @@ class ProductReturn
     public function getRefunds(): Collection
     {
         return $this->refunds;
+    }
+
+    /**
+     * @return Collection<int, AssignDelivery>
+     */
+    public function getAssignDeliveries(): Collection
+    {
+        return $this->assignDeliveries;
+    }
+
+    public function addAssignDelivery(AssignDelivery $assignDelivery): static
+    {
+        if (!$this->assignDeliveries->contains($assignDelivery)) {
+            $this->assignDeliveries->add($assignDelivery);
+            $assignDelivery->setProductReturn($this);
+        }
+
+        return $this;
+    }
+
+    public function removeAssignDelivery(AssignDelivery $assignDelivery): static
+    {
+        if ($this->assignDeliveries->removeElement($assignDelivery)) {
+            // set the owning side to null (unless already changed)
+            if ($assignDelivery->getProductReturn() === $this) {
+                $assignDelivery->setProductReturn(null);
+            }
+        }
+
+        return $this;
     }
 }

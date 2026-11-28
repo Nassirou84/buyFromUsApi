@@ -82,7 +82,7 @@ class Product
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read', 'product_return:read'])]
+    #[Groups(['product:read', 'order:read', 'wishlist:read', 'basket:read', 'product_return:read', 'assignDelivery:driver'])]
     #[Assert\NotBlank]
     #[Assert\Length(max: 255)]
     private ?string $title = null;
@@ -228,6 +228,12 @@ class Product
     #[ORM\Column(nullable: true)]
     private ?int $numberOfOrder = null;
 
+    /**
+     * @var Collection<int, Rating>
+     */
+    #[ORM\OneToMany(targetEntity: Rating::class, mappedBy: 'product', orphanRemoval: true)]
+    private Collection $ratings;
+
 
 
     public function __construct(
@@ -240,6 +246,7 @@ class Product
         $this->acceptReturn = false;
         $this->primeDelivery = false;
         $this->sellerChoice = false;
+        $this->ratings = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -794,6 +801,36 @@ class Product
     public function setNumberOfOrder(?int $numberOfOrder): static
     {
         $this->numberOfOrder = $numberOfOrder;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Rating>
+     */
+    public function getRatings(): Collection
+    {
+        return $this->ratings;
+    }
+
+    public function addRating(Rating $rating): static
+    {
+        if (!$this->ratings->contains($rating)) {
+            $this->ratings->add($rating);
+            $rating->setProduct($this);
+        }
+
+        return $this;
+    }
+
+    public function removeRating(Rating $rating): static
+    {
+        if ($this->ratings->removeElement($rating)) {
+            // set the owning side to null (unless already changed)
+            if ($rating->getProduct() === $this) {
+                $rating->setProduct(null);
+            }
+        }
 
         return $this;
     }

@@ -44,6 +44,10 @@ use Symfony\Component\Serializer\Attribute\SerializedName;
 #[ORM\Entity(repositoryClass: AssignDeliveryRepository::class)]
 class AssignDelivery
 {
+    const TYPE_DELIVERY = 'delivery';
+    const TYPE_RETURN_COLLECTION = 'return_collection';
+    const TYPE_REDELIVERY_RETURN_ITEM = 'redelivery_return_item';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -52,7 +56,7 @@ class AssignDelivery
     private ?int $id = null;
 
     #[ORM\OneToOne(inversedBy: 'assignDelivery', cascade: ['persist', 'remove'])]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: true)]
     #[Groups(['assignDelivery:read', 'assignDelivery:driver', 'assignDelivery:write'])]
     private ?Order $assignOrder = null;
 
@@ -93,12 +97,25 @@ class AssignDelivery
     #[Groups(['assignDelivery:read', 'assignDelivery:write', 'order:read'])]
     private ?\DateTime $estimatedArrivalTime = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['assignDelivery:read', 'assignDelivery:write', 'order:read', 'assignDelivery:driver'])]
+    private ?string $type = null;
+
+    #[ORM\ManyToOne(inversedBy: 'assignDeliveries')]
+    #[Groups(['assignDelivery:read', 'assignDelivery:driver'])]
+    private ?ProductReturn $productReturn = null;
+
+    #[ORM\ManyToOne(inversedBy: 'assignDeliveries')]
+    #[Groups(['assignDelivery:read', 'assignDelivery:driver'])]
+    private ?ProductReturnItem $productReturnItem = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTime();
         $this->isCompleted = false;
         $this->isStarted = false;
         $this->estimatedArrivalTime = null;
+        $this->type = self::TYPE_DELIVERY;
     }
 
     public function getId(): ?int
@@ -111,7 +128,7 @@ class AssignDelivery
         return $this->assignOrder;
     }
 
-    public function setAssignOrder(Order $assignOrder): static
+    public function setAssignOrder(?Order $assignOrder): static
     {
         $this->assignOrder = $assignOrder;
 
@@ -226,6 +243,42 @@ class AssignDelivery
     public function setEstimatedArrivalTime(?\DateTime $estimatedArrivalTime): static
     {
         $this->estimatedArrivalTime = $estimatedArrivalTime;
+
+        return $this;
+    }
+
+    public function getType(): ?string
+    {
+        return $this->type;
+    }
+
+    public function setType(?string $type): static
+    {
+        $this->type = $type;
+
+        return $this;
+    }
+
+    public function getProductReturn(): ?ProductReturn
+    {
+        return $this->productReturn;
+    }
+
+    public function setProductReturn(?ProductReturn $productReturn): static
+    {
+        $this->productReturn = $productReturn;
+
+        return $this;
+    }
+
+    public function getProductReturnItem(): ?ProductReturnItem
+    {
+        return $this->productReturnItem;
+    }
+
+    public function setProductReturnItem(?ProductReturnItem $productReturnItem): static
+    {
+        $this->productReturnItem = $productReturnItem;
 
         return $this;
     }

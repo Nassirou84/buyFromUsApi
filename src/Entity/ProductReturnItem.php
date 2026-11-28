@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\ProductReturnItemRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -25,7 +27,7 @@ class ProductReturnItem
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['product_return:read'])]
+    #[Groups(['product_return:read', 'assignDelivery:driver', 'assignDelivery:read'])]
     /** @phpstan-ignore-next-line */
     private ?int $id = null;
 
@@ -36,22 +38,22 @@ class ProductReturnItem
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['product_return:read'])]
+    #[Groups(['product_return:read', 'assignDelivery:driver', 'assignDelivery:read'])]
     #[Assert\NotNull]
     private ?OrderItem $orderItem = null;
 
     #[ORM\Column]
-    #[Groups(['product_return:read'])]
+    #[Groups(['product_return:read', 'assignDelivery:driver', 'assignDelivery:read'])]
     #[Assert\Positive]
     private ?int $quantity = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['product_return:read'])]
+    #[Groups(['product_return:read', 'assignDelivery:driver', 'assignDelivery:read'])]
     #[Assert\NotBlank]
     private ?string $reason = null;
 
     #[ORM\Column(length: 30, nullable: true)]
-    #[Groups(['product_return:read'])]
+    #[Groups(['product_return:read', 'assignDelivery:read', 'assignDelivery:driver'])]
     private ?string $itemCondition = null;
 
     #[ORM\Column(type: Types::SIMPLE_ARRAY, nullable: true)]
@@ -67,7 +69,7 @@ class ProductReturnItem
     private ?User $inspectedBy = null;
 
     #[ORM\Column(length: 30, nullable: true)]
-    #[Groups(['product_return:read'])]
+    #[Groups(['product_return:read', 'assignDelivery:read', 'assignDelivery:driver'])]
     private ?string $decision = null;
 
     #[ORM\ManyToOne]
@@ -77,6 +79,17 @@ class ProductReturnItem
     #[ORM\Column(nullable: true)]
     #[Groups(['product_return:read'])]
     private ?\DateTime $decidedAt = null;
+
+    /**
+     * @var Collection<int, AssignDelivery>
+     */
+    #[ORM\OneToMany(targetEntity: AssignDelivery::class, mappedBy: 'productReturnItem')]
+    private Collection $assignDeliveries;
+
+    public function __construct()
+    {
+        $this->assignDeliveries = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -213,5 +226,71 @@ class ProductReturnItem
         $this->decidedAt = $decidedAt;
 
         return $this;
+    }
+
+    /**
+     * @return Collection<int, AssignDelivery>
+     */
+    public function getAssignDeliveries(): Collection
+    {
+        return $this->assignDeliveries;
+    }
+
+    public function addAssignDelivery(AssignDelivery $assignDelivery): static
+    {
+        if (!$this->assignDeliveries->contains($assignDelivery)) {
+            $this->assignDeliveries->add($assignDelivery);
+            $assignDelivery->setProductReturnItem($this);
+        }
+
+        return $this;
+    }
+
+    public function removeAssignDelivery(AssignDelivery $assignDelivery): static
+    {
+        if ($this->assignDeliveries->removeElement($assignDelivery)) {
+            // set the owning side to null (unless already changed)
+            if ($assignDelivery->getProductReturnItem() === $this) {
+                $assignDelivery->setProductReturnItem(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * The driver run bringing this (rejected) item back to the customer, if any.
+     */
+    public function findRedelivery(): ?AssignDelivery
+    {
+        foreach ($this->assignDeliveries as $assignment) {
+            if ($assignment->getType() === AssignDelivery::TYPE_REDELIVERY_RETURN_ITEM) {
+                return $assignment;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Send-back state shown on the return (null until the item is sent back).
+     *
+     * @return array{driverName: string, isStarted: bool, isCompleted: bool, createdAt: ?\DateTime, completedAt: ?\DateTime}|null
+     */
+    #[Groups(['product_return:read'])]
+    public function getRedelivery(): ?array
+    {
+        $assignment = $this->findRedelivery();
+        if (!$assignment) {
+            return null;
+        }
+
+        return [
+            'driverName' => $assignment->getDriver()?->getFullName() ?? '',
+            'isStarted' => (bool) $assignment->isStarted(),
+            'isCompleted' => (bool) $assignment->isCompleted(),
+            'createdAt' => $assignment->getCreatedAt(),
+            'completedAt' => $assignment->getCompletedAt(),
+        ];
     }
 }

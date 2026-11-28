@@ -42,7 +42,7 @@ class OrderItem
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['order:read', 'product_return:read'])]
+    #[Groups(['order:read', 'product_return:read', 'assignDelivery:driver'])]
     private ?Product $product = null;
 
     #[ORM\Column]
@@ -75,11 +75,11 @@ class OrderItem
      * @var array<string, mixed>|null
      */
     #[ORM\Column(type: Types::JSON, nullable: true)]
-    #[Groups(['order:read', 'product_return:read'])]
+    #[Groups(['order:read', 'product_return:read', 'assignDelivery:driver'])]
     private ?array $variant = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['order:read', 'product_return:read'])]
+    #[Groups(['order:read', 'product_return:read', 'assignDelivery:driver'])]
     private ?string $productSerialNumber = null;
 
     public function __construct()
